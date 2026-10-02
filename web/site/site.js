@@ -30,6 +30,51 @@
   }
   if ($('year')) $('year').textContent = new Date().getFullYear();
 
+  // ---- look and feel --------------------------------------------------------------------
+  var nav = $('nav');
+  if (nav) {
+    var onScroll = function () { nav.classList.toggle('scrolled', window.scrollY > 8); };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  }
+
+  // sections fade in as they scroll into view; without IntersectionObserver they just show
+  var reveal = function (root) {
+    var items = (root || document).querySelectorAll('.reveal:not(.in)');
+    if (!('IntersectionObserver' in window)) { items.forEach(function (el) { el.classList.add('in'); }); return; }
+    var io = reveal.io || (reveal.io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); reveal.io.unobserve(e.target); } });
+    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 }));
+    items.forEach(function (el) { io.observe(el); });
+  };
+  document.documentElement.classList.add('js');
+  reveal();
+
+  // soft light that follows the mouse over cards
+  document.addEventListener('pointermove', function (e) {
+    var card = e.target.closest && e.target.closest('.card');
+    if (!card) return;
+    var r = card.getBoundingClientRect();
+    card.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+    card.style.setProperty('--my', (e.clientY - r.top) + 'px');
+  });
+
+  // screenshot tabs
+  var captions = [
+    ['XAUUSD · 15m', 'Sessions, killzones, Silver Bullet windows, 90-minute quarters and key opens on XAUUSD 15m.'],
+    ['Daily bias · OTE · SMT', 'Daily bias panel, premium / discount with OTE, Asian range and CBDR projections, opening gaps and SMT.']
+  ];
+  var tabs = document.querySelectorAll('.tab'), shots = document.querySelectorAll('.shot');
+  tabs.forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      var i = Number(tab.getAttribute('data-shot'));
+      tabs.forEach(function (t) { t.classList.toggle('active', t === tab); t.setAttribute('aria-selected', t === tab ? 'true' : 'false'); });
+      shots.forEach(function (s, n) { s.classList.toggle('active', n === i); });
+      if (captions[i] && $('shot-title')) $('shot-title').textContent = captions[i][0];
+      if (captions[i] && $('shot-cap')) $('shot-cap').textContent = captions[i][1];
+    });
+  });
+
   // ---- models ---------------------------------------------------------------------------
   function showModels(models) {
     var list = $('models-list');

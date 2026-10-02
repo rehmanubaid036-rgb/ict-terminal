@@ -1,0 +1,134 @@
+/* ICT Terminal: brand theme + phone layout, loaded after the built CSS (assets/index-*.css).
+   Kept outside the build so it survives as long as index.html links it. */
+:root {
+  --t-bg: #0d1220; --t-bar: #10172a; --t-panel: #131b30; --t-line: #232c45; --t-line2: #2f3a5c;
+  --t-text: #e3e8f4; --t-muted: #8a94ad; --t-accent: #2dd4bf; --t-ink: #032824; --t-violet: #8b5cf6;
+  --t-on: rgba(45, 212, 191, .14); --t-font: "Inter", -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+html, body, #root { background: var(--t-bg); }
+.app, .auth-screen { font-family: var(--t-font); background: var(--t-bg); color: var(--t-text); -webkit-font-smoothing: antialiased; }
+.app { height: 100vh; height: 100dvh; }
+
+/* ---- top bar -------------------------------------------------------------------------------- */
+.topbar { background: var(--t-bar); border-bottom: 1px solid var(--t-line); gap: 8px; padding: 7px 10px; }
+.brand { color: var(--t-accent); font-weight: 600; letter-spacing: -.2px; display: inline-flex; align-items: center; gap: 8px; margin-right: 4px; }
+.brand::before { content: ""; width: 24px; height: 24px; flex: none; border-radius: 6px; background: url("favicon.svg") center / cover; }
+.group { gap: 2px; padding: 2px; border-radius: 8px; background: rgba(255, 255, 255, .025); border: 1px solid var(--t-line); }
+.group.toggles { background: none; border: 0; padding: 0; }
+.group button, .toolbar button, .side button { border-radius: 6px; color: var(--t-text); transition: background .15s, color .15s; }
+.group button:hover, .toolbar button:hover { background: rgba(255, 255, 255, .06); }
+.group button.on, .toolbar button.on { background: var(--t-on); color: #5eead4; box-shadow: inset 0 0 0 1px rgba(45, 212, 191, .45); }
+.toggles label { color: var(--t-muted); }
+.toggles input, .menu input[type="checkbox"], .models input, .bias input { accent-color: var(--t-accent); }
+.search input, .wl-add input, .chart-type { background: var(--t-panel); border: 1px solid var(--t-line2); border-radius: 7px; color: var(--t-text); }
+.search input { padding: 6px 10px; }
+.search input:focus, .wl-add input:focus, .assistant .ask input:focus, .auth-card input:focus { outline: none; border-color: var(--t-accent); box-shadow: 0 0 0 3px rgba(45, 212, 191, .15); }
+.dropdown, .menu { background: #141c33; border: 1px solid var(--t-line2); border-radius: 10px; box-shadow: 0 18px 50px rgba(0, 0, 0, .55); }
+.dropdown .item { border-radius: 6px; margin: 2px 4px; }
+.dropdown .item:hover, .wl-row:hover, .wl-row.on, .signal:hover { background: rgba(255, 255, 255, .05); }
+.menu-title { color: var(--t-accent); font-weight: 600; }
+.account .plan { color: #5eead4; border-color: rgba(45, 212, 191, .4); background: rgba(45, 212, 191, .08); padding: 2px 10px; font-weight: 500; }
+.account button { border-color: var(--t-line2); border-radius: 7px; color: var(--t-muted); }
+.account button:hover { color: var(--t-text); border-color: var(--t-muted); }
+
+/* ---- body ----------------------------------------------------------------------------------- */
+.toolbar { background: var(--t-bar); border-right: 1px solid var(--t-line); }
+.grid { background: var(--t-line); }
+.chart-panel { background: #131722; }
+.chart-panel.active { border-color: rgba(45, 212, 191, .55); }
+.side { background: var(--t-bar); border-left: 1px solid var(--t-line); gap: 10px; padding: 10px; }
+.side-tabs { padding: 3px; gap: 3px; border-radius: 9px; background: var(--t-panel); border: 1px solid var(--t-line); }
+.side-tabs button { border: 0; border-radius: 7px; color: var(--t-muted); font-weight: 500; }
+.side-tabs button.on { background: var(--t-line2); color: var(--t-text); border: 0; }
+.side .primary, .menu .primary-lite, .assistant .ask .primary { background: var(--t-accent); color: var(--t-ink); font-weight: 600; border-radius: 7px; }
+.spans button { background: var(--t-panel); border-color: var(--t-line2); border-radius: 6px; }
+.spans button.on { background: var(--t-on); color: #5eead4; border-color: rgba(45, 212, 191, .45); }
+.signal { border-color: var(--t-line); border-radius: 8px; background: rgba(255, 255, 255, .015); }
+.grade.gA { background: #3b82f6; }
+.wl-row { border-bottom-color: var(--t-line); border-radius: 6px; }
+.assistant .quick button { background: var(--t-panel); border: 1px solid var(--t-line2); }
+.assistant .quick button.lang.on { background: var(--t-accent); color: var(--t-ink); }
+.assistant .msg.you { background: rgba(45, 212, 191, .14); }
+.assistant .msg.bot { background: var(--t-panel); border-color: var(--t-line); }
+.assistant .ask input { background: var(--t-panel); border-color: var(--t-line2); border-radius: 7px; }
+.bias-box { background: rgba(13, 18, 32, .88); border-color: var(--t-line2); border-radius: 8px; backdrop-filter: blur(6px); }
+.ctx-tabs button.on, .layout-row .layout-open { background: var(--t-panel); }
+.layout-row .layout-open:hover, .ctx-actions button:hover { border-color: var(--t-accent); }
+.error { border-radius: 10px; box-shadow: 0 12px 30px rgba(0, 0, 0, .5); max-width: calc(100vw - 24px); }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: var(--t-line2); border-radius: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+
+/* ---- sign-in screen ------------------------------------------------------------------------- */
+.auth-screen { position: relative; overflow: hidden; height: 100dvh; padding: 16px;
+  background: radial-gradient(700px 400px at 80% 0%, rgba(139, 92, 246, .22), transparent), radial-gradient(600px 360px at 10% 100%, rgba(45, 212, 191, .14), transparent), var(--t-bg); }
+.auth-card { background: rgba(19, 27, 48, .92); border: 1px solid var(--t-line2); border-radius: 18px; padding: 30px 26px; gap: 14px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .55); width: min(400px, 100%); }
+.auth-card .brand.big { justify-content: center; font-size: 24px; margin-bottom: 8px; }
+.auth-card .brand.big::before { width: 34px; height: 34px; border-radius: 9px; }
+.auth-card .tabs { padding: 4px; border-radius: 10px; background: var(--t-bg); border: 1px solid var(--t-line); }
+.auth-card .tabs button { border: 0; border-radius: 7px; padding: 8px; font-weight: 500; }
+.auth-card .tabs button.on { background: var(--t-line2); color: var(--t-text); }
+.auth-card input { background: var(--t-bg); border: 1px solid var(--t-line2); border-radius: 9px; padding: 12px; font-size: 16px; }
+.auth-card .primary { background: var(--t-accent); color: var(--t-ink); font-weight: 600; border-radius: 9px; padding: 12px; font-size: 15px; }
+
+/* ---- phones and small tablets ------------------------------------------------------------- */
+@media (max-width: 760px), (max-height: 500px) {
+  /* one scrollable row of controls; menus and the symbol search open as fixed panels so the
+     scrolling bar does not clip them */
+  .topbar { flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; gap: 6px; padding: 6px 8px; position: relative; }
+  .topbar::-webkit-scrollbar { display: none; }
+  .topbar > * { flex: none; }
+  .topbar .brand { position: sticky; left: -8px; z-index: 3; margin: -6px 0 -6px -8px; padding: 6px 6px 6px 8px; background: var(--t-bar); font-size: 0; }
+  .topbar .brand b { font-size: 0; }
+  .topbar .brand::before { width: 28px; height: 28px; }
+  .search input { width: 118px; font-size: 16px; padding: 5px 9px; }
+  .dropdown { position: fixed; top: 52px; left: 8px; right: 8px; width: auto; max-height: 55dvh; z-index: 60; }
+  .group button { padding: 7px 10px; font-size: 14px; }
+  .chart-type { font-size: 14px; padding: 6px; }
+  .account { margin-left: 0; order: 10; }
+  .group.toggles { order: 9; }
+  .toggles label { white-space: nowrap; font-size: 13px; }
+  .menu { position: fixed; top: 54px; left: 8px; right: 8px; width: auto; max-width: none; transform: none; max-height: calc(100dvh - 120px);
+    grid-template-columns: 1fr 1fr; z-index: 60; padding: 12px; }
+  .menu label { min-height: 32px; font-size: 14px; }
+  .ctx-menu { left: 8px !important; right: 8px; width: auto !important; max-height: 70dvh; }
+
+  .ctx-menu { max-height: 80dvh; }
+}
+@media (max-width: 760px) {
+  /* chart first: tools become a strip above it, the side panel a bottom sheet */
+  .body { flex-direction: column; position: relative; }
+  .toolbar { flex-direction: row; width: auto; height: 42px; flex: none; padding: 4px 6px; gap: 2px; overflow-x: auto; overflow-y: hidden;
+    border-right: 0; border-bottom: 1px solid var(--t-line); scrollbar-width: none; }
+  .toolbar::-webkit-scrollbar { display: none; }
+  .toolbar button { flex: none; width: 38px; height: 33px; }
+  .grid { flex: 1; min-height: 0; grid-template-columns: 1fr !important; grid-template-rows: none !important; grid-auto-rows: minmax(0, 1fr); }
+  .grid-3 > :first-child { grid-row: auto; }
+  .chart-title { top: 6px; right: 70px; font-size: 12px; }
+  .chart-panel .chart-title { right: 84px; }
+  .chart-close { width: 26px; height: 26px; }
+  .bias-box { max-width: 190px; font-size: 10.5px; padding: 5px 7px; }
+
+  .side { width: auto; flex: none; height: 54px; overflow: hidden; padding: 8px 10px; border-left: 0; border-top: 1px solid var(--t-line);
+    border-radius: 16px 16px 0 0; box-shadow: 0 -12px 30px rgba(0, 0, 0, .35); transition: height .25s ease; position: relative; }
+  .side::before { content: ""; position: absolute; top: 4px; left: 50%; width: 36px; height: 4px; margin-left: -18px; border-radius: 4px; background: var(--t-line2); }
+  .side-tabs { margin-top: 4px; }
+  .side-tabs button { padding: 7px 4px; font-size: 14px; }
+  body.side-open .side { height: min(56dvh, 520px); overflow: visible; }
+  body.side-open .side-tabs button.on::after { content: " ▾"; color: var(--t-muted); }
+  body:not(.side-open) .side-tabs button.on { background: none; color: var(--t-text); }
+  body:not(.side-open) .side-tabs button::after { content: " ▴"; color: var(--t-muted); font-size: 11px; }
+  .models { grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .models label, .bias { min-height: 30px; font-size: 14px; }
+  .side .primary { padding: 11px; font-size: 14px; }
+  .wl-row { padding: 9px 4px; }
+  .wl-del { visibility: visible; }
+  .assistant .ask input { font-size: 16px; }
+  .assistant .msg { font-size: 14px; }
+  .error { bottom: 64px; }
+}
+@media (max-height: 500px) and (min-width: 761px) {
+  .side { width: 250px; }
+  .toolbar button { height: 27px; }
+}
