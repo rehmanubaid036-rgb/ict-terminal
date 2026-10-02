@@ -1,0 +1,11 @@
+# ICT Terminal server (VPS). Installed into ICT's own .venv so ICC Terminal is never affected.
+pandas>=2.2
+numpy>=1.26
+tzdata
+fastapi>=0.111
+uvicorn[standard]>=0.30
+httpx>=0.27
+requests>=2.31
+python-dotenv>=1.0.1
+MetaTrader5>=5.0.45
+-r ../admin_panel/requirements.txt

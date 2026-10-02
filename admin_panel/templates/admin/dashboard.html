@@ -1,0 +1,78 @@
+{% extends "admin/index.html" %}
+{% load panel_stats %}
+
+{% block content %}
+{% dashboard_stats as s %}
+<div class="row">
+  <div class="col-lg-3 col-6">
+    <div class="small-box bg-success">
+      <div class="inner"><h3>{{ s.active_subs }}</h3><p>Active subscriptions</p></div>
+      <div class="icon"><i class="fas fa-id-card"></i></div>
+      <a href="{% url 'admin:accounts_subscription_changelist' %}?expiry=active" class="small-box-footer">View <i class="fas fa-arrow-circle-right"></i></a>
+    </div>
+  </div>
+  <div class="col-lg-3 col-6">
+    <div class="small-box bg-warning">
+      <div class="inner"><h3>{{ s.expiring_7d }}</h3><p>Expiring in 7 days</p></div>
+      <div class="icon"><i class="fas fa-hourglass-half"></i></div>
+      <a href="{% url 'admin:accounts_subscription_changelist' %}?expiry=7d" class="small-box-footer">Renew <i class="fas fa-arrow-circle-right"></i></a>
+    </div>
+  </div>
+  <div class="col-lg-3 col-6">
+    <div class="small-box bg-info">
+      <div class="inner"><h3>{{ s.customers }}</h3><p>Customers ({{ s.new_customers_30d }} new in 30 days)</p></div>
+      <div class="icon"><i class="fas fa-users"></i></div>
+      <a href="{% url 'admin:auth_user_changelist' %}?is_staff__exact=0" class="small-box-footer">View <i class="fas fa-arrow-circle-right"></i></a>
+    </div>
+  </div>
+  <div class="col-lg-3 col-6">
+    <div class="small-box bg-primary">
+      <div class="inner"><h3 style="font-size:1.6rem;">{{ s.revenue_month }}</h3><p>Paid this month ({{ s.pending_payments }} pending)</p></div>
+      <div class="icon"><i class="fas fa-money-bill-wave"></i></div>
+      <a href="{% url 'admin:accounts_payment_changelist' %}" class="small-box-footer">Payments <i class="fas fa-arrow-circle-right"></i></a>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-lg-8">
+    <div class="card card-outline card-warning">
+      <div class="card-header"><h3 class="card-title"><i class="fas fa-hourglass-half mr-1"></i> Expiring soon</h3></div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <thead><tr><th>Customer</th><th>Plan</th><th>Email</th><th>Expires</th></tr></thead>
+          <tbody>
+          {% for sub in s.expiring_soon %}
+            <tr>
+              <td><a href="{% url 'admin:accounts_subscription_change' sub.pk %}">{{ sub.display_name }}</a></td>
+              <td>{{ sub.plan.name }}</td>
+              <td>{{ sub.user.email }}</td>
+              <td>{{ sub.expires_at|date:"d M Y" }} ({{ sub.days_left }}d)</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="4" class="text-muted p-3">Nothing expires in the next 7 days.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="info-box">
+      <span class="info-box-icon bg-danger"><i class="fas fa-calendar-times"></i></span>
+      <div class="info-box-content"><span class="info-box-text">Expired subscriptions</span><span class="info-box-number">{{ s.expired }}</span></div>
+    </div>
+    <div class="info-box">
+      <span class="info-box-icon bg-secondary"><i class="fas fa-user-lock"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">Failed logins (24h)</span><span class="info-box-number">{{ s.failed_logins_24h }}</span>
+        <a href="{% url 'admin:accounts_loginevent_changelist' %}?success__exact=0">Login history</a>
+      </div>
+    </div>
+    <a class="btn btn-warning btn-block" href="{% url 'admin:accounts_subscription_add' %}"><i class="fas fa-plus mr-1"></i> New subscription</a>
+    <a class="btn btn-outline-secondary btn-block" href="{% url 'admin:accounts_sitesettings_changelist' %}"><i class="fas fa-user-plus mr-1"></i> Registration settings{% if s.signup_plans %} ({{ s.signup_plans }}){% endif %}</a>
+  </div>
+</div>
+
+{{ block.super }}
+{% endblock %}

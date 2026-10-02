@@ -1,0 +1,10 @@
+tunnel: 9893997a-7761-4d6b-a1fb-f5ee45f7c5ad
+credentials-file: C:\ICT Engine\deploy\cloudflared\ict-terminal.json
+ingress:
+  - hostname: ict.iccterminal.trade
+    service: http://127.0.0.1:3100
+  - hostname: ictapi.iccterminal.trade
+    service: http://127.0.0.1:8100
+  - hostname: ictadmin.iccterminal.trade
+    service: http://127.0.0.1:8101
+  - service: http_status:404

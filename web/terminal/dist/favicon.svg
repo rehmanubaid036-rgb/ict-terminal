@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="#0b1020" stroke="#2dd4bf" stroke-width="4"/>
+  <text x="32" y="40" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="700" fill="#2dd4bf">ICT</text>
+  <rect x="16" y="47" width="32" height="3" rx="1.5" fill="#8b5cf6"/>
+</svg>

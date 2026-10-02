@@ -1,0 +1,75 @@
+ICT Terminal VPS check  2026-10-01 21:33 UTC  version 0.3.4  (folder C:\ICT Engine)
+
+-- Setup --
+[PASS] Python - 3.12.10
+[PASS] ICT's own Python environment (.venv)
+[PASS] Package ictengine
+[PASS] Package fastapi
+[PASS] Package django
+[PASS] Package waitress
+[PASS] Package MetaTrader5
+[PASS] Shared secret API <-> admin panel
+[PASS] Login required on the API
+[PASS] Admin panel domain settings
+[PASS] Superadmin email set - rehmanubaid036@gmail.com
+[PASS] Web terminal files
+[PASS] Website files
+[PASS] Download android - ICT_Terminal.apk 48.8 MB, version 0.3.0
+[PASS] Download windows - ICT_Terminal_Windows.exe 13.3 MB, version 0.3.0
+[PASS] EA source (ea\mt5\ICT_Bridge.mq5)
+
+-- ICT servers on this VPS --
+[PASS] Admin panel (127.0.0.1:8101) - HTTP 200
+[PASS] API server (127.0.0.1:8100) - HTTP 200
+[INFO] API - 14 models
+[PASS] Chart feeds (/udf/config) - HTTP 200
+[PASS] Broker (MT5) chart feeds - AXI
+[PASS] Binance crypto feed - top 20 USDT pairs
+[PASS] Default chart symbol - AXI:XAUUSD
+[PASS] API -> admin panel link (plans) - HTTP 200
+[INFO] Plans - Free, Pro Monthly, Elite Monthly, Elite Annual
+[PASS] Chart data needs login - HTTP 401
+[PASS] EA feed rejects a wrong token - HTTP 401
+[PASS] Website (127.0.0.1:3100) - HTTP 200
+[PASS] Web terminal (127.0.0.1:3100/terminal/) - HTTP 200
+[PASS] Download list (/downloads/release.json) - HTTP 200
+[PASS] Web terminal -> API pass-through - HTTP 200
+
+-- Engine and MT5 data --
+[PASS] Runner BTCUSD - last pass 5 min ago, last bar 2026-10-01 21:22, 152 signals, 92s
+[PASS] Runner NAS100 - last pass 9 min ago, last bar 2026-10-01 20:58, 128 signals, 69s
+[PASS] Runner US500 - last pass 8 min ago, last bar 2026-10-01 20:58, 124 signals, 62s
+[PASS] Runner XAGUSD - last pass 7 min ago, last bar 2026-10-01 20:58, 139 signals, 64s
+[PASS] Runner XAUUSD - last pass 10 min ago, last bar 2026-10-01 20:58, 140 signals, 71s
+[INFO] Signals stored - 950, newest 2026-10-01T18:24
+[PASS] ICT MT5 data terminal path - C:\ICT Engine\mt5\terminal64.exe
+[PASS] MT5 connection - Axi-US51-Live, REAL account, connected=True
+[INFO] MT5 note - the engine only reads prices; a DEMO account is recommended for ICT's data
+[PASS] MT5 max bars in chart - 100000000
+
+-- ICT programs --
+[PASS] Admin panel server running
+[PASS] API server running
+[PASS] Web terminal server running
+[FAIL] Engine runner running
+[PASS] Crypto payment watcher running
+[PASS] Cloudflare tunnel service (ICT Tunnel) - RUNNING
+[PASS] Auto-start at logon (task 'ICT Terminal')
+
+-- Public HTTPS addresses (through Cloudflare) --
+[PASS] Website https://ict.iccterminal.trade - HTTP 200
+[PASS] Web terminal https://ict.iccterminal.trade/terminal/ - HTTP 200
+[PASS] API https://ictapi.iccterminal.trade - HTTP 200
+[PASS] Admin panel https://ictadmin.iccterminal.trade - HTTP 200
+
+-- ICC Terminal (only looked at, never changed) --
+[INFO] ICC API (8000) - answering (HTTP 200)
+[INFO] ICC admin panel (8001) - answering (HTTP 200)
+[INFO] ICC dashboard (8501) - answering (HTTP 200)
+[INFO] ICC Tunnel service - RUNNING
+
+-- VPS --
+[PASS] Free disk - 28.2 GB of 70 GB
+[PASS] Free RAM - 1.3 GB of 4.2 GB
+
+RESULT: 1 problem(s) found.
