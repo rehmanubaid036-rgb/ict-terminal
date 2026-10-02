@@ -185,17 +185,16 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 .chart-panel.hidden { display: none; }
 .grid:not(.grid-1) .chart-panel.active { outline-color: color-mix(in srgb, var(--accent) 60%, transparent); }
 .chart-canvas { flex: 1; min-height: 0; }
-.chart-legend { position: absolute; z-index: 6; top: 6px; left: 10px; display: flex; align-items: baseline; gap: 7px; pointer-events: none; font-size: 13px; }
-.chart-legend .ticker { font-weight: 700; color: var(--text); }
-.chart-legend .exch, .chart-legend .tf { color: var(--muted); font-size: 12px; }
-.chart-legend .loading { color: var(--accent); font-size: 11px; animation: blink 1s infinite alternate; }
-.chart-legend .replay-tag { font: 600 10px var(--mono); color: #fff; background: var(--violet); padding: 1px 5px; border-radius: 3px; }
+.chart-tags { position: absolute; z-index: 6; top: 7px; right: 72px; display: flex; align-items: center; gap: 6px; pointer-events: none; font-size: 11px; }
+.chart-tags .loading { color: var(--accent); animation: blink 1s infinite alternate; }
+.chart-tags .replay-tag { font: 600 10px var(--mono); color: #fff; background: var(--violet); padding: 1px 5px; border-radius: 3px; }
+.chart-tags .tag-note { color: var(--muted); }
 @keyframes blink { to { opacity: .4; } }
-.chart-close { position: absolute; z-index: 7; top: 4px; right: 70px; width: 22px; height: 22px; border-radius: 5px; color: var(--muted); background: color-mix(in srgb, var(--chart) 85%, transparent); font-size: 11px; }
+.chart-close { position: absolute; z-index: 7; bottom: 34px; right: 70px; width: 22px; height: 22px; border-radius: 5px; color: var(--muted); background: color-mix(in srgb, var(--chart) 85%, transparent); font-size: 11px; }
 .chart-close:hover { color: #fff; background: var(--down); }
 /* klinecharts tooltip line sits under the legend */
 .chart-panel .chart-canvas > div { font-family: var(--font); }
-.bias-box { position: absolute; z-index: 6; top: 30px; left: 10px; max-width: 280px; padding: 6px 10px; border-radius: 8px; font-size: 11.5px; line-height: 1.55; cursor: pointer;
+.bias-box { position: absolute; z-index: 6; top: 26px; right: 72px; max-width: 280px; padding: 6px 10px; border-radius: 8px; font-size: 11.5px; line-height: 1.55; cursor: pointer;
   background: color-mix(in srgb, var(--panel) 90%, transparent); border: 1px solid var(--line2); backdrop-filter: blur(6px); color: var(--soft); }
 .bias-head { color: var(--text); font-size: 12px; }
 .bias-box b.up { color: var(--up); } .bias-box b.down { color: var(--down); }
@@ -437,8 +436,7 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
   .rail .badge { right: 22%; }
   .side-body { width: 100%; height: min(52dvh, 460px); border-right: 0; border-bottom: 1px solid var(--line); border-radius: 14px 14px 0 0; box-shadow: 0 -10px 30px rgba(0,0,0,.35); }
   .side-content { padding: 10px 12px; }
-  .chart-legend { font-size: 12px; left: 8px; }
-  .bias-box { max-width: 230px; font-size: 11px; top: 26px; left: 8px; }
+  .bias-box { max-width: 210px; font-size: 11px; top: 24px; right: 66px; }
   .draw-bar { top: auto; bottom: 34px; max-width: calc(100% - 16px); overflow-x: auto; }
   .draw-bar .swatch:nth-child(n+6) { display: none; }
   .wl-actions { opacity: 1; }

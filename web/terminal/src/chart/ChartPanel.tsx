@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { init, dispose, type Chart, type Crosshair, type Overlay, type OverlayMode } from 'klinecharts'
-import { api, errorText, type Signal } from '../api'
+import { api, errorText, isAbort, type Signal } from '../api'
 import { timeframeByLabel, indicatorDef, DRAW_COLORS } from '../constants'
 import type { ChartConf } from '../state'
 import { Feed } from './feed'
@@ -94,6 +94,9 @@ export function ChartPanel(p: ChartPanelProps) {
     feed.heikin = heikin
     if (feed.mode === 'replay') feed.stopReplay()
     chart.setStyles(chartStyles(p.theme, conf.chartType))
+    const [exch, sym] = conf.ticker.includes(':') ? conf.ticker.split(':') : ['', conf.ticker]
+    chart.setStyles({ candle: { tooltip: { title: { template: `${sym} · ${tf.label}${exch ? ' · ' + exch : ''}` },
+      legend: { template: [{ title: 'O ', value: '{open}' }, { title: 'H ', value: '{high}' }, { title: 'L ', value: '{low}' }, { title: 'C ', value: '{close}' }, { title: 'Vol ', value: '{volume}' }] } } } } as any)
     chart.setSymbol({ ticker: conf.ticker, pricePrecision: digits, volumePrecision: 0 })
     chart.setPeriod(tf.period)
     if (onlyHeikin) chart.resetData()
@@ -114,7 +117,12 @@ export function ChartPanel(p: ChartPanelProps) {
       const def = indicatorDef(ind.name)
       const value = { name: ind.name, ...(ind.params?.length ? { calcParams: ind.params } : {}) }
       if (def?.overlay) chart.createIndicator({ ...value, paneId: 'candle_pane' }, true)
-      else chart.createIndicator({ ...value, paneId: `pane_${ind.name}` })
+      else {
+        chart.createIndicator({ ...value, paneId: `pane_${ind.name}` })
+        // small screens: thin indicator panes so the candles keep the room
+        const small = window.innerWidth <= 760 || window.innerHeight <= 500
+        chart.setPaneOptions({ id: `pane_${ind.name}`, height: small ? 56 : 100, minHeight: 30 })
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [indKey])
@@ -122,6 +130,7 @@ export function ChartPanel(p: ChartPanelProps) {
   // ---- engine overlays (ICT layers + model setups) ----------------------------------------------
   const timer = useRef(0)
   const req = useRef(0)
+  const abort = useRef<AbortController | null>(null)
   const refreshOverlays = useRef<(delay?: number) => void>(() => {})
   refreshOverlays.current = (delay = 400) => {
     window.clearTimeout(timer.current)
@@ -137,18 +146,21 @@ export function ChartPanel(p: ChartPanelProps) {
       const from = Math.floor(Math.min(at(r.from), at(r.to - 1)) / 1000)
       const to = Math.floor(Math.max(at(r.from), at(r.to - 1)) / 1000) + tf.seconds
       const id = ++req.current
+      abort.current?.abort()            // a newer view replaces the request still running
+      const ac = new AbortController()
+      abort.current = ac
       setLoading(true)
       try {
         const [ov, sg] = await Promise.all([
-          ict.length ? api.overlays(ticker, tf.group > 1 || tf.monthly ? (tf.monthly ? '1W' : tf.resolution) : tf.resolution, from, to, ict) : Promise.resolve({ objects: [] }),
-          models.length ? api.signals(ticker, from, to, models, requireBias) : Promise.resolve({ signals: [] as Signal[] }),
+          ict.length ? api.overlays(ticker, tf.monthly ? '1W' : tf.resolution, from, to, ict, ac.signal) : Promise.resolve({ objects: [] }),
+          models.length ? api.signals(ticker, from, to, models, requireBias, ac.signal) : Promise.resolve({ signals: [] as Signal[] }),
         ])
         if (id !== req.current || !chartRef.current) return
         chart.removeOverlay({ groupId: ICT })
         chart.createOverlay([...engineOverlays(ov.objects, ICT), ...signalBoxes(sg.signals, ICT)])
         setBias(ict.includes('bias') ? biasOf(ov.objects) : null)
       } catch (e) {
-        if (id === req.current) props.current.onError(errorText(e))
+        if (id === req.current && !isAbort(e)) props.current.onError(errorText(e))
       } finally {
         if (id === req.current) setLoading(false)
       }
@@ -247,12 +259,10 @@ export function ChartPanel(p: ChartPanelProps) {
         e.preventDefault()
         p.onMenu(e.clientX, e.clientY)
       }}>
-      <div className="chart-legend">
-        <span className="ticker">{conf.ticker.split(':')[1] ?? conf.ticker}</span>
-        <span className="exch">{conf.ticker.split(':')[0]}</span>
-        <span className="tf">{tf.label}</span>
+      <div className="chart-tags">
         {loading && <span className="loading" title="Loading ICT layers">ICT…</span>}
         {feed?.mode === 'replay' && <span className="replay-tag">REPLAY</span>}
+        {tf.group > 1 && <span className="tag-note" title="Built here from smaller bars">custom {tf.label}</span>}
       </div>
       {p.showClose && <button className="chart-close" title="Close this chart" onMouseDown={e => e.stopPropagation()} onClick={p.onClose}>✕</button>}
       <div ref={box} className="chart-canvas" />

@@ -12,8 +12,8 @@ export function ContextMenu({ x, y, onClose }: { x: number; y: number; onClose: 
     const d = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) onClose() }
     const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     document.addEventListener('mousedown', d)
-    window.addEventListener('keydown', k)
-    return () => { document.removeEventListener('mousedown', d); window.removeEventListener('keydown', k) }
+    window.addEventListener('keydown', k, true)
+    return () => { document.removeEventListener('mousedown', d); window.removeEventListener('keydown', k, true) }
   }, [onClose])
   const left = Math.min(x, window.innerWidth - 250), top = Math.min(y, window.innerHeight - 380)
   const run = (fn: () => void) => () => { fn(); onClose() }

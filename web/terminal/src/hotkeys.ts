@@ -13,6 +13,7 @@ export function useHotkeys(t: TerminalApi, fn: { undo: () => void; redo: () => v
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement
+      if (e.key === 'Escape') window.dispatchEvent(new Event('ict:escape'))
       if (el.closest('input, textarea, select, [contenteditable], .modal')) return
       const { t, fn } = ref.current
       const k = e.key
@@ -37,7 +38,7 @@ export function useHotkeys(t: TerminalApi, fn: { undo: () => void; redo: () => v
       if (/[a-z]/i.test(k)) { e.preventDefault(); openSymbolSearch(k.toUpperCase()); return }
       if (/[0-9]/.test(k)) { e.preventDefault(); openIntervalBox(k) }
     }
-    window.addEventListener('keydown', down)
-    return () => window.removeEventListener('keydown', down)
+    window.addEventListener('keydown', down, true)
+    return () => window.removeEventListener('keydown', down, true)
   }, [])
 }

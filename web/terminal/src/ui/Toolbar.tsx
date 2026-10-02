@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { useTerminal } from '../Terminal'
 import { TOOL_GROUPS, toolDef, type ToolGroup } from '../constants'
 import { Icon } from './icons'
-import { Popover } from './common'
+import { Popover, useIsPhone } from './common'
 import { removeAll, setAll, getChart, DRAWINGS } from '../chart/registry'
 
 export function Toolbar() {
@@ -41,11 +41,13 @@ function ToolButton({ group, current, active, open, onOpen, onClose, onPick }: {
   group: ToolGroup; current: string; active: string | null; open: boolean; onOpen: () => void; onClose: () => void; onPick: (id: string) => void
 }) {
   const ref = useRef<HTMLDivElement>(null)
+  const phone = useIsPhone()
   const inGroup = group.tools.some(x => x.id === active)
   const shown = toolDef(inGroup ? active! : current) ?? group.tools[0]
   return (
     <div className="tool-wrap" ref={ref}>
-      <button className={`tool${inGroup ? ' on' : ''}`} title={`${shown.label}${shown.hotkey ? ` (${shown.hotkey})` : ''}`} onClick={() => onPick(shown.id)}>
+      <button className={`tool${inGroup ? ' on' : ''}`} title={`${shown.label}${shown.hotkey ? ` (${shown.hotkey})` : ''}`}
+        onClick={() => (phone ? onOpen() : onPick(shown.id))}>
         <Icon name={shown.icon} />
       </button>
       <button className="tool-more" title={group.label} onClick={onOpen} aria-label={`More ${group.label}`}>›</button>

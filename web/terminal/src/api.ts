@@ -48,11 +48,11 @@ function headers(json: boolean): Record<string, string> {
   return h
 }
 
-async function call<T>(method: string, path: string, params: Record<string, unknown> = {}, body?: unknown): Promise<T> {
+async function call<T>(method: string, path: string, params: Record<string, unknown> = {}, body?: unknown, signal?: AbortSignal): Promise<T> {
   const q = new URLSearchParams()
   for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== null && v !== '') q.set(k, String(v))
   const url = method === 'GET' && [...q].length ? `${path}?${q}` : path
-  const r = await fetch(url, { method, headers: headers(body !== undefined), body: body === undefined ? undefined : JSON.stringify(body) })
+  const r = await fetch(url, { method, signal, headers: headers(body !== undefined), body: body === undefined ? undefined : JSON.stringify(body) })
   let data: any = null
   try { data = await r.json() } catch { /* empty body */ }
   if (!r.ok) {
@@ -63,7 +63,7 @@ async function call<T>(method: string, path: string, params: Record<string, unkn
   return data as T
 }
 
-const get = <T>(p: string, q?: Record<string, unknown>) => call<T>('GET', p, q)
+const get = <T>(p: string, q?: Record<string, unknown>, signal?: AbortSignal) => call<T>('GET', p, q, undefined, signal)
 const post = <T>(p: string, b: unknown = {}) => call<T>('POST', p, {}, b)
 const put = <T>(p: string, b: unknown) => call<T>('PUT', p, {}, b)
 const del = <T>(p: string) => call<T>('DELETE', p)
@@ -144,15 +144,15 @@ export const api = {
   config: () => get<{ default_symbol?: string; supported_resolutions: string[] }>('/udf/config'),
   symbol: (symbol: string) => get<SymbolInfoApi>('/udf/symbols', { symbol }),
   search: (query: string, limit = 30) => get<SearchItem[]>('/udf/search', { query, limit }),
-  history: (symbol: string, resolution: string, from: number, to: number, countback?: number) =>
-    get<Bars>('/udf/history', { symbol, resolution, from, to, countback }),
+  history: (symbol: string, resolution: string, from: number, to: number, countback?: number, signal?: AbortSignal) =>
+    get<Bars>('/udf/history', { symbol, resolution, from, to, countback }, signal),
   quotes: (symbols: string[]) => get<{ quotes: Quote[] }>('/api/v1/quotes', { symbols: symbols.join(',') }),
 
-  overlays: (symbol: string, resolution: string, from: number, to: number, indicators: string[]) =>
-    get<{ objects: OverlayObject[] }>('/api/v1/ict/overlays', { symbol, resolution, from, to, indicators: indicators.join(',') }),
+  overlays: (symbol: string, resolution: string, from: number, to: number, indicators: string[], signal?: AbortSignal) =>
+    get<{ objects: OverlayObject[] }>('/api/v1/ict/overlays', { symbol, resolution, from, to, indicators: indicators.join(',') }, signal),
   models: () => get<ModelInfo[]>('/api/v1/models'),
-  signals: (symbol: string, from: number, to: number, models: string[], require_bias: boolean) =>
-    get<{ signals: Signal[]; delay_minutes?: number }>('/api/v1/signals', { symbol, from, to, models: models.join(','), require_bias }),
+  signals: (symbol: string, from: number, to: number, models: string[], require_bias: boolean, signal?: AbortSignal) =>
+    get<{ signals: Signal[]; delay_minutes?: number }>('/api/v1/signals', { symbol, from, to, models: models.join(','), require_bias }, signal),
   engineStatus: () => get<{ symbols: any[] }>('/api/v1/engine/status'),
   ask: (symbol: string, question: string, lang: string) => post<{ text: string }>('/api/v1/agent/ask', { symbol, question, lang }),
 
@@ -175,3 +175,4 @@ export const api = {
 }
 
 export const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e))
+export const isAbort = (e: unknown) => e instanceof DOMException && e.name === 'AbortError'

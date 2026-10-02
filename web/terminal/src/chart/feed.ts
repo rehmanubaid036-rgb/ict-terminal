@@ -1,7 +1,7 @@
 // Candles for one chart: history from /udf/history, live updates every few seconds, bars built
 // here for custom intervals and the monthly chart, Heikin Ashi, and bar replay.
 import type { DataLoader, KLineData } from 'klinecharts'
-import { api, type Bars } from '../api'
+import { api, isAbort, type Bars } from '../api'
 import type { Timeframe } from '../constants'
 
 const POLL_MS = 5000
@@ -56,6 +56,7 @@ export class Feed {
   private onBar: ((b: KLineData) => void) | null = null
   private timer = 0
   private generation = 0
+  private initAbort: AbortController | null = null
   onError: (e: unknown) => void = () => {}
   onNewBar: () => void = () => {}       // a new candle opened (overlays refresh)
   onLoaded: () => void = () => {}
@@ -64,11 +65,11 @@ export class Feed {
     return this.heikin ? heikinAshi(bars) : bars
   }
 
-  private async fetch(to: number, count: number): Promise<KLineData[]> {
+  private async fetch(to: number, count: number, signal?: AbortSignal): Promise<KLineData[]> {
     const tf = this.tf!
     const base = tf.monthly ? 86400 : tf.seconds / tf.group
     const n = Math.min(5000, tf.monthly ? 3000 : count * tf.group)
-    const bars = toBars(await api.history(this.ticker, tf.resolution, to - base * n * 3, to, n))
+    const bars = toBars(await api.history(this.ticker, tf.resolution, to - base * n * 3, to, n, signal))
     return tf.group > 1 || tf.monthly ? groupBars(bars, tf.seconds, tf.monthly) : bars
   }
 
@@ -85,7 +86,10 @@ export class Feed {
           const tf = this.tf!
           if (type === 'init') {
             const to = Math.floor(Date.now() / 1000) + tf.seconds
-            const bars = await this.fetch(to, BARS)
+            this.initAbort?.abort()        // symbol / interval changed again: drop the old load
+            const ac = new AbortController()
+            this.initAbort = ac
+            const bars = await this.fetch(to, BARS, ac.signal)
             if (gen !== this.generation) return
             this.raw = bars
             callback(this.display(bars), { forward: bars.length > 0, backward: false })
@@ -98,6 +102,7 @@ export class Feed {
             callback([], { forward: false, backward: false })
           }
         } catch (e) {
+          if (isAbort(e)) return
           this.onError(e)
           callback([], { forward: false, backward: false })
         }

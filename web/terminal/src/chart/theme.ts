@@ -22,9 +22,16 @@ export function chartStyles(theme: Theme, chartType: string): DeepPartial<Styles
         high: { color: text, textFamily: FONT }, low: { color: text, textFamily: FONT },
         last: { upColor: up, downColor: down, line: { style: 'dashed', dashedValue: [3, 3] }, text: { family: FONT, borderRadius: 3 } },
       },
-      tooltip: { showRule: 'follow_cross', showType: 'standard', text: { color: text, family: FONT, size: 11 } } as any,
+      tooltip: {
+        showRule: 'always', showType: 'standard', offsetLeft: 10, offsetTop: 6,
+        title: { show: true, template: '{ticker} · {period}', color: dark ? '#e3e8f4' : '#131722', family: FONT, size: 13, weight: 600, marginRight: 10 },
+        legend: { color: text, family: FONT, size: 11.5, weight: 'normal', marginLeft: 6, defaultValue: '–' },
+      } as any,
     },
-    indicator: { tooltip: { showRule: 'follow_cross', text: { color: text, family: FONT, size: 11 } } as any, lastValueMark: { show: false } },
+    indicator: {
+      tooltip: { showRule: 'always', showType: 'standard', offsetLeft: 10, title: { family: FONT, size: 11.5, color: text }, legend: { family: FONT, size: 11.5 } } as any,
+      lastValueMark: { show: false },
+    },
     xAxis: { axisLine: { color: axis }, tickLine: { color: axis }, tickText: { color: text, family: FONT, size: 11 } },
     yAxis: { axisLine: { color: axis }, tickLine: { color: axis }, tickText: { color: text, family: FONT, size: 11 } },
     separator: { color: axis, activeBackgroundColor: 'rgba(45,212,191,0.15)' },

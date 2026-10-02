@@ -17,8 +17,8 @@ export function useIsPhone(): boolean {
 export function Modal({ title, onClose, children, wide, className }: { title: ReactNode; onClose: () => void; children: ReactNode; wide?: boolean; className?: string }) {
   useEffect(() => {
     const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', k)
-    return () => window.removeEventListener('keydown', k)
+    window.addEventListener('keydown', k, true)
+    return () => window.removeEventListener('keydown', k, true)
   }, [onClose])
   return createPortal(
     <div className="modal-back" onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
@@ -53,10 +53,16 @@ export function Popover({ anchor, onClose, children, align = 'left', className, 
       onClose()
     }
     const key = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    // the chart swallows Escape while a drawing is in progress; the hotkey handler re-sends it
+    const esc = () => onClose()
     document.addEventListener('mousedown', down)
     document.addEventListener('touchstart', down)
-    window.addEventListener('keydown', key)
-    return () => { document.removeEventListener('mousedown', down); document.removeEventListener('touchstart', down); window.removeEventListener('keydown', key) }
+    window.addEventListener('keydown', key, true)
+    window.addEventListener('ict:escape', esc)
+    return () => {
+      document.removeEventListener('mousedown', down); document.removeEventListener('touchstart', down)
+      window.removeEventListener('keydown', key, true); window.removeEventListener('ict:escape', esc)
+    }
   }, [anchor, onClose])
   return createPortal(
     phone
