@@ -8,6 +8,7 @@ KLineChart adapter, or TradingView's library later) can use them unchanged.
 from __future__ import annotations
 
 import os
+import re
 import threading
 import time
 
@@ -41,6 +42,13 @@ FORWARD = {
     ("GET", "payments/mine"), ("GET", "payments/crypto/networks"), ("POST", "payments/crypto/order"),
     ("GET", "payments/crypto/open"),
 }
+# a customer's own crypto order: status, cancel, transaction hash (the panel checks ownership)
+FORWARD_PATTERNS = [("GET", re.compile(r"payments/crypto/order/\d+")),
+                    ("POST", re.compile(r"payments/crypto/order/\d+/(cancel|txid)"))]
+
+
+def forwarded(method: str, path: str) -> bool:
+    return (method, path) in FORWARD or any(m == method and p.fullmatch(path) for m, p in FORWARD_PATTERNS)
 
 RESOLUTIONS = {"1": "1m", "3": "3m", "5": "5m", "15": "15m", "30": "30m", "60": "1h", "120": "2h",
                "240": "4h", "1D": "1d", "D": "1d", "1W": "1w", "W": "1w"}
@@ -464,7 +472,7 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
     # ---- accounts & billing: forwarded to the admin panel ---------------------------------
     @app.api_route("/api/v1/{path:path}", methods=["GET", "POST"])
     async def forward(path: str, request: Request):
-        if (request.method, path) not in FORWARD:
+        if not forwarded(request.method, path):
             raise HTTPException(404, "Not found")
         body = None
         if request.method == "POST":

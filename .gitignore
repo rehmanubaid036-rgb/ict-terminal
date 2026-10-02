@@ -19,3 +19,6 @@ venv/
 .venv/
 mt5/terminal64.exe
 mt5/MetaEditor64.exe
+
+# web terminal build cache
+*.tsbuildinfo
