@@ -182,7 +182,7 @@ h3 { letter-spacing: -.2px; }
 .plan:hover { transform: translateY(-3px); border-color: var(--line2); }
 .plan.vip { background: radial-gradient(500px 240px at 50% 0%, rgba(139, 92, 246, .22), transparent), var(--panel2); border-color: rgba(139, 92, 246, .55);
   box-shadow: 0 30px 70px -30px rgba(139, 92, 246, .55); }
-.plan.vip::before { content: "Elite"; position: absolute; top: -12px; left: 24px; font: 600 11px var(--mono); letter-spacing: 1px; text-transform: uppercase;
+.plan.vip::before { content: "VIP"; position: absolute; top: -12px; left: 24px; font: 600 11px var(--mono); letter-spacing: 1px; text-transform: uppercase;
   color: #fff; padding: 4px 10px; border-radius: 999px; background: linear-gradient(90deg, var(--violet), #6366f1); }
 .plan h3 { margin: 0; font-size: 17px; font-weight: 600; color: var(--soft); }
 .price { font-size: 42px; font-weight: 800; letter-spacing: -1.5px; line-height: 1.1; }

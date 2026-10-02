@@ -118,13 +118,15 @@
     if (!box) return;
     var plans = (data && data.plans) || [];
     if (!plans.length) { box.innerHTML = '<p class="muted">Plans will be listed here soon.</p>'; return; }
+    // highlight VIP plans only when they stand out: if every plan is VIP, none is marked
+    var someVip = plans.some(function (p) { return p.is_vip; }) && !plans.every(function (p) { return p.is_vip; });
     box.innerHTML = plans.map(function (p) {
       var lines = featureLines(p.features).map(function (l) {
         return '<li' + (l.ok ? '' : ' class="no"') + '>' + esc(l.text) + '</li>';
       }).join('');
       var paid = Number(p.price) > 0, free = !paid && !p.duration_days;
       var period = paid ? ' <small>/ ' + esc(p.duration || '') + '</small>' : '';
-      return '<article class="plan' + (p.is_vip ? ' vip' : '') + '">' +
+      return '<article class="plan' + (someVip && p.is_vip ? ' vip' : '') + '">' +
         '<h3>' + esc(p.name) + '</h3>' +
         '<div class="price' + (paid || free ? '' : ' soon') + '">' + money(p.price, p.currency, p.duration_days) + period + '</div>' +
         (p.description ? '<p class="muted small">' + esc(p.description) + '</p>' : '') +
