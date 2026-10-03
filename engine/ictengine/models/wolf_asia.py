@@ -17,9 +17,10 @@ Per trading day (New York time):
      when a significant NDOG's CE sits between that wick CE and the entry, the stop goes just beyond
      the NDOG CE instead (ICT's example).
   The model reads the 1-minute chart only.
-  5. Targets (PDF "How to set target?"): the last opposite leg - from the last intermediate-term
-     swing before the extreme (SD 0) to the raid extreme (SD 1) - projected 1, 1.25 and 1.5 standard
+  5. Targets (PDF "How to set target?"): the last opposite leg projected 1, 1.25 and 1.5 standard
      deviations: TP1 -1 SD (close half), TP2 -1.25 SD (ICT's own target), TP3 -1.5 SD (25% each).
+     SD 0 is the swing the structure shift broke (the start of the last opposite leg, next to the
+     entry, as in the PDF's example), SD 1 the raid extreme.
      The previous session's 15:30-16:00 high / low is drawn on the chart for reference only.
   Time first: the structure shift itself must happen after 19:00. Each direction can give one
   setup a day (the journal's 18-08 had a short, then a long).
@@ -53,6 +54,7 @@ class WolfAsiaConfig:
     exit_after_min: int = 90         # any runner is closed 22:30 NY
     gap_min_fvg: float = 10.0        # significant NDOG = 10 x min FVG (20 handles on NAS100)
     sd_targets: tuple[float, ...] = (1.0, 1.25, 1.5)
+    leg_start: str = "broken"        # SD 0: 'broken' = the swing the MSS broke (PDF) | 'it_swing' = last IT swing
     min_first_rr: float = 1.0        # 1 SD must pay at least the risk
     max_fvg_delay: int = 10
     timeframe: str = "1m"            # a 1-minute chart model
@@ -155,8 +157,13 @@ def _signal(ctx: Context, s, gap: Ndog | None, initial, bias, t18: pd.Timestamp,
 
     # standard deviations of the last opposite leg: 0 = where it started (last intermediate-term swing
     # before the extreme, known by now), 1 = the raid extreme
-    leg_from = _leg_start(ctx, d, int(np.argmin(seg["low"].to_numpy()) if d == 1 else np.argmax(seg["high"].to_numpy()))
-                          + raid.taken_pos, ready, float(b.broken_price))
+    if cfg.leg_start == "broken":
+        # PDF: the last opposite leg starts at the swing the structure shift broke (ICT's "0", next to
+        # the entry), so -1 SD is about one leg beyond the entry
+        leg_from = float(b.broken_price)
+    else:
+        leg_from = _leg_start(ctx, d, int(np.argmin(seg["low"].to_numpy()) if d == 1 else np.argmax(seg["high"].to_numpy()))
+                              + raid.taken_pos, ready, float(b.broken_price))
     leg = d * (leg_from - ext)
     if leg <= 0:
         return None
