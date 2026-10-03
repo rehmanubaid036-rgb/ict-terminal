@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { init, dispose, type Chart, type Crosshair, type Overlay, type OverlayMode } from 'klinecharts'
 import { api, errorText, isAbort, type Signal } from '../api'
-import { timeframeByLabel, indicatorDef, DRAW_COLORS } from '../constants'
+import { timeframeByLabel, indicatorDef, DRAW_COLORS, ONE_MINUTE_MODELS } from '../constants'
 import type { ChartConf } from '../state'
 import { Feed } from './feed'
 import { engineOverlays, signalBoxes, signalLines, biasOf, type Bias, type DrawStyle } from './overlays'
@@ -157,7 +157,7 @@ export function ChartPanel(p: ChartPanelProps) {
         ])
         if (id !== req.current || !chartRef.current) return
         chart.removeOverlay({ groupId: ICT })
-        chart.createOverlay([...engineOverlays(ov.objects, ICT), ...signalBoxes(sg.signals, ICT)])
+        chart.createOverlay([...engineOverlays(ov.objects, ICT), ...signalBoxes(sg.signals.filter(x => tf.label === '1m' || !ONE_MINUTE_MODELS.has(x.model_id)), ICT)])
         setBias(ict.includes('bias') ? biasOf(ov.objects) : null)
       } catch (e) {
         if (id === req.current && !isAbort(e)) props.current.onError(errorText(e))

@@ -367,13 +367,41 @@ export function engineOverlays(objects: OverlayObject[], groupId: string): Overl
 export interface Bias { direction: number; score: number; components: Record<string, number>; draw: number | null; draw_source?: string; ipda_position: number | null; as_of: number }
 export const biasOf = (objects: OverlayObject[]): Bias | null => (objects.find(o => o.kind === 'bias') as unknown as Bias) ?? null
 
+/** M17 Wolf Asia: the levels the model is built on (NDOG + CE, initial BSL / SSL, and for the
+ * selected setup the standard-deviation leg and the wick CE stop). */
+function wolfLevels(s: Signal, groupId: string, full: boolean): OverlayCreate[] {
+  const n = (s.notes ?? {}) as Record<string, any>
+  if (!n.ndog_time) return []
+  const t0 = new Date(n.ndog_time).getTime(), t1 = new Date(n.window_end ?? s.expiry).getTime()
+  const lineAt = (v: number, color: string, label: string, dashed = true, from = t0): OverlayCreate =>
+    ({ name: 'ictLine', groupId, lock: true, points: [{ timestamp: from, value: v }, { timestamp: t1, value: v }], extendData: { color, label, dashed, labelStart: true } })
+  const out: OverlayCreate[] = []
+  const g = n.ndog
+  if (g && g.high > g.low) {
+    out.push({ name: 'ictBox', groupId, lock: true, points: [{ timestamp: t0, value: g.high }, { timestamp: t1, value: g.low }, { timestamp: t0, value: g.ce }],
+      extendData: { color: 'rgba(250,204,21,0.10)', border: '#facc15', label: g.significant ? 'NDOG' : 'NDOG (small)', midLabel: 'CE' } })
+  }
+  if (n.initial_bsl != null) out.push(lineAt(n.initial_bsl, '#2962ff', 'Initial BSL'))
+  if (n.initial_ssl != null) out.push(lineAt(n.initial_ssl, '#ab47bc', 'Initial SSL'))
+  if (full) {
+    const ts = new Date(s.created_time).getTime()
+    if (Array.isArray(n.sd_leg)) {
+      out.push(lineAt(n.sd_leg[0], '#9ca3af', 'SD 0', false, ts), lineAt(n.sd_leg[1], '#9ca3af', 'SD 1 (leg)', false, ts))
+      for (const [k, v] of Object.entries(n.sd_levels ?? {})) out.push(lineAt(v as number, '#26a69a', `-${k} SD`, true, ts))
+    }
+    if (n.wick_ce != null) out.push(lineAt(n.wick_ce, '#ef5350', 'Wick C.E', true, new Date(n.wick_time ?? s.created_time).getTime()))
+  }
+  return out
+}
+
 /** Model setups as boxes on the chart (entry, stop, last target). */
 export function signalBoxes(signals: Signal[], groupId: string): OverlayCreate[] {
-  return signals.map(s => {
+  return signals.flatMap(s => {
     const t = new Date(s.created_time).getTime(), end = new Date(s.expiry).getTime()
     const last = s.targets[s.targets.length - 1][0]
-    return { name: 'signalBox', groupId, lock: true, extendData: { label: `${modelTag(s.model_id)} ${s.direction > 0 ? 'LONG' : 'SHORT'} ${s.grade}`, long: s.direction > 0 },
+    const boxed: OverlayCreate = { name: 'signalBox', groupId, lock: true, extendData: { label: `${modelTag(s.model_id)} ${s.direction > 0 ? 'LONG' : 'SHORT'} ${s.grade}`, long: s.direction > 0 },
       points: [{ timestamp: t, value: s.entry }, { timestamp: Math.max(end, t + 60000), value: s.stop }, { timestamp: t, value: last }] }
+    return [...(s.model_id === 'M17' ? wolfLevels(s, groupId, false) : []), boxed]
   })
 }
 
@@ -383,5 +411,6 @@ export function signalLines(s: Signal, groupId: string, digitsCount: number): Ov
   const at = (v: number, color: string, label: string): OverlayCreate =>
     ({ name: 'ictLine', groupId, lock: true, points: [{ timestamp: t, value: v }, { timestamp: end, value: v }], extendData: { color, label, width: 2, boxed: true } })
   return [at(s.entry, '#2962ff', `${modelTag(s.model_id)} ${s.direction > 0 ? 'BUY' : 'SELL'} ${s.entry.toFixed(digitsCount)}`), at(s.stop, '#ef5350', `SL ${s.stop.toFixed(digitsCount)}`),
-    ...s.targets.map(([v, w], i) => at(v, '#26a69a', `TP${i + 1} ${v.toFixed(digitsCount)} (${Math.round(w * 100)}%)`))]
+    ...s.targets.map(([v, w], i) => at(v, '#26a69a', `TP${i + 1} ${v.toFixed(digitsCount)} (${Math.round(w * 100)}%)`)),
+    ...(s.model_id === 'M17' ? wolfLevels(s, groupId, true) : [])]
 }

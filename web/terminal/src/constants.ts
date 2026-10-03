@@ -196,3 +196,5 @@ export const PRICESCALE: Record<string, number> = {
 // short label of a model on the chart and in lists (models credited to their author carry the name)
 const MODEL_TAGS: Record<string, string> = { M17: 'M17 Wolf' }
 export const modelTag = (id: string) => MODEL_TAGS[id] ?? id
+// models that read the 1-minute chart only: their setups are drawn on 1m charts
+export const ONE_MINUTE_MODELS = new Set(['M17'])

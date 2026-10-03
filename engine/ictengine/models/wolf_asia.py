@@ -13,8 +13,10 @@ Per trading day (New York time):
   3. The algorithm comes online at 19:00: trades are taken 19:00-21:00 only. Liquidity on one
      side is taken (from 18:00 on), then a market structure shift / displacement and an FVG
      created inside the window; limit entry at the FVG's CE.
-  4. Stop beyond the raid extreme; when a significant NDOG's CE sits between that extreme and the
-     entry, the stop goes just beyond the NDOG CE instead (ICT's example).
+  4. Stop at the CE of the wick of the candle that made the leg extreme ("Wick C.E" in the journal);
+     when a significant NDOG's CE sits between that wick CE and the entry, the stop goes just beyond
+     the NDOG CE instead (ICT's example).
+  The model reads the 1-minute chart only.
   5. Targets: standard deviations of the last opposite leg (from the swing the shift broke to
      the raid extreme): 1 SD (close half), 1.25 SD and 1.5 SD.
 """
@@ -48,7 +50,8 @@ class WolfAsiaConfig:
     sd_targets: tuple[float, ...] = (1.0, 1.25, 1.5)
     min_first_rr: float = 1.0        # 1 SD must pay at least the risk
     max_fvg_delay: int = 10
-    timeframe: str = "1m"
+    timeframe: str = "1m"            # a 1-minute chart model
+    stop: str = "wick_ce"            # 'wick_ce' (journal) | 'extreme' (beyond the raid extreme + buffer)
     stop_buffer_mult: float = 1.0
     symbols: tuple[str, ...] = SYMBOLS
 
@@ -111,10 +114,11 @@ def _scan_day(ctx: Context, day, cfg: WolfAsiaConfig) -> Signal | None:
     setup = find_setup(ctx, direction, levels, o18, ws, we, cfg.max_fvg_delay, cfg.timeframe)
     if setup is None:
         return None
-    return _signal(ctx, setup, gap, initial, bias, w1, cfg)
+    return _signal(ctx, setup, gap, initial, bias, t18, w1, cfg)
 
 
-def _signal(ctx: Context, s, gap: Ndog | None, initial, bias, w1: pd.Timestamp, cfg: WolfAsiaConfig) -> Signal | None:
+def _signal(ctx: Context, s, gap: Ndog | None, initial, bias, t18: pd.Timestamp, w1: pd.Timestamp,
+            cfg: WolfAsiaConfig) -> Signal | None:
     d, g, b, raid = s.direction, s.fvg, s.brk, s.raid
     ready = s.ready_pos
     created = ctx.base.index[ready]
@@ -124,9 +128,17 @@ def _signal(ctx: Context, s, gap: Ndog | None, initial, bias, w1: pd.Timestamp, 
     ext = float(min(raid.extreme, lows.iloc[raid.taken_pos:ready + 1].min())) if d == 1 \
         else float(max(raid.extreme, highs.iloc[raid.taken_pos:ready + 1].max()))
     entry = float(g.ce)
-    buf = ctx.spec.stop_buffer * cfg.stop_buffer_mult
-    stop = ext - d * buf
-    ndog_stop = bool(gap and gap.significant and d * (gap.ce - ext) > 0 and d * (entry - gap.ce) > buf)
+    seg = ctx.base.iloc[raid.taken_pos:ready + 1]
+    xbar = seg.iloc[int(np.argmin(seg["low"].to_numpy()) if d == 1 else np.argmax(seg["high"].to_numpy()))]
+    wick_ce = (float(xbar["low"]) + min(float(xbar["open"]), float(xbar["close"]))) / 2 if d == 1 \
+        else (float(xbar["high"]) + max(float(xbar["open"]), float(xbar["close"]))) / 2
+    if cfg.stop == "wick_ce":
+        buf = ctx.spec.spread
+        stop = wick_ce - d * buf
+    else:
+        buf = ctx.spec.stop_buffer * cfg.stop_buffer_mult
+        stop = ext - d * buf
+    ndog_stop = bool(gap and gap.significant and d * (gap.ce - stop) > 0 and d * (entry - gap.ce) > 2 * buf)
     if ndog_stop:
         stop = gap.ce - d * buf
     risk = d * (entry - stop)
@@ -171,7 +183,8 @@ def _signal(ctx: Context, s, gap: Ndog | None, initial, bias, w1: pd.Timestamp, 
                "break_time": str(b.time), "fvg": (float(g.bottom), float(g.top)),
                "ndog": None if gap is None else {"low": gap.low, "high": gap.high, "ce": gap.ce,
                                                  "size": gap.size, "significant": gap.significant},
-               "ndog_stop": ndog_stop,
+               "ndog_stop": ndog_stop, "wick_ce": wick_ce, "wick_time": str(xbar.name),
+               "ndog_time": str(t18), "window_end": str(w1),
                "initial_bsl": initial[0].price if initial else None,
                "initial_ssl": initial[1].price if initial else None,
                "sd_leg": (leg_from, ext), "sd_levels": dict(zip([str(k) for k in cfg.sd_targets], prices)),

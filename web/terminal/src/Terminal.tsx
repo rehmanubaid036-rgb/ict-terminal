@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { Crosshair, OverlayMode } from 'klinecharts'
 import { api, errorText, type Access, type ModelInfo, type Signal } from './api'
-import { layoutCharts, LAYOUTS, PRICESCALE, timeframeByLabel, type LayoutId, DEFAULT_SYMBOLS } from './constants'
+import { layoutCharts, LAYOUTS, PRICESCALE, timeframeByLabel, type LayoutId, DEFAULT_SYMBOLS, ONE_MINUTE_MODELS } from './constants'
 import { AUTOSAVE, defaultState, parse, serialize, type ChartConf, type PriceAlert, type Sync, type TerminalState } from './state'
 import { ChartPanel } from './chart/ChartPanel'
 import { registerOverlays } from './chart/overlays'
@@ -329,6 +329,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
         const tk = `${active.ticker.split(':')[0]}:${sig.symbol}`
         setTicker(tk)
       }
+      if (sig && ONE_MINUTE_MODELS.has(sig.model_id) && active.tf !== '1m') setTf('1m')  // a 1-minute model
       setSignals(m => ({ ...m, [active.id]: sig }))
     },
     crosshair, sideTab, setSideTab, bottomOpen, setBottomOpen, openAccount, screenshot,

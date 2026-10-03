@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTerminal } from '../Terminal'
 import { api, type SearchItem } from '../api'
-import { CHART_TYPES, FAVORITE_TFS, ICT_LAYERS, INDICATORS, LAYOUTS, TIMEFRAMES, parseTimeframe, timeframeByLabel, type LayoutId } from '../constants'
+import { CHART_TYPES, FAVORITE_TFS, ICT_LAYERS, INDICATORS, LAYOUTS, TIMEFRAMES, parseTimeframe, timeframeByLabel, type LayoutId, ONE_MINUTE_MODELS } from '../constants'
 import { Icon } from './icons'
 import { Modal, Popover, Switch, toast, useIsPhone } from './common'
 import { getEntry, undo, redo } from '../chart/registry'
@@ -113,7 +113,7 @@ export function TopBar() {
                 return (
                   <label key={m.id} className={`check${ok ? '' : ' disabled'}`} title={m.name}>
                     <input type="checkbox" disabled={!ok} checked={ok && a.models.includes(m.id)} onChange={() => t.updateActive(c => ({ models: c.models.includes(m.id) ? c.models.filter(x => x !== m.id) : [...c.models, m.id] }))} />
-                    <span><b>{m.id}</b><small>{m.name}{ok ? '' : ' 🔒'}</small></span>
+                    <span><b>{m.id}</b><small>{m.name}{ONE_MINUTE_MODELS.has(m.id) ? ' · 1m chart' : ''}{ok ? '' : ' 🔒'}</small></span>
                   </label>
                 )
               })}
