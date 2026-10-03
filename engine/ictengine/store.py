@@ -121,6 +121,20 @@ class Store:
             """, rows)
         return len(rows)
 
+    def prune_signals(self, symbol: str, model_id: str, signals: list[Signal], bias_filter: bool,
+                      since: pd.Timestamp) -> int:
+        """Deletes stored signals of this symbol / model created since ``since`` that the latest scan no
+        longer produces (the model's rules changed, or the setup was recomputed differently), so the
+        terminal never shows stale targets. Signals still produced keep their row (and id)."""
+        keep = {(pd.Timestamp(s.created_time).isoformat(), int(s.direction), round(float(s.entry), 6)) for s in signals}
+        with self._conn() as c:
+            rows = c.execute("SELECT id, created_time, direction, entry FROM signals WHERE symbol = ? AND model_id = ? "
+                             "AND bias_filter = ? AND created_time >= ?",
+                             (symbol, model_id, int(bias_filter), pd.Timestamp(since).isoformat())).fetchall()
+            gone = [r["id"] for r in rows if (r["created_time"], int(r["direction"]), round(float(r["entry"]), 6)) not in keep]
+            c.executemany("DELETE FROM signals WHERE id = ?", [(i,) for i in gone])
+        return len(gone)
+
     def signals(self, symbol: str, start: pd.Timestamp, end: pd.Timestamp, model_ids: list[str] | None = None,
                 bias_filter: bool = True) -> list[dict]:
         q = "SELECT id, model_id, payload FROM signals WHERE symbol = ? AND created_time >= ? AND created_time < ? AND bias_filter = ?"

@@ -83,6 +83,7 @@ def run_once(store: Store, load: Loader, cfg: RunnerConfig = RunnerConfig(), now
                     sigs = [s for s in MODELS[mid].scan(ctx, require_bias=rb) if s.created_time >= keep_from]
                     sigs = fomc_flat(filter_signals(sigs, periods), events)
                     count += store.upsert_signals(symbol, mid, sigs, rb)
+                    store.prune_signals(symbol, mid, sigs, rb, keep_from)   # rows the rules no longer produce
             store.set_status(symbol, str(df.index[-1]), count, time.time() - t0)
             summary[symbol] = count
         except Exception as e:  # one broken symbol must not stop the others
