@@ -22,7 +22,7 @@ Per trading day (New York time):
      target at the previous session's 15:30-16:00 NY high for a buy (low for a sell). SD levels at or
      beyond that high / low are dropped; when it is already behind the entry or nearer than 1R, the
      final target is 1.5 SD.
-  The ICT Bridge EA trades at most three legs, so for auto-trading the first three targets apply.
+  The ICT Bridge EA (1.10, partial mode) takes all four targets from one position.
   Time first: the structure shift itself must happen after 19:00. Each direction can give one
   setup a day (the journal's 18-08 had a short, then a long).
 """
