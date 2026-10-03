@@ -367,7 +367,8 @@ export function engineOverlays(objects: OverlayObject[], groupId: string): Overl
 export interface Bias { direction: number; score: number; components: Record<string, number>; draw: number | null; draw_source?: string; ipda_position: number | null; as_of: number }
 export const biasOf = (objects: OverlayObject[]): Bias | null => (objects.find(o => o.kind === 'bias') as unknown as Bias) ?? null
 
-const FIB_COLORS: Record<string, string> = { '0': '#9ca3af', '1': '#9ca3af', '1.5': '#7e57c2', '2': '#f06292', '2.5': '#f59e0b' }
+const FIB_COLORS: Record<string, string> = { '0': '#9ca3af', '1': '#9ca3af', '1.5': '#7e57c2', '2': '#f06292', '2.5': '#f59e0b',
+  '-1': '#26a69a', '-1.25': '#7e57c2', '-1.5': '#f59e0b' }
 
 /** M17 Wolf Asia: the levels the model is built on (NDOG + CE, initial BSL / SSL, and for the
  * selected setup the standard-deviation leg and the wick CE stop). */

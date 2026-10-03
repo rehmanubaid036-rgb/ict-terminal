@@ -13,13 +13,14 @@ Per trading day (New York time):
   3. The algorithm comes online at 19:00: trades are taken 19:00-21:00 only. Liquidity on one
      side is taken (from 18:00 on), then a market structure shift / displacement and an FVG
      created inside the window; limit entry at the FVG's CE.
-  4. Stop at fib level 0: the raid extreme (+ a small buffer). ('wick_ce' puts it at the CE of the wick
-     of the extreme candle, as in the journal; a significant NDOG's CE between that and the entry
-     tightens it.)
-  5. Targets (fib of the leg): 0 = the raid extreme, 1 = where the last opposite leg started (the
-     last intermediate-term swing before the extreme); TP1-TP4 at levels 1, 1.5, 2 and 2.5, the ones
-     at least 0.5R beyond the entry (a nearer level is skipped, so the next one becomes TP1). Half closes at TP1, the rest is shared equally. ('doubling' mode: 2R, 4R, 8R ...
-     to the previous session's 15:30-16:00 high / low.)
+  4. Stop at the CE of the wick of the candle that made the leg extreme ("Wick C.E" in the journal);
+     when a significant NDOG's CE sits between that wick CE and the entry, the stop goes just beyond
+     the NDOG CE instead (ICT's example).
+  The model reads the 1-minute chart only.
+  5. Targets (PDF "How to set target?"): the last opposite leg - from the last intermediate-term
+     swing before the extreme (SD 0) to the raid extreme (SD 1) - projected 1, 1.25 and 1.5 standard
+     deviations: TP1 -1 SD (close half), TP2 -1.25 SD (ICT's own target), TP3 -1.5 SD (25% each).
+     The previous session's 15:30-16:00 high / low is drawn on the chart for reference only.
   Time first: the structure shift itself must happen after 19:00. Each direction can give one
   setup a day (the journal's 18-08 had a short, then a long).
 """
@@ -51,19 +52,14 @@ class WolfAsiaConfig:
     window_end: str = "21:00"
     exit_after_min: int = 90         # any runner is closed 22:30 NY
     gap_min_fvg: float = 10.0        # significant NDOG = 10 x min FVG (20 handles on NAS100)
-    sd_targets: tuple[float, ...] = (1.0, 1.25, 1.5)   # standard deviations drawn on the chart (not targets)
-    target_mode: str = "fib"         # 'fib': levels 1 / 1.5 / 2 / 2.5 of the leg (0 = raid extreme) | 'doubling'
-    fib_levels: tuple[float, ...] = (1.0, 1.5, 2.0, 2.5)
-    min_target_r: float = 0.5        # a fib level nearer than this x risk to the entry is not a target
-    first_target_r: float = 2.0      # doubling mode: TP1 in R; each next target doubles the one before
-    max_targets: int = 30            # up to the final target (a safety cap only)
+    sd_targets: tuple[float, ...] = (1.0, 1.25, 1.5)
     min_first_rr: float = 1.0        # 1 SD must pay at least the risk
     max_fvg_delay: int = 10
     timeframe: str = "1m"            # a 1-minute chart model
     raid_timeframes: tuple[str, ...] = ()  # PDF: only the initial BSL / SSL and session levels are raided;
                                             # ("15m",) etc. adds swing liquidity of those timeframes
-    pm_target: bool = True           # previous session's 15:30-16:00 high (buy) / low (sell) is the target
-    stop: str = "extreme"            # 'extreme' (fib level 0 = the raid extreme + buffer) | 'wick_ce' (journal)
+    pm_target: bool = True           # draw the previous session's 15:30-16:00 high / low (reference only)
+    stop: str = "wick_ce"            # 'wick_ce' (journal) | 'extreme' (beyond the raid extreme + buffer)
     stop_buffer_mult: float = 1.0
     symbols: tuple[str, ...] = SYMBOLS
 
@@ -150,7 +146,7 @@ def _signal(ctx: Context, s, gap: Ndog | None, initial, bias, t18: pd.Timestamp,
     else:
         buf = ctx.spec.stop_buffer * cfg.stop_buffer_mult
         stop = ext - d * buf
-    ndog_stop = bool(cfg.stop == "wick_ce" and gap and gap.significant and d * (gap.ce - stop) > 0 and d * (entry - gap.ce) > 2 * buf)
+    ndog_stop = bool(gap and gap.significant and d * (gap.ce - stop) > 0 and d * (entry - gap.ce) > 2 * buf)
     if ndog_stop:
         stop = gap.ce - d * buf
     risk = d * (entry - stop)
@@ -166,31 +162,10 @@ def _signal(ctx: Context, s, gap: Ndog | None, initial, bias, t18: pd.Timestamp,
         return None
     sd_prices = [leg_from + d * k * leg for k in cfg.sd_targets]
     pm = _pm_range(ctx, t18) if cfg.pm_target else None
-    pm_price = None if pm is None else (pm[0] if d == 1 else pm[1])
-    if cfg.target_mode == "fib":
-        # Fib of the leg: 0 = the raid extreme (the stop), 1 = where the opposite leg started; the
-        # targets are levels 1, 1.5, 2 and 2.5 of that range (the ones beyond the entry)
-        if d * (leg_from - entry) <= 0:          # the entry must sit between fib 0 and fib 1
-            return None
-        picked = [(ext + d * k * leg, f"fib {k:g}") for k in cfg.fib_levels]
-        picked = [(p, n) for p, n in picked if d * (p - entry) >= cfg.min_target_r * risk]   # skip levels too close
-        if len(picked) < 2 or d * (picked[-1][0] - entry) < cfg.min_first_rr * risk:
-            return None
-    else:
-        # doubling: TP1 = 2R (double the stop), every next target doubles the one before (4R, 8R ...),
-        # all the way to the final target at the previous session's 15:30-16:00 high / low
-        first = cfg.first_target_r
-        final_ok = pm_price is not None and d * (pm_price - entry) >= first * risk
-        picked = []
-        m = first
-        while len(picked) < (cfg.max_targets - 1 if final_ok else 3):
-            p = entry + d * m * risk
-            if final_ok and d * (pm_price - p) < 0.25 * risk:      # this level is (almost) the final target
-                break
-            picked.append((p, f"{m:g}R"))
-            m *= 2
-        if final_ok:
-            picked.append((pm_price, "15:30-16:00 " + ("high" if d == 1 else "low")))
+    # PDF targets: -1, -1.25 and -1.5 SD of the opposite leg (the 15:30-16:00 level is reference only)
+    picked = [(p, f"{k} SD") for k, p in zip(cfg.sd_targets, sd_prices) if d * (p - entry) > 0]
+    if len(picked) < len(cfg.sd_targets) or d * (picked[0][0] - entry) < cfg.min_first_rr * risk:
+        return None
     prices = [p for p, _ in picked]
     bar = ctx.base.iloc[ready]
     if (d == 1 and bar["high"] >= prices[0]) or (d == -1 and bar["low"] <= prices[0]):
@@ -221,12 +196,14 @@ def _signal(ctx: Context, s, gap: Ndog | None, initial, bias, t18: pd.Timestamp,
                "break_time": str(b.time), "fvg": (float(g.bottom), float(g.top)),
                "ndog": None if gap is None else {"low": gap.low, "high": gap.high, "ce": gap.ce,
                                                  "size": gap.size, "significant": gap.significant},
-               "ndog_stop": ndog_stop, "stop_mode": cfg.stop, "wick_ce": wick_ce, "wick_time": str(xbar.name),
+               "ndog_stop": ndog_stop, "wick_ce": wick_ce, "wick_time": str(xbar.name),
                "ndog_time": str(t18), "window_end": str(w1),
                "initial_bsl": initial[0].price if initial else None,
                "initial_ssl": initial[1].price if initial else None,
-               "sd_leg": (leg_from, ext),
-               "fib": {f"{k:g}": ext + d * k * leg for k in (0.0, 1.0) + tuple(cfg.fib_levels[1:])}, "sd_levels": dict(zip([str(k) for k in cfg.sd_targets], sd_prices)),
+               "sd_leg": (leg_from, ext), "sd_levels": dict(zip([str(k) for k in cfg.sd_targets], sd_prices)),
+               # chart: the SD tool as in the PDF - 0 at the leg start, 1 at the extreme, -1 / -1.25 / -1.5
+               "fib": {"0": leg_from, "1": ext, **{f"-{k:g}": p for k, p in zip(cfg.sd_targets, sd_prices)}},
+               "stop_mode": "wick_ce",
                "pm_range": None if pm is None else {"high": pm[0], "low": pm[1], "start": str(pm[2]), "end": str(pm[3])},
                "bias_score": bias.score, "bias_components": bias.components, "draw": bias.draw,
                "targets_from": [n for _, n in picked]},
@@ -234,12 +211,10 @@ def _signal(ctx: Context, s, gap: Ndog | None, initial, bias, t18: pd.Timestamp,
 
 
 def _allocate(prices: list[float]) -> list[tuple[float, float]]:
-    """Half at TP1 (as in the PDF), the other half shared equally by the remaining targets."""
-    if len(prices) < 2:
-        return allocate(prices)
-    rest = round(0.5 / (len(prices) - 1), 4)
-    fr = [0.5] + [rest] * (len(prices) - 2)
-    return list(zip(prices, fr + [round(1.0 - sum(fr), 4)]))
+    """Half at TP1 (1 SD, as in the PDF); with four targets the rest is 20 / 15 / 15."""
+    if len(prices) == 4:
+        return list(zip(prices, [0.5, 0.2, 0.15, 0.15]))
+    return allocate(prices)
 
 
 def _pm_range(ctx: Context, t18: pd.Timestamp):

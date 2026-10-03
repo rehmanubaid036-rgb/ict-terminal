@@ -24,11 +24,10 @@ It covers what was built, how to build and test it, and what is still open.
    `allowed_models = all` get it automatically; the terminal labels it "M17 Wolf" and draws it on 1m charts
    only (NDOG + CE, initial BSL/SSL, SD levels, wick CE). The engine runner and API pick it up after an ICT
    restart. As in the PDF only the initial BSL/SSL and session levels count as raided liquidity
-   (`raid_timeframes=()`). Targets (user's rule, `target_mode="fib"`): a fib of the leg, 0 = the raid extreme
-   (the stop, + 1 point), 1 = where the last opposite leg started; TP1-TP4 at levels 1, 1.5, 2, 2.5 (those
-   beyond the entry); half at TP1, the rest shared equally (the EA will manage percentages later). The chart
-   draws the fib (0 / 1 grey, 1.5 purple, 2 pink, 2.5 orange). `target_mode="doubling"` keeps the 2R, 4R,
-   8R ... to the 15:30-16:00 level variant. Checked on Dukascopy NAS100 1m, 15 Jul - 29 Aug 2024: 13 filled trades,
+   (`raid_timeframes=()`). Back to the user's earlier setting (commit 381b7fa: stop at the wick CE, NDOG CE
+   when significant) with the PDF targets: the opposite leg's -1 SD (TP1, 50%), -1.25 SD (TP2, 25%) and -1.5 SD
+   (TP3, 25%); the previous session's 15:30-16:00 high / low is drawn for reference only. The chart draws the
+   SD tool (0, 1, -1, -1.25, -1.5) as in the PDF. Checked on Dukascopy NAS100 1m, 15 Jul - 29 Aug 2024: 13 filled trades,
    53.8% wins, +3.1R, PF 1.53, max drawdown 2.3R (small sample). Against the PDF journal (18-26 Aug) it takes
    the 18-08 short, no trade on 19-08, the 20-08 long and a late 25-08 long; the journal is partly
    discretionary.
