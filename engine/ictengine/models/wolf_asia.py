@@ -17,12 +17,11 @@ Per trading day (New York time):
      when a significant NDOG's CE sits between that wick CE and the entry, the stop goes just beyond
      the NDOG CE instead (ICT's example).
   The model reads the 1-minute chart only.
-  5. Targets: TP1-TP3 at 1, 1.25 and 1.5 standard deviations of the last opposite leg (from the last
-     intermediate-term swing before the extreme to the raid extreme; 1 SD closes half), and the final
-     target at the previous session's 15:30-16:00 NY high for a buy (low for a sell). SD levels at or
-     beyond that high / low are dropped; when it is already behind the entry or nearer than 1R, the
-     final target is 1.5 SD.
-  The ICT Bridge EA (1.10, partial mode) takes all four targets from one position.
+  5. Targets: TP1 = 1R, TP2 = 2R, TP3 = 3R ... and the final target at the previous session's
+     15:30-16:00 NY high for a buy (low for a sell); six targets at most (1R..5R + final). Half closes
+     at TP1, the other half is shared equally. When that high / low is not at least 1R away the
+     targets are 1R, 2R and 3R. The standard deviations of the last opposite leg (from the last
+     intermediate-term swing before the extreme to the raid extreme) are drawn on the chart.
   Time first: the structure shift itself must happen after 19:00. Each direction can give one
   setup a day (the journal's 18-08 had a short, then a long).
 """
@@ -54,7 +53,8 @@ class WolfAsiaConfig:
     window_end: str = "21:00"
     exit_after_min: int = 90         # any runner is closed 22:30 NY
     gap_min_fvg: float = 10.0        # significant NDOG = 10 x min FVG (20 handles on NAS100)
-    sd_targets: tuple[float, ...] = (1.0, 1.25, 1.5)
+    sd_targets: tuple[float, ...] = (1.0, 1.25, 1.5)   # standard deviations drawn on the chart (not targets)
+    max_targets: int = 6             # 1R, 2R ... and the final target (the ICT Bridge EA stores six)
     min_first_rr: float = 1.0        # 1 SD must pay at least the risk
     max_fvg_delay: int = 10
     timeframe: str = "1m"            # a 1-minute chart model
@@ -165,14 +165,19 @@ def _signal(ctx: Context, s, gap: Ndog | None, initial, bias, t18: pd.Timestamp,
     sd_prices = [leg_from + d * k * leg for k in cfg.sd_targets]
     pm = _pm_range(ctx, t18) if cfg.pm_target else None
     pm_price = None if pm is None else (pm[0] if d == 1 else pm[1])
-    if pm_price is not None and d * (pm_price - entry) >= cfg.min_first_rr * risk:
-        # TP1-TP3 at the SD levels before it, the 15:30-16:00 high / low as the final target
-        before = [(p, f"{k} SD") for k, p in zip(cfg.sd_targets, sd_prices) if 0 < d * (p - entry) and d * (pm_price - p) > 0]
-        picked = before + [(pm_price, "15:30-16:00 " + ("high" if d == 1 else "low"))]
-    else:
-        picked = [(p, f"{k} SD") for k, p in zip(cfg.sd_targets, sd_prices) if d * (p - entry) > 0]
-        if len(picked) < len(cfg.sd_targets) or d * (picked[0][0] - entry) < cfg.min_first_rr * risk:
-            return None
+    # TP1 = 1R, TP2 = 2R, TP3 = 3R ... and the final target at the previous session's 15:30-16:00 high
+    # (buy) / low (sell); at most cfg.max_targets in all. Without that level 1R or more away: 1R, 2R, 3R.
+    final_ok = pm_price is not None and d * (pm_price - entry) >= cfg.min_first_rr * risk
+    picked = []
+    k = 1
+    while len(picked) < (cfg.max_targets - 1 if final_ok else 3):
+        p = entry + d * k * risk
+        if final_ok and d * (pm_price - p) < 0.25 * risk:      # this R level is (almost) the final target
+            break
+        picked.append((p, f"{k}R"))
+        k += 1
+    if final_ok:
+        picked.append((pm_price, "15:30-16:00 " + ("high" if d == 1 else "low")))
     prices = [p for p, _ in picked]
     bar = ctx.base.iloc[ready]
     if (d == 1 and bar["high"] >= prices[0]) or (d == -1 and bar["low"] <= prices[0]):
@@ -215,10 +220,12 @@ def _signal(ctx: Context, s, gap: Ndog | None, initial, bias, t18: pd.Timestamp,
 
 
 def _allocate(prices: list[float]) -> list[tuple[float, float]]:
-    """Half at TP1 (1 SD, as in the PDF); with four targets the rest is 20 / 15 / 15."""
-    if len(prices) == 4:
-        return list(zip(prices, [0.5, 0.2, 0.15, 0.15]))
-    return allocate(prices)
+    """Half at TP1 (as in the PDF), the other half shared equally by the remaining targets."""
+    if len(prices) < 2:
+        return allocate(prices)
+    rest = round(0.5 / (len(prices) - 1), 4)
+    fr = [0.5] + [rest] * (len(prices) - 2)
+    return list(zip(prices, fr + [round(1.0 - sum(fr), 4)]))
 
 
 def _pm_range(ctx: Context, t18: pd.Timestamp):

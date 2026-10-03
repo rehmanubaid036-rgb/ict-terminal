@@ -406,7 +406,11 @@ export function signalBoxes(signals: Signal[], groupId: string): OverlayCreate[]
     const last = s.targets[s.targets.length - 1][0]
     const boxed: OverlayCreate = { name: 'signalBox', groupId, lock: true, extendData: { label: `${modelTag(s.model_id)} ${s.direction > 0 ? 'LONG' : 'SHORT'} ${s.grade}`, long: s.direction > 0 },
       points: [{ timestamp: t, value: s.entry }, { timestamp: Math.max(end, t + 60000), value: s.stop }, { timestamp: t, value: last }] }
-    return [...(s.model_id === 'M17' ? wolfLevels(s, groupId, false) : []), boxed]
+    // every target as a labelled line across the box (TP1, TP2 ...), selected or not
+    const right = Math.max(end, t + 60000)
+    const tps: OverlayCreate[] = s.targets.map(([v], i) => ({ name: 'ictLine', groupId, lock: true,
+      points: [{ timestamp: t, value: v }, { timestamp: right, value: v }], extendData: { color: '#26a69a', label: `TP${i + 1}`, dashed: true } }))
+    return [...(s.model_id === 'M17' ? wolfLevels(s, groupId, false) : []), boxed, ...tps]
   })
 }
 

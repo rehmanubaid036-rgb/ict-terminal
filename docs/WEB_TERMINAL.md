@@ -24,13 +24,13 @@ It covers what was built, how to build and test it, and what is still open.
    `allowed_models = all` get it automatically; the terminal labels it "M17 Wolf" and draws it on 1m charts
    only (NDOG + CE, initial BSL/SSL, SD levels, wick CE). The engine runner and API pick it up after an ICT
    restart. As in the PDF only the initial BSL/SSL and session levels count as raided liquidity
-   (`raid_timeframes=()`); the final target is the previous session's 15:30-16:00 NY high (buy) / low
-   (sell); TP1-TP3 are 1 / 1.25 / 1.5 SD before it (50 / 20 / 15 / 15%; SD levels beyond that high / low are
-   dropped, and 1.5 SD is final when it is behind the entry or nearer than 1R). The ICT Bridge EA 1.10 (partial
-   mode) takes all four from one position. Checked on Dukascopy NAS100 1m, 15 Jul - 29 Aug 2024: 18 filled trades, 38.9% wins,
-   +1.6R, PF 1.13 (small sample). Against the PDF journal (18-26 Aug) it takes the 18-08 short, no trade
-   on 19-08, the 20-08 long and a late 25-08 long; the journal is partly discretionary.
-
+   (`raid_timeframes=()`). Targets (user's rule): TP1 = 1R, TP2 = 2R, TP3 = 3R ... and the final target at the
+   previous session's 15:30-16:00 NY high (buy) / low (sell), six at most (1R..5R + final); half closes at
+   TP1, the rest is shared equally; 1R / 2R / 3R when that level is not 1R away. SD levels of the opposite
+   leg are drawn on the chart only. Checked on Dukascopy NAS100 1m, 15 Jul - 29 Aug 2024: 13 filled trades,
+   53.8% wins, +3.1R, PF 1.53, max drawdown 2.3R (small sample). Against the PDF journal (18-26 Aug) it takes
+   the 18-08 short, no trade on 19-08, the 20-08 long and a late 25-08 long; the journal is partly
+   discretionary.
 5. **ICT Bridge EA 1.10** (`ea/mt5/ICT_Bridge.mq5`): `InpExitMode` = Partial (default: one position, the EA
    closes each target's share - the signal's split or `InpPartials`, e.g. `50,20,15,15` - and the final target
    is the TP at the broker; any number of targets) or Legs (the 1.00 behaviour, max 3). `InpBreakevenAtTP1`.
