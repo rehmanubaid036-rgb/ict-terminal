@@ -17,11 +17,11 @@ Per trading day (New York time):
      when a significant NDOG's CE sits between that wick CE and the entry, the stop goes just beyond
      the NDOG CE instead (ICT's example).
   The model reads the 1-minute chart only.
-  5. Targets: TP1 = 1R, TP2 = 2R, TP3 = 3R ... and the final target at the previous session's
-     15:30-16:00 NY high for a buy (low for a sell): a target every 1R (the stop distance) all the way
-     to it. Half closes at TP1, the other half is shared equally. When that high / low is not at least 1R away the
-     targets are 1R, 2R and 3R. The standard deviations of the last opposite leg (from the last
-     intermediate-term swing before the extreme to the raid extreme) are drawn on the chart.
+  5. Targets: TP1 = 2R (double the stop), TP2 = 4R (double TP1), TP3 = 8R ... and the final target at
+     the previous session's 15:30-16:00 NY high for a buy (low for a sell). Half closes at TP1, the
+     other half is shared equally. When that high / low is not at least 2R away the targets are 2R,
+     4R and 8R. The standard deviations of the last opposite leg (from the last intermediate-term swing
+     before the extreme to the raid extreme) are drawn on the chart for reference.
   Time first: the structure shift itself must happen after 19:00. Each direction can give one
   setup a day (the journal's 18-08 had a short, then a long).
 """
@@ -54,7 +54,8 @@ class WolfAsiaConfig:
     exit_after_min: int = 90         # any runner is closed 22:30 NY
     gap_min_fvg: float = 10.0        # significant NDOG = 10 x min FVG (20 handles on NAS100)
     sd_targets: tuple[float, ...] = (1.0, 1.25, 1.5)   # standard deviations drawn on the chart (not targets)
-    max_targets: int = 30            # 1R, 2R, 3R ... up to the final target (a safety cap only)
+    first_target_r: float = 2.0      # TP1 in R (double the stop); each next target doubles the one before
+    max_targets: int = 30            # up to the final target (a safety cap only)
     min_first_rr: float = 1.0        # 1 SD must pay at least the risk
     max_fvg_delay: int = 10
     timeframe: str = "1m"            # a 1-minute chart model
@@ -165,18 +166,19 @@ def _signal(ctx: Context, s, gap: Ndog | None, initial, bias, t18: pd.Timestamp,
     sd_prices = [leg_from + d * k * leg for k in cfg.sd_targets]
     pm = _pm_range(ctx, t18) if cfg.pm_target else None
     pm_price = None if pm is None else (pm[0] if d == 1 else pm[1])
-    # TP1 = 1R, TP2 = 2R, TP3 = 3R ... and the final target at the previous session's 15:30-16:00 high
-    # (buy) / low (sell): a target every 1R (the stop distance) all the way to it. Without that level
-    # 1R or more away: 1R, 2R, 3R.
-    final_ok = pm_price is not None and d * (pm_price - entry) >= cfg.min_first_rr * risk
+    # TP1 = 2R (double the stop), every next target doubles the one before (4R, 8R, 16R ...), all the way
+    # to the final target at the previous session's 15:30-16:00 high (buy) / low (sell). Without that
+    # level at least TP1 away: 2R, 4R, 8R.
+    first = cfg.first_target_r
+    final_ok = pm_price is not None and d * (pm_price - entry) >= first * risk
     picked = []
-    k = 1
+    m = first
     while len(picked) < (cfg.max_targets - 1 if final_ok else 3):
-        p = entry + d * k * risk
-        if final_ok and d * (pm_price - p) < 0.25 * risk:      # this R level is (almost) the final target
+        p = entry + d * m * risk
+        if final_ok and d * (pm_price - p) < 0.25 * risk:      # this level is (almost) the final target
             break
-        picked.append((p, f"{k}R"))
-        k += 1
+        picked.append((p, f"{m:g}R"))
+        m *= 2
     if final_ok:
         picked.append((pm_price, "15:30-16:00 " + ("high" if d == 1 else "low")))
     prices = [p for p, _ in picked]
