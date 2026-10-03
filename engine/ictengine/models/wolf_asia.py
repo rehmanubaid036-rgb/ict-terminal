@@ -17,8 +17,10 @@ Per trading day (New York time):
      when a significant NDOG's CE sits between that wick CE and the entry, the stop goes just beyond
      the NDOG CE instead (ICT's example).
   The model reads the 1-minute chart only.
-  5. Targets: standard deviations of the last opposite leg (from the swing the shift broke to
-     the raid extreme): 1 SD (close half), 1.25 SD and 1.5 SD.
+  5. Targets: standard deviations of the last opposite leg (from the last intermediate-term swing
+     before the extreme to the raid extreme): 1 SD (close half), 1.25 SD and 1.5 SD.
+  Time first: the structure shift itself must happen after 19:00. Each direction can give one
+  setup a day (the journal's 18-08 had a short, then a long).
 """
 from __future__ import annotations
 
@@ -51,6 +53,8 @@ class WolfAsiaConfig:
     min_first_rr: float = 1.0        # 1 SD must pay at least the risk
     max_fvg_delay: int = 10
     timeframe: str = "1m"            # a 1-minute chart model
+    raid_timeframes: tuple[str, ...] = ("15m",)  # swing liquidity that counts for the raid (1m / 5m swings were noise
+                                                  # on NAS100 Jul-Aug 2024; 15m matched the journal best)
     stop: str = "wick_ce"            # 'wick_ce' (journal) | 'extreme' (beyond the raid extreme + buffer)
     stop_buffer_mult: float = 1.0
     symbols: tuple[str, ...] = SYMBOLS
@@ -83,13 +87,11 @@ def scan(ctx: Context, cfg: WolfAsiaConfig = WolfAsiaConfig()) -> list[Signal]:
         return []
     out = []
     for day in np.unique(ctx.trading_day):
-        s = _scan_day(ctx, pd.Timestamp(day).date(), cfg)
-        if s is not None:
-            out.append(s)
-    return out
+        out.extend(_scan_day(ctx, pd.Timestamp(day).date(), cfg))
+    return sorted(out, key=lambda s: s.created_time)
 
 
-def _scan_day(ctx: Context, day, cfg: WolfAsiaConfig) -> Signal | None:
+def _scan_day(ctx: Context, day, cfg: WolfAsiaConfig) -> list[Signal]:
     t18 = clock.get_window("asia").bounds(day)[0]
     h1, m1 = map(int, cfg.window_start.split(":"))
     h2, m2 = map(int, cfg.window_end.split(":"))
@@ -97,24 +99,26 @@ def _scan_day(ctx: Context, day, cfg: WolfAsiaConfig) -> Signal | None:
     w1 = t18 + pd.Timedelta(hours=h2 - 18, minutes=m2)
     o18, ws, we = ctx.pos_of(t18), ctx.pos_of(w0), ctx.pos_of(w1)
     if o18 >= len(ctx.base) or ws >= len(ctx.base) or ctx.base.index[ws] >= w1:
-        return None
+        return []
     if ctx.base.index[o18] >= t18 + pd.Timedelta(minutes=30):
-        return None  # no 18:00 open (holiday / data gap)
+        return []  # no 18:00 open (holiday / data gap)
 
     gap = ndog(ctx, o18, cfg.gap_min_fvg * ctx.spec.min_fvg)
     bias = bias_at(ctx, ws - 1)
     if cfg.manual_bias:
         bias = replace(bias, direction=cfg.manual_bias)
-    direction = bias.direction if cfg.require_bias else 0
-    if cfg.require_bias and direction == 0:
-        return None
-
+    if cfg.require_bias and bias.direction == 0:
+        return []
     initial = running_range(ctx, t18, ws - 1, "initial")   # initial BSL / SSL, known at 19:00
-    levels = session_levels(ctx, o18) + initial + raid_levels(ctx, we, since=o18)
-    setup = find_setup(ctx, direction, levels, o18, ws, we, cfg.max_fvg_delay, cfg.timeframe)
-    if setup is None:
-        return None
-    return _signal(ctx, setup, gap, initial, bias, t18, w1, cfg)
+    levels = session_levels(ctx, o18) + initial + raid_levels(ctx, we, cfg.raid_timeframes, since=o18)
+    after_open = lambda c, st: int(st.brk.pos) >= ws       # time first: the shift happens after 19:00
+    out = []
+    for dirn in ((bias.direction,) if cfg.require_bias else (1, -1)):
+        setup = find_setup(ctx, dirn, levels, o18, ws, we, cfg.max_fvg_delay, cfg.timeframe, accept=after_open)
+        sig = None if setup is None else _signal(ctx, setup, gap, initial, bias, t18, w1, cfg)
+        if sig is not None:
+            out.append(sig)
+    return out
 
 
 def _signal(ctx: Context, s, gap: Ndog | None, initial, bias, t18: pd.Timestamp, w1: pd.Timestamp,
@@ -145,8 +149,10 @@ def _signal(ctx: Context, s, gap: Ndog | None, initial, bias, t18: pd.Timestamp,
     if risk <= 0:
         return None
 
-    # standard deviations of the opposite leg: 0 = the swing the shift broke, 1 = the raid extreme
-    leg_from = float(b.broken_price)
+    # standard deviations of the last opposite leg: 0 = where it started (last intermediate-term swing
+    # before the extreme, known by now), 1 = the raid extreme
+    leg_from = _leg_start(ctx, d, int(np.argmin(seg["low"].to_numpy()) if d == 1 else np.argmax(seg["high"].to_numpy()))
+                          + raid.taken_pos, ready, float(b.broken_price))
     leg = d * (leg_from - ext)
     if leg <= 0:
         return None
@@ -191,6 +197,19 @@ def _signal(ctx: Context, s, gap: Ndog | None, initial, bias, t18: pd.Timestamp,
                "bias_score": bias.score, "bias_components": bias.components, "draw": bias.draw,
                "targets_from": [f"{k} SD" for k in cfg.sd_targets]},
     )
+
+
+def _leg_start(ctx: Context, d: int, extreme_pos: int, ready: int, fallback: float, max_bars: int = 240) -> float:
+    """Price of the last intermediate-term (level >= 2) swing on the other side before the leg extreme:
+    a swing high for a long (the down leg started there), a swing low for a short."""
+    sw = ctx.analyses["1m"].swings
+    kind = "high" if d == 1 else "low"
+    c = sw[(sw["kind"] == kind) & (sw["level"] >= 2) & (sw["pos"] < extreme_pos) & (sw["pos"] >= extreme_pos - max_bars)
+           & (sw["it_confirmed_pos"] <= ready)]
+    if not len(c):
+        return fallback
+    price = float(c["price"].iloc[-1])
+    return price if d * (price - fallback) >= 0 else fallback
 
 
 def scan_m17(ctx: Context, **kw) -> list[Signal]:

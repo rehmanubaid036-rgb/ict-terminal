@@ -21,8 +21,13 @@ It covers what was built, how to build and test it, and what is still open.
    NAS100, US500, EURUSD, GBPUSD only. NDOG (17:00 close → 18:00 open) and its CE, initial BSL/SSL of
    18:00–19:00, trades 19:00–21:00 NY: raid → MSS/displacement → FVG CE entry, stop beyond the raid (or the
    NDOG CE), targets 1 / 1.25 / 1.5 standard deviations of the opposite leg (50/25/25). Plans with
-   `allowed_models = all` get it automatically; the terminal labels it "M17 Wolf". The engine runner and API
-   pick it up after an ICT restart.
+   `allowed_models = all` get it automatically; the terminal labels it "M17 Wolf" and draws it on 1m charts
+   only (NDOG + CE, initial BSL/SSL, SD levels, wick CE). The engine runner and API pick it up after an ICT
+   restart. Checked on Dukascopy NAS100 1m (15 Jul - 29 Aug 2024): with the defaults (wick CE stop, raids of
+   15m swings / initial / session levels, structure shift after 19:00, one setup per direction per day)
+   21 filled trades, 28.6% wins, +2.5R, PF 1.15 - a small sample. Against the PDF journal (18-26 Aug) it
+   takes the 18-08 short, no trade on 19-08 and the 20-08 long; the other journal longs it does not take
+   (the journal's entries are partly discretionary).
 
 The admin panel, EA and database did not change.
 
