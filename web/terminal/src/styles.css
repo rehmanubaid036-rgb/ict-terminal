@@ -361,6 +361,8 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 .card h4 { margin: 0 0 4px; font-size: 14px; }
 .card h4 small { color: var(--muted); font-weight: 400; }
 .card.span2 { grid-column: span 2; }
+.acc-actions { display: flex; gap: 8px; margin-top: 6px; }
+.acc-actions .btn { flex: 1; justify-content: center; }
 .kv { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; }
 .kv span { color: var(--muted); }
 .kv.col { flex-direction: column; }

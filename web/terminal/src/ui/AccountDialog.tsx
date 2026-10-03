@@ -36,7 +36,10 @@ function MyPlan({ onUpgrade }: { onUpgrade: () => void }) {
         {row('Status', a.status ?? '–')}
         {row('Expires', a.expiry ?? '–')}
         {me?.account?.joined && row('Member since', me.account.joined)}
-        <button className="btn primary" onClick={onUpgrade}>Upgrade or renew</button>
+        <div className="acc-actions">
+          <button className="btn primary" onClick={onUpgrade}>Upgrade or renew</button>
+          <button className="btn ghost" onClick={() => t.logout()}>Log out</button>
+        </div>
       </div>
       <div className="card">
         <h4>What your plan includes</h4>
