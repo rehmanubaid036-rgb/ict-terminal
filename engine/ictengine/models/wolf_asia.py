@@ -18,7 +18,7 @@ Per trading day (New York time):
      tightens it.)
   5. Targets (fib of the leg): 0 = the raid extreme, 1 = where the last opposite leg started (the
      last intermediate-term swing before the extreme); TP1-TP4 at levels 1, 1.5, 2 and 2.5, the ones
-     beyond the entry. Half closes at TP1, the rest is shared equally. ('doubling' mode: 2R, 4R, 8R ...
+     at least 0.5R beyond the entry (a nearer level is skipped, so the next one becomes TP1). Half closes at TP1, the rest is shared equally. ('doubling' mode: 2R, 4R, 8R ...
      to the previous session's 15:30-16:00 high / low.)
   Time first: the structure shift itself must happen after 19:00. Each direction can give one
   setup a day (the journal's 18-08 had a short, then a long).
@@ -54,6 +54,7 @@ class WolfAsiaConfig:
     sd_targets: tuple[float, ...] = (1.0, 1.25, 1.5)   # standard deviations drawn on the chart (not targets)
     target_mode: str = "fib"         # 'fib': levels 1 / 1.5 / 2 / 2.5 of the leg (0 = raid extreme) | 'doubling'
     fib_levels: tuple[float, ...] = (1.0, 1.5, 2.0, 2.5)
+    min_target_r: float = 0.5        # a fib level nearer than this x risk to the entry is not a target
     first_target_r: float = 2.0      # doubling mode: TP1 in R; each next target doubles the one before
     max_targets: int = 30            # up to the final target (a safety cap only)
     min_first_rr: float = 1.0        # 1 SD must pay at least the risk
@@ -169,8 +170,10 @@ def _signal(ctx: Context, s, gap: Ndog | None, initial, bias, t18: pd.Timestamp,
     if cfg.target_mode == "fib":
         # Fib of the leg: 0 = the raid extreme (the stop), 1 = where the opposite leg started; the
         # targets are levels 1, 1.5, 2 and 2.5 of that range (the ones beyond the entry)
+        if d * (leg_from - entry) <= 0:          # the entry must sit between fib 0 and fib 1
+            return None
         picked = [(ext + d * k * leg, f"fib {k:g}") for k in cfg.fib_levels]
-        picked = [(p, n) for p, n in picked if d * (p - entry) > 0]
+        picked = [(p, n) for p, n in picked if d * (p - entry) >= cfg.min_target_r * risk]   # skip levels too close
         if len(picked) < 2 or d * (picked[-1][0] - entry) < cfg.min_first_rr * risk:
             return None
     else:
