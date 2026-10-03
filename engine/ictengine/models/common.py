@@ -171,3 +171,21 @@ def trend_direction(ctx: Context, t: int, source: str) -> int:
     tf = {"daily": "1d", "h4": "4h"}[source]
     p = ctx.htf_pos(tf, t)
     return trend_at(ctx.analyses[tf].structure, p) if p >= 0 else 0
+
+
+def po3_matches(ctx: Context, direction: int, t: int) -> bool:
+    """Rulebook M8 Power of 3 (A-M-D): before New York, London manipulated against ``direction``
+    (raided the Asian range on the opposite side: its low for a buy, its high for a sell)."""
+    t = min(t, len(ctx.base) - 1)
+    lv = ctx.day_levels(t)
+    if lv is None or not np.isfinite(lv["asian_range_low"]):
+        return False
+    day = pd.Timestamp(ctx.trading_day[t]).date()
+    l0, l1 = clock.get_window("london").bounds(day)
+    seg = ctx.base[(ctx.base.index >= l0) & (ctx.base.index < min(l1, ctx.base.index[t] + pd.Timedelta(minutes=1)))]
+    if seg.empty:
+        return False
+    if direction == 1:
+        return bool(seg["low"].min() < lv["asian_range_low"])
+    return bool(seg["high"].max() > lv["asian_range_high"])
+

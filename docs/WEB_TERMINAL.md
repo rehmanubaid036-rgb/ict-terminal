@@ -40,6 +40,22 @@ It covers what was built, how to build and test it, and what is still open.
    readable: signals opened by 1.00 keep their legs and breakeven. Not compiled here (no MetaEditor):
    compile it in MetaEditor on the VPS and check the Journal / Experts tab.
 6. **Guest login** (admin panel migration 0003): see the commit "Login as guest".
+7. **Models brought to the rulebook (plan PDF section 4)** - engine only, the API / terminal pick them up after
+   an ICT restart:
+   - M1 Silver Bullet: MSS with displacement only; stop 1 tick beyond the sweep wick (+ spread for a short);
+     TP1 nearest internal liquidity (>= 1R and the symbol's `min_target`: indices ~10 pts, FX ~15 pips),
+     TP2 next liquidity or an opposing 5m/15m FVG CE, TP3 the draw on liquidity; M8 Power of 3 adds +1.
+   - All `build_signal` models: section 7 confluence grade (A+ >= 8, A 6-7, B < 6), premium / discount
+     required, `cancel_if_close_beyond` (body close through the FVG before the fill) and `be_offset` notes,
+     applied by the backtest simulator and the terminal journal.
+   - Bias: Midnight Open filter as a fifth component (threshold stays 2; the rulebook's [DEFAULT] 3 set a
+     bias on 4 of 60 NAS100 days).
+   - M3 NY window 08:30-10:00 + Power of 3 boost; M4 targets -0.5 / -1 / -2 fib extensions; M5 rebuilt
+     (`models/asian_q2.py`: Q1 raid into a 15m/1H/4H FVG, Q2 True Open / Q1 / 1H array targets 50/30/20);
+     M6 NAS100/US500 window 20:45-22:15; M14 only after the morning's draw on liquidity was hit, trading
+     against it; M15 targets CBDR / Asian range SD -2 / -3 / -4; M10 FOMC days: exit and expiry moved to
+     13:55 (`news.fomc_flat`, applied by the runner).
+   - Not changed: M9 stays the simplified Market Maker model (the rulebook marks the staged model Phase 2).
 
 ## Features (plan section 5)
 

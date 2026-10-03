@@ -20,7 +20,7 @@ import pandas as pd
 
 from .context import Context
 from .models.registry import MODELS
-from .news import blackouts, filter_signals, us_high_impact_history
+from .news import blackouts, filter_signals, fomc_flat, us_high_impact_history
 from .store import Store
 
 Loader = Callable[[str, pd.Timestamp, pd.Timestamp], pd.DataFrame]
@@ -61,7 +61,8 @@ def run_once(store: Store, load: Loader, cfg: RunnerConfig = RunnerConfig(), now
     now = now or pd.Timestamp.now(tz="UTC")
     start = now - pd.Timedelta(days=cfg.lookback_days)
     keep_from = now - pd.Timedelta(days=cfg.keep_days)
-    periods = blackouts(us_high_impact_history((start - timedelta(days=1)).date(), (now + timedelta(days=1)).date()))
+    events = us_high_impact_history((start - timedelta(days=1)).date(), (now + timedelta(days=1)).date())
+    periods = blackouts(events)
     summary = {}
     for symbol in cfg.symbols:
         t0 = time.time()
@@ -80,7 +81,7 @@ def run_once(store: Store, load: Loader, cfg: RunnerConfig = RunnerConfig(), now
             for mid in cfg.models:
                 for rb in (True, False):
                     sigs = [s for s in MODELS[mid].scan(ctx, require_bias=rb) if s.created_time >= keep_from]
-                    sigs = filter_signals(sigs, periods)
+                    sigs = fomc_flat(filter_signals(sigs, periods), events)
                     count += store.upsert_signals(symbol, mid, sigs, rb)
             store.set_status(symbol, str(df.index[-1]), count, time.time() - t0)
             summary[symbol] = count

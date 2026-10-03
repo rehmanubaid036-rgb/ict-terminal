@@ -59,6 +59,10 @@ class ReversalConfig:
     target_mode: str = "ladder"
     fixed_rr: float = 2.0
     trend_filter: str = "none"
+    po3_boost: bool = False               # rulebook M8: score +1 when London manipulated against the trade
+    direction_fn: Callable | None = None  # (ctx, day, first_bar, bias) -> +1 / -1 / 0: the setup direction
+                                          # (default: the bias); M14 trades against the morning's move
+    targets_fn: Callable | None = None    # (ctx, day, setup, entry, risk) -> [(price, name)]: model targets
 
 
 def _tw(key, start, end):
@@ -69,11 +73,11 @@ def _tw(key, start, end):
 
 M2_CONFIG = ReversalConfig("M2_mentorship_2022", (clock.get_window("london_kz"), clock.get_window("ny_am_kz")), "all")
 M3_CONFIG = ReversalConfig("M3_judas_turtle_soup",
-                           (_tw("london_judas", "00:00", "05:00"), _tw("ny_judas", "08:30", "11:00")),
-                           "session", raid_lead_min=0)
+                           (_tw("london_judas", "00:00", "05:00"), _tw("ny_judas", "08:30", "10:00")),
+                           "session", raid_lead_min=0, po3_boost=True)
 # rulebook M4: OTE of a meaningful leg (5m) with the stop 0.5-1.0 beyond the 1.0 level on gold
 M4_CONFIG = ReversalConfig("M4_ote", (clock.get_window("london_kz"), clock.get_window("ny_am_kz")), "all", entry="ote",
-                           timeframe="5m", max_fvg_delay=4, stop_buffer_mult=3.0)
+                           timeframe="5m", max_fvg_delay=4, stop_buffer_mult=3.0, target_mode="ote_ext")
 
 
 def unicorn_breaker_under_fvg(ctx: Context, s: Setup) -> bool:
@@ -110,13 +114,42 @@ M6_CONFIG = ReversalConfig("M6_asian_range_scalp", (_tw("asia_scalp", "20:00", "
                            timeframe="5m", max_fvg_delay=4, stop_buffer_mult=2.0, min_rr=1.5, exit_after_min=60)
 M7_CONFIG = ReversalConfig("M7_unicorn", (clock.get_window("london_kz"), clock.get_window("ny_am_kz")), "all",
                            accept=unicorn_breaker_under_fvg)
+def morning_draw_hit(ctx: Context, day, ws: int, bias) -> int:
+    """M14: the day's main move is done - the draw on liquidity set at the NY session open (06:00) was
+    reached before the window. The reversal trades against that move; 0 = no setup."""
+    t0 = ctx.pos_of(clock.get_window("ny_am").bounds(day)[0])
+    if t0 >= ws or t0 <= 0:
+        return 0
+    b = bias_at(ctx, t0 - 1)
+    if b.direction == 0 or b.draw is None:
+        return 0
+    seg = ctx.base.iloc[t0:ws]
+    hit = seg["high"].max() >= b.draw if b.direction == 1 else seg["low"].min() <= b.draw
+    return -b.direction if hit else 0
+
+
 M14_CONFIG = ReversalConfig("M14_london_close_reversal", (clock.get_window("london_close_kz"),), "all",
-                            max_grade="A", exit_after_min=60)
+                            max_grade="A", exit_after_min=60, direction_fn=morning_draw_hit)
 M9_CONFIG = ReversalConfig("M9_market_maker", (_tw("trading_day", "18:00", "18:00"),), "htf",
                            raid_lead_min=24 * 60, timeframe="1h", max_fvg_delay=3, stop_buffer_mult=5.0,
                            min_rr=3.0, exit_after_min=3 * 24 * 60)
+def protraction_targets(ctx: Context, day, s: Setup, entry: float, risk: float) -> list[tuple[float, str]]:
+    """M15 targets: CBDR (Asian range when CBDR is missing) standard deviations -2, -3, -4 in the
+    trade direction, projected from the range's far side."""
+    lv = ctx.levels.loc[pd.Timestamp(day)] if pd.Timestamp(day) in ctx.levels.index else None
+    if lv is None:
+        return []
+    for key in ("cbdr", "asian_range"):
+        hi, lo = lv.get(f"{key}_high", np.nan), lv.get(f"{key}_low", np.nan)
+        if np.isfinite(hi) and np.isfinite(lo) and hi > lo:
+            rng, d = hi - lo, s.direction
+            base = hi if d == 1 else lo
+            return [(float(base + d * k * rng), f"{key}_sd_-{k}") for k in (2, 3, 4)]
+    return []
+
+
 M15_CONFIG = ReversalConfig("M15_london_protraction", (_tw("london_protraction", "00:00", "05:00"),), "session",
-                            raid_lead_min=0, precondition=protraction_ranges_are_small)
+                            raid_lead_min=0, precondition=protraction_ranges_are_small, targets_fn=protraction_targets)
 
 
 def scan(ctx: Context, cfg: ReversalConfig) -> list[Signal]:
@@ -138,7 +171,12 @@ def _scan_window(ctx: Context, day, w: TimeWindow, cfg: ReversalConfig) -> Signa
     bias = bias_at(ctx, ws - 1)
     if cfg.manual_bias:
         bias = replace(bias, direction=cfg.manual_bias)
-    if bias.direction == 0 and cfg.require_bias:
+    forced = None                     # a model-specific direction (M14: against the morning's move)
+    if cfg.direction_fn is not None:
+        forced = cfg.direction_fn(ctx, day, ws, bias)
+        if forced == 0:
+            return None
+    if bias.direction == 0 and cfg.require_bias and forced is None:
         return None
     if cfg.precondition is not None and not cfg.precondition(ctx, day, ws):
         return None
@@ -162,14 +200,16 @@ def _scan_window(ctx: Context, day, w: TimeWindow, cfg: ReversalConfig) -> Signa
         levels += running_range(ctx, clock.get_window("london").bounds(day)[0], lead - 1, "london_range")
     if cfg.level_source == "all":
         levels += running_range(ctx, session_start, lead - 1, "pre_window") + raid_levels(ctx, we, since=lead)
-    setup = find_setup(ctx, bias.direction, levels, lead, ws, we, cfg.max_fvg_delay, cfg.timeframe, cfg.accept)
+    setup = find_setup(ctx, forced if forced is not None else bias.direction, levels, lead, ws, we,
+                       cfg.max_fvg_delay, cfg.timeframe, cfg.accept)
     if setup is None:
         return None
     time_stop = None if cfg.time_stop_min is None else w0 + pd.Timedelta(minutes=cfg.time_stop_min)
     return build_signal(ctx, setup, cfg.model, w.key, expiry=w1, time_stop=time_stop,
                         exit_by=w1 + pd.Timedelta(minutes=cfg.exit_after_min), bias=bias,
                         range_start=session_start, plan=Plan(cfg.entry, cfg.min_rr, cfg.min_first_rr, cfg.stop_buffer_mult,
-                                  cfg.target_mode, cfg.fixed_rr),
+                                  cfg.target_mode, cfg.fixed_rr, po3_boost=cfg.po3_boost),
+                        targets_fn=(lambda e, r: cfg.targets_fn(ctx, day, setup, e, r)) if cfg.targets_fn else None,
                         max_grade=cfg.max_grade)
 
 
@@ -202,8 +242,15 @@ def scan_m5(ctx: Context, **kw) -> list[Signal]:
     return scan(ctx, _with(M5_CONFIG, kw))
 
 
+# rulebook M6: NAS100 variant 20:45-22:15 (Asia Q3)
+M6_INDEX_WINDOWS = (_tw("asia_scalp_index", "20:45", "22:15"),)
+
+
 def scan_m6(ctx: Context, **kw) -> list[Signal]:
-    return scan(ctx, _with(M6_CONFIG, kw))
+    cfg = M6_CONFIG
+    if ctx.symbol in ("NAS100", "US500") and "windows" not in kw:
+        cfg = replace(cfg, windows=M6_INDEX_WINDOWS)
+    return scan(ctx, _with(cfg, kw))
 
 
 def scan_m7(ctx: Context, **kw) -> list[Signal]:

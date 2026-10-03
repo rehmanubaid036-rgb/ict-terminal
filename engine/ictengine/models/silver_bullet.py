@@ -102,4 +102,4 @@ def _scan_window(ctx: Context, day, key: str, cfg: SBConfig) -> Signal | None:
     return build_signal(ctx, setup, MODEL, key, expiry, expiry, w1 + pd.Timedelta(minutes=cfg.exit_after_window_min),
                         bias, pre_open, Plan(cfg.entry, cfg.min_rr, cfg.min_first_rr, cfg.stop_buffer_mult,
                                              cfg.target_mode, cfg.fixed_rr, cfg.stop_mode, cfg.require_discount,
-                                             cfg.min_target_mult))
+                                             cfg.min_target_mult, po3_boost=True))

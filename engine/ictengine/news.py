@@ -67,3 +67,21 @@ def filter_signals(signals: list[Signal], periods: list[tuple[pd.Timestamp, pd.T
         if not any(a <= s.expiry and s.created_time <= b for a, b in periods):
             keep.append(s)
     return keep
+
+
+def fomc_flat(signals: list[Signal], events: list[NewsEvent], minutes_before: int = 5) -> list[Signal]:
+    """Rulebook M10: on an FOMC day every position is closed before the 14:00 statement. A signal
+    created before it gets its exit time (and time stop) moved to ``minutes_before`` before 14:00."""
+    fomc = [e.time for e in events if "FOMC" in e.title]
+    for s in signals:
+        for t in fomc:
+            flat = t - pd.Timedelta(minutes=minutes_before)
+            if s.created_time < flat and (s.exit_by is None or s.exit_by > flat) and t - s.created_time < pd.Timedelta(hours=24):
+                s.exit_by = flat
+                if s.expiry > flat:              # no fill after the flat time either
+                    s.expiry = flat
+                if s.time_stop is not None and s.time_stop > flat:
+                    s.time_stop = flat
+                s.notes["fomc_flat"] = str(flat)
+    return signals
+

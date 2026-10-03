@@ -12,7 +12,8 @@ from ..indicators.common import NONE
 from ..indicators.liquidity import BSL, SSL
 from ..indicators.pd_array import nearest_institutional, ote_zone
 from ..signals import Signal
-from .common import KeyLevel, Raid, allocate, find_raids, running_range, session_levels, swing_levels, target_ladder
+from .common import (KeyLevel, Raid, allocate, find_raids, po3_matches, running_range, session_levels, swing_levels,
+                     target_ladder)
 
 
 @dataclass(frozen=True)
@@ -106,13 +107,16 @@ class Plan:
     require_discount: bool = True  # rulebook 7: a buy enters in the discount half of the setup's dealing range
                                    # (raid extreme -> leg extreme), a sell in the premium half
     min_target_mult: float = 0.0   # TP1 at least this x SymbolSpec.min_target away (rulebook M1: 1.0)
+    po3_boost: bool = False        # rulebook M8: +1 when London already manipulated against the trade (M1, M3)
 
 
 def build_signal(ctx: Context, s: Setup, model: str, window: str, expiry: pd.Timestamp,
                  time_stop: pd.Timestamp | None, exit_by: pd.Timestamp | None, bias: Bias,
                  range_start: pd.Timestamp, plan: Plan = Plan(),
-                 extra_checks: dict[str, bool] | None = None, max_grade: str | None = None) -> Signal | None:
+                 extra_checks: dict[str, bool] | None = None, max_grade: str | None = None,
+                 targets_fn=None) -> Signal | None:
     """Entry, stop, targets and the rulebook section 7 confluence grade for a ``Setup``.
+    ``targets_fn(entry, risk) -> [(price, name)]`` gives a model's own targets (M15 SD projections).
     Returns None when the trade does not offer ``plan.min_rr``, sits on the wrong side of its
     dealing range (premium / discount) or price already ran away."""
     d, g, b, raid = s.direction, s.fvg, s.brk, s.raid
@@ -156,7 +160,22 @@ def build_signal(ctx: Context, s: Setup, model: str, window: str, expiry: pd.Tim
         return None
 
     ladder: list = []
-    if plan.target_mode == "fixed":
+    custom = targets_fn(entry, risk) if targets_fn is not None else None
+    if custom:
+        ahead = sorted([(p, n) for p, n in custom if d * (p - entry) >= plan.min_first_rr * risk], key=lambda x: d * x[0])
+        ladder = [KeyLevel(p, BSL if d == 1 else SSL, n, ready) for p, n in ahead[:3]]
+        prices = [l.price for l in ladder]
+        if not prices or abs(prices[-1] - entry) < plan.min_rr * risk:
+            return None
+    elif plan.target_mode == "ote_ext":
+        # rulebook M4: fib extensions of the anchor leg - -0.5 (TP1), -1.0 (TP2), -2.0 (runner)
+        rng = abs(leg_end - ext)
+        ladder = [KeyLevel(leg_end + d * k * rng, BSL if d == 1 else SSL, f"ote_ext_-{k:g}", ready) for k in (0.5, 1.0, 2.0)]
+        ladder = [l for l in ladder if d * (l.price - entry) > 0]
+        prices = [l.price for l in ladder]
+        if not prices or abs(prices[-1] - entry) < plan.min_rr * risk:
+            return None
+    elif plan.target_mode == "fixed":
         prices = [entry + d * plan.fixed_rr * risk]
     else:
         tgt = (session_levels(ctx, ready) + swing_levels(ctx, ready, ("5m", "15m", "1h"), 1)
@@ -197,6 +216,8 @@ def build_signal(ctx: Context, s: Setup, model: str, window: str, expiry: pd.Tim
         "ob_overlap": 1 if _ob_overlap(ctx, s) else 0,
         "smt": 1 if _smt(ctx, s) else 0,
     }
+    if plan.po3_boost:
+        factors["power_of_3"] = 1 if po3_matches(ctx, d, ready) else 0
     score = int(sum(factors.values()))
     grade = "A+" if score >= 8 else "A" if score >= 6 else "B"
     order = ["B", "A", "A+"]
