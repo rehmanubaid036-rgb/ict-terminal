@@ -132,16 +132,20 @@ const SPANS: [string, number][] = [['4h', 14400], ['12h', 43200], ['24h', 86400]
 function Signals() {
   const t = useTerminal()
   const f = t.access.features
-  const [picked, setPicked] = useState<string[]>(() => t.models.filter(m => t.allowed(m.id)).map(m => m.id).slice(0, 16))
-  const [bias, setBias] = useState(true)
-  const [span, setSpan] = useState(604800)
-  const [grade, setGrade] = useState<'all' | 'A' | 'A+'>('all')
+  // the tab's choices live in the terminal state, so they are saved with the layout (every device)
+  const prefs = t.state.signals
+  const allowedIds = t.models.filter(m => t.allowed(m.id)).map(m => m.id)
+  const picked = (prefs.models ?? allowedIds).filter(id => allowedIds.includes(id))
+  const setPicked = (fn: (p: string[]) => string[]) => t.setSignalsPrefs({ models: fn(picked) })
+  const { bias, span, grade, notify: notify_ } = prefs
+  const setBias = (v: boolean) => t.setSignalsPrefs({ bias: v })
+  const setSpan = (v: number) => t.setSignalsPrefs({ span: v })
+  const setGrade = (v: 'all' | 'A' | 'A+') => t.setSignalsPrefs({ grade: v })
+  const setNotify = (v: boolean) => t.setSignalsPrefs({ notify: v })
   const [rows, setRows] = useState<Signal[] | null>(null)
   const [busy, setBusy] = useState(false)
-  const [notify_, setNotify] = useState(false)
   const [sel, setSel] = useState<string | number | null>(null)
   const seen = useRef<Set<string | number>>(new Set())
-  useEffect(() => { if (!picked.length && t.models.length) setPicked(t.models.filter(m => t.allowed(m.id)).map(m => m.id)) }, [t.models]) // eslint-disable-line
   const scan = async (quiet = false) => {
     if (!picked.length) return
     setBusy(!quiet)
@@ -183,6 +187,13 @@ function Signals() {
       <div className="seg">{(['all', 'A', 'A+'] as const).map(g => <button key={g} className={grade === g ? 'on' : ''} onClick={() => setGrade(g)}>{g === 'all' ? 'All grades' : g === 'A' ? 'A and A+' : 'A+ only'}</button>)}</div>
       <Switch checked={bias} onChange={setBias} label="Only with the daily bias" />
       <Switch checked={notify_} onChange={setNotify} label="Notify me on new A / A+ setups" />
+      <div className="sig-tools">
+        <button className="link" onClick={() => t.setSignalsPrefs({ models: allowedIds })}>All</button>
+        <button className="link" onClick={() => t.setSignalsPrefs({ models: [] })}>None</button>
+        <button className="link" title="Draw these models' setups on the active chart" disabled={!picked.length}
+          onClick={() => { t.updateActive({ models: picked }); toast(`${picked.length} model${picked.length > 1 ? 's' : ''} drawn on the chart.`) }}>Draw on chart</button>
+        <span className="note">Saved with your layout</span>
+      </div>
       <button className="btn primary block" disabled={busy || !picked.length} onClick={() => void scan()}>{busy ? 'Scanning…' : `Scan ${t.active.ticker.split(':')[1]}`}</button>
       {f.signal_delay_minutes ? <div className="note">Your plan shows setups {f.signal_delay_minutes} minutes late.</div> : null}
       <div className="sig-list">

@@ -279,6 +279,9 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 .wl-actions button:hover { color: var(--text); }
 
 .signals, .alerts, .assistant, .tree, .data-window { display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 0; }
+/* signals tab: quick selection row */
+.sig-tools { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 12px; }
+.sig-tools .note { margin: 0 0 0 auto; }
 .model-chips { display: flex; flex-wrap: wrap; gap: 4px; }
 .model-chips button { font: 600 11px var(--mono); padding: 4px 7px; border-radius: 5px; background: var(--panel2); color: var(--muted); border: 1px solid transparent; }
 .model-chips button.on { color: var(--accent); background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }

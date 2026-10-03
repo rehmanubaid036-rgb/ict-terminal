@@ -31,6 +31,28 @@ export interface PriceAlert {
 
 export interface Sync { symbol: boolean; interval: boolean; crosshair: boolean; drawings: boolean }
 
+/** The Signals tab's choices, saved with the layout (autosave and named layouts, so every device). */
+export interface SignalsPrefs {
+  models: string[] | null        // null = every model the plan allows
+  span: number                   // seconds back
+  grade: 'all' | 'A' | 'A+'
+  bias: boolean                  // only setups with the daily bias
+  notify: boolean                // alert on new A / A+ setups
+}
+export const DEFAULT_SIGNALS: SignalsPrefs = { models: null, span: 604800, grade: 'all', bias: true, notify: false }
+const SPAN_VALUES = [14400, 43200, 86400, 259200, 604800]
+
+function parseSignals(x: any): SignalsPrefs {
+  if (!x || typeof x !== 'object') return { ...DEFAULT_SIGNALS }
+  return {
+    models: Array.isArray(x.models) ? x.models.filter((m: unknown) => typeof m === 'string').slice(0, 40) : null,
+    span: SPAN_VALUES.includes(Number(x.span)) ? Number(x.span) : DEFAULT_SIGNALS.span,
+    grade: ['all', 'A', 'A+'].includes(x.grade) ? x.grade : 'all',
+    bias: x.bias === undefined ? DEFAULT_SIGNALS.bias : !!x.bias,
+    notify: !!x.notify,
+  }
+}
+
 export interface TerminalState {
   layout: LayoutId
   active: number
@@ -38,6 +60,7 @@ export interface TerminalState {
   sync: Sync
   watchlist: string[]
   alerts: PriceAlert[]
+  signals: SignalsPrefs
 }
 
 export const AUTOSAVE = '__autosave__'
@@ -54,13 +77,14 @@ export function defaultState(): TerminalState {
   return {
     layout: '1', active: 0, charts: seeds.map(([t, tf], i) => newChart(i, t, tf)),
     sync: { symbol: false, interval: false, crosshair: true, drawings: false }, watchlist: [], alerts: [],
+    signals: { ...DEFAULT_SIGNALS },
   }
 }
 
 /** What goes to /api/v1/layouts. Drawings come from the live charts. */
 export function serialize(s: TerminalState, drawingsOf: (id: number) => Drawing[]) {
   return {
-    v: 2, layout: s.layout, active: s.active, sync: s.sync, watchlist: s.watchlist, alerts: s.alerts,
+    v: 2, layout: s.layout, active: s.active, sync: s.sync, watchlist: s.watchlist, alerts: s.alerts, signals: s.signals,
     charts: s.charts.map(c => ({ ...c, drawings: drawingsOf(c.id) })),
   }
 }
@@ -107,6 +131,7 @@ export function parse(data: any, maxCharts: number): { state: TerminalState; dra
     active: Math.min(Math.max(0, Number(data?.active) | 0), 7),
     watchlist: Array.isArray(data?.watchlist) ? data.watchlist.filter((x: unknown) => typeof x === 'string').slice(0, 50) : [],
     alerts: Array.isArray(data?.alerts) ? data.alerts.filter((a: any) => typeof a?.ticker === 'string' && Number.isFinite(a?.price)).slice(0, 200) : [],
+    signals: parseSignals(data?.signals),
   }
   const drawings = base.charts.map((_, i) => (Array.isArray(data?.charts?.[i]?.drawings) ? data.charts[i].drawings.filter(validDrawing) : []))
   return { state, drawings }

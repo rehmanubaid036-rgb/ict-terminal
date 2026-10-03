@@ -170,6 +170,7 @@ def _org_precondition(ctx, day, t):
     return org_direction(ctx, day, t) != 0
 
 
+ORG_SYMBOLS = ("NAS100", "US30", "US500")   # rulebook M13 instruments
 M13_CONFIG = ReversalConfig("M13_opening_range_gap",
                             (clock.TimeWindow("org", "Opening Range Gap", "model_window", time(9, 30), time(11, 0)),),
                             "all", require_bias=False, raid_lead_min=0, precondition=_org_precondition)
@@ -184,7 +185,10 @@ def scan_m12(ctx: Context, **kw) -> list[Signal]:
 
 
 def scan_m13(ctx: Context, **kw) -> list[Signal]:
-    """ORG model: each day's gap-fill direction replaces the bias for that day's window."""
+    """ORG model: each day's gap-fill direction replaces the bias for that day's window.
+    Rulebook: indices with a cash session only (NAS100, US30, US500)."""
+    if ctx.symbol not in ORG_SYMBOLS:
+        return []
     cfg = replace(M13_CONFIG, **kw) if kw else M13_CONFIG
     out = []
     for day in np.unique(ctx.trading_day):

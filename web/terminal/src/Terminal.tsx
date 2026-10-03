@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { Crosshair, OverlayMode } from 'klinecharts'
 import { api, errorText, type Access, type ModelInfo, type Signal } from './api'
 import { layoutCharts, LAYOUTS, PRICESCALE, timeframeByLabel, type LayoutId, DEFAULT_SYMBOLS, ONE_MINUTE_MODELS } from './constants'
-import { AUTOSAVE, defaultState, parse, serialize, type ChartConf, type PriceAlert, type Sync, type TerminalState } from './state'
+import { AUTOSAVE, defaultState, parse, serialize, type ChartConf, type PriceAlert, type SignalsPrefs, type Sync, type TerminalState } from './state'
 import { ChartPanel } from './chart/ChartPanel'
 import { registerOverlays } from './chart/overlays'
 import { registerIndicators } from './chart/indicators'
@@ -38,6 +38,7 @@ export interface TerminalApi {
   addAlert: (a: Omit<PriceAlert, 'id' | 'created' | 'active'>) => void
   updateAlert: (id: string, patch: Partial<PriceAlert>) => void
   removeAlert: (id: string) => void
+  setSignalsPrefs: (p: Partial<SignalsPrefs>) => void
   tool: string | null
   setTool: (t: string | null) => void
   magnet: OverlayMode
@@ -323,6 +324,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
     },
     updateAlert: (id, patch) => setState(s => ({ ...s, alerts: s.alerts.map(a => (a.id === id ? { ...a, ...patch } : a)) })),
     removeAlert: id => setState(s => ({ ...s, alerts: s.alerts.filter(a => a.id !== id) })),
+    setSignalsPrefs: p => setState(s => ({ ...s, signals: { ...s.signals, ...p } })),
     tool, setTool, magnet, setMagnet, stayInDrawing, setStayInDrawing,
     showSignal: sig => {
       if (sig && sig.symbol && !active.ticker.endsWith(':' + sig.symbol)) {
