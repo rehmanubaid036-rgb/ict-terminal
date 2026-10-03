@@ -1,4 +1,4 @@
-ICT Terminal VPS check  2026-10-01 21:33 UTC  version 0.3.4  (folder C:\ICT Engine)
+ICT Terminal VPS check  2026-10-03 00:23 UTC  version 0.3.8  (folder C:\ICT Engine)
 
 -- Setup --
 [PASS] Python - 3.12.10
@@ -27,7 +27,7 @@ ICT Terminal VPS check  2026-10-01 21:33 UTC  version 0.3.4  (folder C:\ICT Engi
 [PASS] Binance crypto feed - top 20 USDT pairs
 [PASS] Default chart symbol - AXI:XAUUSD
 [PASS] API -> admin panel link (plans) - HTTP 200
-[INFO] Plans - Free, Pro Monthly, Elite Monthly, Elite Annual
+[INFO] Plans - Lite Trial, Pro Monthly, Elite Monthly, Elite Quarterly, Elite Annual
 [PASS] Chart data needs login - HTTP 401
 [PASS] EA feed rejects a wrong token - HTTP 401
 [PASS] Website (127.0.0.1:3100) - HTTP 200
@@ -36,12 +36,12 @@ ICT Terminal VPS check  2026-10-01 21:33 UTC  version 0.3.4  (folder C:\ICT Engi
 [PASS] Web terminal -> API pass-through - HTTP 200
 
 -- Engine and MT5 data --
-[PASS] Runner BTCUSD - last pass 5 min ago, last bar 2026-10-01 21:22, 152 signals, 92s
-[PASS] Runner NAS100 - last pass 9 min ago, last bar 2026-10-01 20:58, 128 signals, 69s
-[PASS] Runner US500 - last pass 8 min ago, last bar 2026-10-01 20:58, 124 signals, 62s
-[PASS] Runner XAGUSD - last pass 7 min ago, last bar 2026-10-01 20:58, 139 signals, 64s
-[PASS] Runner XAUUSD - last pass 10 min ago, last bar 2026-10-01 20:58, 140 signals, 71s
-[INFO] Signals stored - 950, newest 2026-10-01T18:24
+[PASS] Runner BTCUSD - last pass 8 min ago, last bar 2026-10-03 00:08, 146 signals, 91s
+[PASS] Runner NAS100 - last pass 3 min ago, last bar 2026-10-02 20:58, 126 signals, 67s
+[PASS] Runner US500 - last pass 2 min ago, last bar 2026-10-02 20:58, 119 signals, 65s
+[PASS] Runner XAGUSD - last pass 1 min ago, last bar 2026-10-02 20:57, 130 signals, 72s
+[PASS] Runner XAUUSD - last pass 4 min ago, last bar 2026-10-02 20:57, 132 signals, 74s
+[INFO] Signals stored - 1011, newest 2026-10-03T00:09
 [PASS] ICT MT5 data terminal path - C:\ICT Engine\mt5\terminal64.exe
 [PASS] MT5 connection - Axi-US51-Live, REAL account, connected=True
 [INFO] MT5 note - the engine only reads prices; a DEMO account is recommended for ICT's data
@@ -51,7 +51,7 @@ ICT Terminal VPS check  2026-10-01 21:33 UTC  version 0.3.4  (folder C:\ICT Engi
 [PASS] Admin panel server running
 [PASS] API server running
 [PASS] Web terminal server running
-[FAIL] Engine runner running
+[PASS] Engine runner running
 [PASS] Crypto payment watcher running
 [PASS] Cloudflare tunnel service (ICT Tunnel) - RUNNING
 [PASS] Auto-start at logon (task 'ICT Terminal')
@@ -69,7 +69,7 @@ ICT Terminal VPS check  2026-10-01 21:33 UTC  version 0.3.4  (folder C:\ICT Engi
 [INFO] ICC Tunnel service - RUNNING
 
 -- VPS --
-[PASS] Free disk - 28.2 GB of 70 GB
-[PASS] Free RAM - 1.3 GB of 4.2 GB
+[PASS] Free disk - 27.1 GB of 70 GB
+[PASS] Free RAM - 1.2 GB of 4.2 GB
 
-RESULT: 1 problem(s) found.
+RESULT: all checks passed.
