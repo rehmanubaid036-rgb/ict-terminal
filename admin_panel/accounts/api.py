@@ -223,6 +223,32 @@ def register(request):
 
 
 @method("POST")
+def guest(request):
+    """"Continue as guest" (web terminal): a login for this browser without email or password.
+    Features come from Settings > Guest features; the same browser always gets the same guest account."""
+    site = SiteSettings.load()
+    if not site.guest_login_enabled or site.guest_plan_id is None:
+        return error("Guest access is switched off. Please log in or create an account.", 403, code="guest_disabled")
+    data = body(request)
+    dev = device_info(data, request)
+    ip = client_ip(request)
+    if not dev["device_id"]:
+        return error("This browser could not be identified. Please reload the page.")
+    if rate_limited(f"guest:{ip}"):
+        return error("Too many attempts. Try again in 15 minutes.", 429)
+    user, created = services.guest_user_for(dev["device_id"])
+    if created:
+        count_failure(f"guest:{ip}")   # new guest accounts per network are capped like failed logins
+    if not user.is_active:
+        return error("Guest access for this browser was blocked. Please create an account.", 403)
+    token, raw = issue_token(user, dev)
+    access, _ = services.access_for_token(token, ip=ip, **dev)
+    services.record_login("guest", user.username, True, user=user, ip=ip,
+                          device_id=dev["device_id"], platform=dev["platform"])
+    return ok(**session_payload(token, raw, access))
+
+
+@method("POST")
 def login(request):
     data = body(request)
     email = str(data.get("email", "")).strip().lower()

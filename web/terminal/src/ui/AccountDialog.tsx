@@ -6,11 +6,14 @@ import { Modal, Empty, toast } from './common'
 type Tab = 'plan' | 'plans' | 'payments' | 'security'
 
 export function AccountDialog({ tab: first, onClose, onAccess }: { tab: string; onClose: () => void; onAccess: (a: Access) => void }) {
-  const [tab, setTab] = useState<Tab>((['plan', 'plans', 'payments', 'security'].includes(first) ? first : 'plan') as Tab)
+  const guest = !!useTerminal().access.guest   // guests have no email: plans, payments and password need an account
+  const [tab, setTab] = useState<Tab>((!guest && ['plan', 'plans', 'payments', 'security'].includes(first) ? first : 'plan') as Tab)
+  const tabs = ([['plan', 'My plan'], ['plans', 'Upgrade / renew'], ['payments', 'Payments'], ['security', 'Security']] as [Tab, string][])
+    .filter(([k]) => !guest || k === 'plan')
   return (
-    <Modal title="Your account" onClose={onClose} wide className="account-modal">
+    <Modal title={guest ? 'Guest access' : 'Your account'} onClose={onClose} wide className="account-modal">
       <div className="tabs-row">
-        {([['plan', 'My plan'], ['plans', 'Upgrade / renew'], ['payments', 'Payments'], ['security', 'Security']] as [Tab, string][]).map(([k, l]) =>
+        {tabs.map(([k, l]) =>
           <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}
       </div>
       {tab === 'plan' && <MyPlan onUpgrade={() => setTab('plans')} />}
@@ -32,13 +35,17 @@ function MyPlan({ onUpgrade }: { onUpgrade: () => void }) {
     <div className="acc-grid">
       <div className="card">
         <h4>{a.plan ?? 'No plan'}</h4>
-        {row('Email', me?.account?.email ?? a.email ?? '–')}
+        {a.guest && <p className="note">You are using ICT Terminal as a guest on this browser. Create an account to
+          keep your layouts on every device and to buy a plan.</p>}
+        {!a.guest && row('Email', me?.account?.email ?? a.email ?? '–')}
         {row('Status', a.status ?? '–')}
         {row('Expires', a.expiry ?? '–')}
         {me?.account?.joined && row('Member since', me.account.joined)}
         <div className="acc-actions">
-          <button className="btn primary" onClick={onUpgrade}>Upgrade or renew</button>
-          <button className="btn ghost" onClick={() => t.logout()}>Log out</button>
+          {a.guest
+            ? <button className="btn primary" onClick={() => t.logout()}>Create account / Log in</button>
+            : <><button className="btn primary" onClick={onUpgrade}>Upgrade or renew</button>
+              <button className="btn ghost" onClick={() => t.logout()}>Log out</button></>}
         </div>
       </div>
       <div className="card">

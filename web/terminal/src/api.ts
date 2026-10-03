@@ -90,6 +90,7 @@ export interface Access {
   status?: string
   expiry?: string
   is_vip?: boolean
+  guest?: boolean                 // "Continue as guest" session (features set in the admin panel)
   plans?: { name: string; expires: string; days_left: number | null }[]
   features: Features
 }
@@ -133,6 +134,8 @@ export interface CryptoOrder {
 export const api = {
   login: (email: string, password: string) =>
     post<{ token: string; access: Access; warning?: string }>('/api/v1/auth/login', { email, password, device_id: deviceId(), platform: 'web' }),
+  guest: () => post<{ token: string; access: Access }>('/api/v1/auth/guest', { device_id: deviceId(), platform: 'web' }),
+  appConfig: () => get<{ login?: { guest?: boolean; email_signup?: boolean; email_login?: boolean } }>('/api/v1/app-config'),
   register: (email: string, password: string, name: string) =>
     post<{ token: string; access: Access }>('/api/v1/auth/register', { email, password, name, device_id: deviceId(), platform: 'web' }),
   resetPassword: (email: string) => post<{ message: string }>('/api/v1/auth/password/reset', { email }),

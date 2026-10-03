@@ -7,6 +7,7 @@ urlpatterns = [
     path("plans", api.plans),
     path("auth/register", api.register),
     path("auth/login", api.login),
+    path("auth/guest", api.guest),
     path("auth/logout", api.logout),
     path("auth/me", api.me),
     path("auth/password/change", api.password_change),

@@ -413,6 +413,8 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 .auth-error { color: var(--down); font-size: 13px; }
 .auth-info { color: var(--accent); font-size: 13px; }
 .auth-links { display: flex; justify-content: space-between; }
+.auth-or { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; }
+.auth-or::before, .auth-or::after { content: ''; flex: 1; height: 1px; background: var(--line2); }
 .auth-note { margin: 0; color: var(--muted); font-size: 11.5px; text-align: center; }
 
 /* ---- toasts ------------------------------------------------------------------------------------- */

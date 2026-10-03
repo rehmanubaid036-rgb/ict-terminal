@@ -125,6 +125,8 @@ def access_payload(user):
     shape the dashboard and app already use; features are combined across all active plans."""
     if user is None:
         return dict(GUEST_ACCESS)
+    if is_guest_user(user):
+        return guest_payload(user)
     name = user.get_full_name() or user.email or user.username
     subs = active_subscriptions(user)
     if not subs:
@@ -157,6 +159,48 @@ def access_payload(user):
         "device_limits": device_limits_for(subs),
         "features": plan_features(subs),
     }
+
+
+def is_guest_user(user):
+    profile = getattr(user, "profile", None) if user is not None else None
+    return bool(profile and profile.is_guest)
+
+
+def guest_payload(user):
+    """Access of a "Continue as guest" account: the features of Settings > Guest features (a plan),
+    or locked when guest login is off or no plan is chosen. ``user`` is the guest's own username,
+    so saved layouts stay separate per browser."""
+    site = SiteSettings.load()
+    plan = site.guest_plan if site.guest_login_enabled else None
+    payload = dict(GUEST_ACCESS)
+    payload.update({"user": user.username, "email": "", "staff": False, "guest": True})
+    if plan is None or not plan.is_active:
+        payload.update({"plan": "Guest", "status": "guest_disabled", "expiry": "-"})
+        return payload
+    payload.update({
+        "plan": "Guest", "plans": [{"name": "Guest", "expires": "Lifetime", "days_left": None}],
+        "expiry": "Lifetime", "is_vip": False, "status": "active", "days_left": None,
+        "device_limit": None, "device_limits": None, "features": features_of_plan(plan),
+    })
+    return payload
+
+
+GUEST_PREFIX = "guest-"
+
+
+def guest_user_for(device_id):
+    """The guest account of one browser (created on its first "Continue as guest")."""
+    from django.contrib.auth.hashers import make_password
+    User = get_user_model()
+    key = hmac.new(settings.SECRET_KEY.encode(), device_id.encode(), "sha256").hexdigest()[:16]
+    username = GUEST_PREFIX + key
+    user = User.objects.filter(username=username).first()
+    if user is not None:
+        return user, False
+    with transaction.atomic():
+        user = User.objects.create(username=username, email="", first_name="Guest", password=make_password(None))
+        CustomerProfile.objects.create(user=user, is_guest=True, notes="Created by Continue as guest (web terminal).")
+    return user, True
 
 
 def idle_hours():
@@ -628,7 +672,8 @@ def login_methods():
     from . import oauth
     site = SiteSettings.load()
     return {"email_signup": site.allow_signup, "email_login": site.allow_email_login,
-            "google": oauth.configured("google"), "facebook": oauth.configured("facebook")}
+            "google": oauth.configured("google"), "facebook": oauth.configured("facebook"),
+            "guest": site.guest_login_enabled and site.guest_plan_id is not None}
 
 
 # ── Ads (Ad manager) ─────────────────────────────────────────────────────────
@@ -641,6 +686,9 @@ def ads_eligible(user):
     site = SiteSettings.load()
     if not site.ads_enabled:
         return False
+    if is_guest_user(user):
+        plan = site.guest_plan
+        return site.ads_for_free if plan is None else plan.show_ads
     subs = active_subscriptions(user) if user is not None else []
     if not subs:
         return site.ads_for_free

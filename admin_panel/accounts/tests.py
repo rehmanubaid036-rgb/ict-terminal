@@ -751,7 +751,7 @@ class SocialLoginTests(TestCase):
         self.assertEqual(r.status_code, 403)
         self.assertEqual(self.client.get("/api/v1/oauth/facebook/start", {"session": "s" * 30}).status_code, 404)
         login = self.client.get("/api/v1/app-config").json()["login"]
-        self.assertEqual(login, {"email_signup": False, "email_login": False, "google": True, "facebook": False})
+        self.assertEqual(login, {"email_signup": False, "email_login": False, "google": True, "facebook": False, "guest": True})
 
     def test_bad_links(self):
         self.assertEqual(self.client.get("/api/v1/oauth/google/start", {"session": "short"}).status_code, 400)
@@ -1321,3 +1321,83 @@ class HttpsBehindTunnelTests(TestCase):
     def test_internal_api_calls_are_not_redirected(self):
         r = self.client.get("/api/v1/plans")
         self.assertNotEqual(r.status_code, 301)
+
+
+@override_settings(INTERNAL_API_SECRET=SECRET)
+class GuestLoginTests(TestCase):
+    """"Continue as guest" in the web terminal: features from Settings > Guest features."""
+
+    def setUp(self):
+        cache.clear()
+
+    def post(self, url, data=None, **headers):
+        return self.client.post(f"/api/v1/{url}", json.dumps(data or {}), content_type="application/json",
+                                headers=headers)
+
+    def guest(self, device="browser-1"):
+        return self.post("auth/guest", {"device_id": device, "platform": "web"})
+
+    def test_migration_gives_guests_every_terminal_feature(self):
+        site = SiteSettings.load()
+        self.assertTrue(site.guest_login_enabled)
+        self.assertEqual(site.guest_plan.slug, "guest")
+        self.assertFalse(site.guest_plan.is_public)
+        r = self.guest()
+        self.assertEqual(r.status_code, 200, r.content)
+        a = r.json()["access"]
+        self.assertTrue(a["guest"])
+        self.assertEqual(a["status"], "active")
+        self.assertEqual(a["plan"], "Guest")
+        f = a["features"]
+        self.assertTrue(f["signals"] and f["ict_indicators"] and f["backtest"])
+        self.assertEqual(f["models"], "all")
+        self.assertEqual(f["max_charts"], 4)
+        self.assertEqual(f["signal_delay_minutes"], 0)
+        self.assertTrue(r.json()["token"])
+
+    def test_same_browser_keeps_its_guest_account_and_browsers_are_separate(self):
+        a1 = self.guest("browser-1").json()["access"]["user"]
+        a2 = self.guest("browser-1").json()["access"]["user"]
+        b = self.guest("browser-2").json()["access"]["user"]
+        self.assertEqual(a1, a2)
+        self.assertNotEqual(a1, b)
+        self.assertTrue(a1.startswith("guest-"))
+        self.assertEqual(User.objects.filter(username__startswith="guest-").count(), 2)
+        self.assertTrue(LoginEvent.objects.filter(method="guest", success=True).exists())
+
+    def test_admin_switches_guest_features_on_the_plan(self):
+        plan = SiteSettings.load().guest_plan
+        plan.max_charts, plan.allowed_models, plan.signal_delay_minutes, plan.can_use_backtest = 1, "M1,M17", 30, False
+        plan.save()
+        f = self.guest().json()["access"]["features"]
+        self.assertEqual((f["max_charts"], f["models"], f["signal_delay_minutes"], f["backtest"]), (1, ["M1", "M17"], 30, False))
+
+    def test_token_is_verified_for_the_api(self):
+        token = self.guest().json()["token"]
+        r = self.post("internal/verify", {"token": token, "device_id": "browser-1", "platform": "web"},
+                      **{"X-Service-Key": SECRET})
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(r.json()["access"]["status"], "active")
+        self.assertTrue(r.json()["access"]["features"]["signals"])
+
+    def test_guest_login_off(self):
+        site = SiteSettings.load()
+        site.guest_login_enabled = False
+        site.save()
+        r = self.guest()
+        self.assertEqual(r.status_code, 403)
+        self.assertEqual(r.json()["code"], "guest_disabled")
+        self.assertFalse(self.client.get("/api/v1/app-config").json()["login"]["guest"])
+
+    def test_existing_guest_is_locked_when_switched_off(self):
+        token = self.guest().json()["token"]
+        site = SiteSettings.load()
+        site.guest_login_enabled = False
+        site.save()
+        r = self.client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}", "X-Device-Id": "browser-1"})
+        a = r.json()["access"]
+        self.assertEqual(a["status"], "guest_disabled")
+        self.assertFalse(a["features"]["signals"])
+
+    def test_needs_a_device_id(self):
+        self.assertEqual(self.post("auth/guest", {}).status_code, 400)

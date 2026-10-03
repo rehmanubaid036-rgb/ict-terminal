@@ -36,7 +36,7 @@ FULL_ACCESS = {"user": "developer", "status": "active", "is_vip": True,
                             "ict_indicators": True, "max_charts": 4, "trades": True, "backtest": True}}
 # account / billing calls the apps make through this one server; answered by the admin panel
 FORWARD = {
-    ("POST", "auth/register"), ("POST", "auth/login"), ("POST", "auth/logout"), ("GET", "auth/me"),
+    ("POST", "auth/register"), ("POST", "auth/login"), ("POST", "auth/guest"), ("POST", "auth/logout"), ("GET", "auth/me"),
     ("POST", "auth/password/change"), ("POST", "auth/password/reset"), ("POST", "auth/password/reset/confirm"),
     ("GET", "plans"), ("GET", "app-config"), ("GET", "payments/methods"), ("POST", "payments/submit"),
     ("GET", "payments/mine"), ("GET", "payments/crypto/networks"), ("POST", "payments/crypto/order"),

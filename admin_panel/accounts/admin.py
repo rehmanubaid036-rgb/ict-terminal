@@ -40,6 +40,12 @@ class SiteSettingsAdmin(admin.ModelAdmin):
                            "description": "Turn email + password off to make everyone use Google / Facebook "
                                           "(customers with the same email keep their account and plan). "
                                           "Google / Facebook also need their ids in the VPS .env."}),
+        ("Login as guest (web terminal)", {"fields": ("guest_login_enabled", "guest_plan"),
+                                           "description": "Guests use the terminal without an account. They get the "
+                                                          "features of the plan chosen here (the hidden plan \"Guest\" "
+                                                          "has everything on): open Plans > Guest to switch features "
+                                                          "on or off. Guest accounts are listed under Users "
+                                                          "(username guest-...)."}),
         ("Free trial (automatic)", {"fields": ("trial_enabled", "signup_plans", "signups_per_ip_hour"),
                                     "description": "The ticked plans are given once to a new Google / Facebook "
                                                    "account in the Android or Windows app: one trial per account and "

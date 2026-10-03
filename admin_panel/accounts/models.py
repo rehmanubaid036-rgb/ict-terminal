@@ -122,6 +122,15 @@ class SiteSettings(models.Model):
         help_text="Off = nobody can log in with email + password (apps, Windows, web); only Google / Facebook.")
     allow_google_login = models.BooleanField("Google login", default=True)
     allow_facebook_login = models.BooleanField("Facebook login", default=True)
+    guest_login_enabled = models.BooleanField(
+        "Login as guest", default=True,
+        help_text="Shows \"Continue as guest\" on the web terminal's login screen. Each browser gets its own "
+                  "guest account (no email or password). Off = the button disappears and guests are locked.")
+    guest_plan = models.ForeignKey(
+        Plan, null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
+        verbose_name="Guest features",
+        help_text="Guests get the features of this plan. Edit that plan (Plans > Guest) to switch features on or off. "
+                  "Empty = guests are locked like users without a plan.")
 
     # Free trial (automatic, only for Google / Facebook accounts in the mobile or Windows app)
     trial_enabled = models.BooleanField(
@@ -209,6 +218,8 @@ class SiteSettings(models.Model):
 class CustomerProfile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile")
     phone = models.CharField("Phone / WhatsApp", max_length=30, blank=True)
+    is_guest = models.BooleanField("Guest", default=False,
+                                   help_text="Created by \"Continue as guest\" in the web terminal (no email or password).")
     country = models.CharField(max_length=60, blank=True)
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -705,7 +716,7 @@ class Payment(models.Model):
 class LoginEvent(models.Model):
     METHOD_CHOICES = [("password", "Email + password"), ("register", "Registration"),
                       ("device", "Device limit / change"), ("google", "Google"), ("facebook", "Facebook"),
-                      ("trial", "Free trial"), ("signup", "Account creation blocked")]
+                      ("trial", "Free trial"), ("signup", "Account creation blocked"), ("guest", "Continue as guest")]
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
                              related_name="login_events")

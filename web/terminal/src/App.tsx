@@ -9,7 +9,9 @@ export function App() {
   useEffect(() => setUnauthorizedHandler(signOut), [signOut])
   useEffect(() => {
     if (!getToken()) return
-    api.me().then(r => (r.access ? setAccess(r.access) : signOut())).catch(() => signOut()).finally(() => setChecking(false))
+    // a guest session ends when the admin switches guest access off
+    api.me().then(r => (r.access && !(r.access.guest && r.access.status !== 'active') ? setAccess(r.access) : signOut()))
+      .catch(() => signOut()).finally(() => setChecking(false))
   }, [signOut])
   if (checking) return <div className="boot"><div className="spinner" /><span>ICT Terminal</span></div>
   if (!access) return <AuthScreen onSignedIn={a => setAccess(a)} />
@@ -25,6 +27,17 @@ function AuthScreen({ onSignedIn }: { onSignedIn: (a: Access) => void }) {
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
   const [busy, setBusy] = useState(false)
+  const [guestOn, setGuestOn] = useState(false)
+  useEffect(() => { api.appConfig().then(c => setGuestOn(!!c.login?.guest)).catch(() => setGuestOn(false)) }, [])
+  const asGuest = async () => {
+    setBusy(true); setError(''); setInfo('')
+    try {
+      const r = await api.guest()
+      if (!r.token || !r.access) throw new Error('Guest access is not available right now.')
+      setToken(r.token)
+      onSignedIn(r.access)
+    } catch (e) { setError(errorText(e)) } finally { setBusy(false) }
+  }
   const submit = async () => {
     setBusy(true); setError(''); setInfo('')
     try {
@@ -70,6 +83,10 @@ function AuthScreen({ onSignedIn }: { onSignedIn: (a: Access) => void }) {
         {error && <div className="auth-error">{error}</div>}
         {info && <div className="auth-info">{info}</div>}
         <button className="btn primary block lg" disabled={busy}>{busy ? 'Please wait…' : mode === 'login' ? 'Log in' : mode === 'register' ? 'Create account' : mode === 'reset' ? 'Send reset code' : 'Set new password'}</button>
+        {guestOn && mode === 'login' && <>
+          <div className="auth-or"><span>or</span></div>
+          <button type="button" className="btn ghost block lg" disabled={busy} onClick={() => void asGuest()}>Continue as guest</button>
+        </>}
         <div className="auth-links">
           {mode === 'login' && <button type="button" className="link" onClick={() => { setMode('reset'); setError('') }}>Forgot password?</button>}
           {(mode === 'reset' || mode === 'code') && <button type="button" className="link" onClick={() => setMode('login')}>Back to log in</button>}
