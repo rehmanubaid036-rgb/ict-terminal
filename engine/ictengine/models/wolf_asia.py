@@ -18,8 +18,8 @@ Per trading day (New York time):
      the NDOG CE instead (ICT's example).
   The model reads the 1-minute chart only.
   5. Targets: TP1 = 1R, TP2 = 2R, TP3 = 3R ... and the final target at the previous session's
-     15:30-16:00 NY high for a buy (low for a sell); six targets at most (1R..5R + final). Half closes
-     at TP1, the other half is shared equally. When that high / low is not at least 1R away the
+     15:30-16:00 NY high for a buy (low for a sell): a target every 1R (the stop distance) all the way
+     to it. Half closes at TP1, the other half is shared equally. When that high / low is not at least 1R away the
      targets are 1R, 2R and 3R. The standard deviations of the last opposite leg (from the last
      intermediate-term swing before the extreme to the raid extreme) are drawn on the chart.
   Time first: the structure shift itself must happen after 19:00. Each direction can give one
@@ -54,7 +54,7 @@ class WolfAsiaConfig:
     exit_after_min: int = 90         # any runner is closed 22:30 NY
     gap_min_fvg: float = 10.0        # significant NDOG = 10 x min FVG (20 handles on NAS100)
     sd_targets: tuple[float, ...] = (1.0, 1.25, 1.5)   # standard deviations drawn on the chart (not targets)
-    max_targets: int = 6             # 1R, 2R ... and the final target (the ICT Bridge EA stores six)
+    max_targets: int = 30            # 1R, 2R, 3R ... up to the final target (a safety cap only)
     min_first_rr: float = 1.0        # 1 SD must pay at least the risk
     max_fvg_delay: int = 10
     timeframe: str = "1m"            # a 1-minute chart model
@@ -166,7 +166,8 @@ def _signal(ctx: Context, s, gap: Ndog | None, initial, bias, t18: pd.Timestamp,
     pm = _pm_range(ctx, t18) if cfg.pm_target else None
     pm_price = None if pm is None else (pm[0] if d == 1 else pm[1])
     # TP1 = 1R, TP2 = 2R, TP3 = 3R ... and the final target at the previous session's 15:30-16:00 high
-    # (buy) / low (sell); at most cfg.max_targets in all. Without that level 1R or more away: 1R, 2R, 3R.
+    # (buy) / low (sell): a target every 1R (the stop distance) all the way to it. Without that level
+    # 1R or more away: 1R, 2R, 3R.
     final_ok = pm_price is not None and d * (pm_price - entry) >= cfg.min_first_rr * risk
     picked = []
     k = 1

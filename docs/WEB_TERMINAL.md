@@ -25,7 +25,7 @@ It covers what was built, how to build and test it, and what is still open.
    only (NDOG + CE, initial BSL/SSL, SD levels, wick CE). The engine runner and API pick it up after an ICT
    restart. As in the PDF only the initial BSL/SSL and session levels count as raided liquidity
    (`raid_timeframes=()`). Targets (user's rule): TP1 = 1R, TP2 = 2R, TP3 = 3R ... and the final target at the
-   previous session's 15:30-16:00 NY high (buy) / low (sell), six at most (1R..5R + final); half closes at
+   previous session's 15:30-16:00 NY high (buy) / low (sell), a target every 1R all the way to it; half closes at
    TP1, the rest is shared equally; 1R / 2R / 3R when that level is not 1R away. SD levels of the opposite
    leg are drawn on the chart only. Checked on Dukascopy NAS100 1m, 15 Jul - 29 Aug 2024: 13 filled trades,
    53.8% wins, +3.1R, PF 1.53, max drawdown 2.3R (small sample). Against the PDF journal (18-26 Aug) it takes

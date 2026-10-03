@@ -399,6 +399,12 @@ function wolfLevels(s: Signal, groupId: string, full: boolean): OverlayCreate[] 
   return out
 }
 
+/** "TP3 · 3R", "TP8 · 15:30–16:00 high" (what the model says the target is), else "TP3". */
+function targetLabel(s: Signal, i: number): string {
+  const from = String(((s.notes ?? {}).targets_from as string[] | undefined)?.[i] ?? '')
+  return from ? `TP${i + 1} · ${from.replace('15:30-16:00', '15:30–16:00')}` : `TP${i + 1}`
+}
+
 /** Model setups as boxes on the chart (entry, stop, last target). */
 export function signalBoxes(signals: Signal[], groupId: string): OverlayCreate[] {
   return signals.flatMap(s => {
@@ -409,7 +415,7 @@ export function signalBoxes(signals: Signal[], groupId: string): OverlayCreate[]
     // every target as a labelled line across the box (TP1, TP2 ...), selected or not
     const right = Math.max(end, t + 60000)
     const tps: OverlayCreate[] = s.targets.map(([v], i) => ({ name: 'ictLine', groupId, lock: true,
-      points: [{ timestamp: t, value: v }, { timestamp: right, value: v }], extendData: { color: '#26a69a', label: `TP${i + 1}`, dashed: true } }))
+      points: [{ timestamp: t, value: v }, { timestamp: right, value: v }], extendData: { color: '#26a69a', label: targetLabel(s, i), dashed: true } }))
     return [...(s.model_id === 'M17' ? wolfLevels(s, groupId, false) : []), boxed, ...tps]
   })
 }
@@ -420,9 +426,6 @@ export function signalLines(s: Signal, groupId: string, digitsCount: number): Ov
   const at = (v: number, color: string, label: string): OverlayCreate =>
     ({ name: 'ictLine', groupId, lock: true, points: [{ timestamp: t, value: v }, { timestamp: end, value: v }], extendData: { color, label, width: 2, boxed: true } })
   return [at(s.entry, '#2962ff', `${modelTag(s.model_id)} ${s.direction > 0 ? 'BUY' : 'SELL'} ${s.entry.toFixed(digitsCount)}`), at(s.stop, '#ef5350', `SL ${s.stop.toFixed(digitsCount)}`),
-    ...s.targets.map(([v, w], i) => {
-      const from = String(((s.notes ?? {}).targets_from as string[] | undefined)?.[i] ?? '')
-      return at(v, '#26a69a', `TP${i + 1}${from.startsWith('15:30') ? ' · ' + from.replace('-', '–') : ''} ${v.toFixed(digitsCount)} (${Math.round(w * 100)}%)`)
-    }),
+    ...s.targets.map(([v, w], i) => at(v, '#26a69a', `${targetLabel(s, i)}  ${v.toFixed(digitsCount)} (${Math.round(w * 100)}%)`)),
     ...(s.model_id === 'M17' ? wolfLevels(s, groupId, true) : [])]
 }
