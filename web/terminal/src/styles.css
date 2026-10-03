@@ -356,8 +356,10 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 .tabs-row button { flex: 1; padding: 7px 8px; border-radius: 7px; color: var(--muted); font-weight: 500; white-space: nowrap; }
 .tabs-row button.on { background: var(--line2); color: var(--text); }
 .tabs-row.small button { font-size: 12px; }
-.acc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.card { padding: 14px; border-radius: 10px; background: var(--panel2); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; }
+.acc-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.table-scroll { max-width: 100%; overflow-x: auto; }
+.account-modal .modal-body > * { flex-shrink: 0; }
+.card { min-width: 0; padding: 14px; border-radius: 10px; background: var(--panel2); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; }
 .card h4 { margin: 0 0 4px; font-size: 14px; }
 .card h4 small { color: var(--muted); font-weight: 400; }
 .card.span2 { grid-column: span 2; }
@@ -450,7 +452,7 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
   .check-grid { grid-template-columns: 1fr; }
   .modal-back { padding: 0; place-items: end stretch; }
   .modal, .modal.wide { width: 100%; max-height: 92dvh; border-radius: 16px 16px 0 0; }
-  .acc-grid { grid-template-columns: 1fr; }
+  .acc-grid { grid-template-columns: minmax(0, 1fr); }
   .tabs-row { overflow-x: auto; scrollbar-width: none; }
   .tabs-row::-webkit-scrollbar { display: none; }
   .tabs-row button { flex: none; }

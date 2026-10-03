@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Overlay } from 'klinecharts'
 import { useTerminal } from '../Terminal'
 import { api, errorText, type Quote, type SearchItem, type Signal } from '../api'
-import { ICT_LAYERS, toolDef, INDICATORS } from '../constants'
+import { ICT_LAYERS, toolDef, INDICATORS, modelTag } from '../constants'
 import { Icon } from '../ui/icons'
 import { Empty, Switch, fmtPrice, nyTime, toast, useIsPhone } from '../ui/common'
 import { DRAWINGS, getChart, getEntry, notify, onRegistryChange, snapshot } from '../chart/registry'
@@ -151,8 +151,8 @@ function Signals() {
       const list = r.signals.reverse()
       if (quiet && notify_) {
         for (const s of list) if (!seen.current.has(s.id) && (s.grade === 'A+' || s.grade === 'A')) {
-          toast(`New ${s.grade} setup: ${s.model_id} ${s.direction > 0 ? 'LONG' : 'SHORT'} ${t.active.ticker.split(':')[1]} @ ${s.entry.toFixed(2)}`, 'alert')
-          try { if (Notification.permission === 'granted') new Notification('ICT setup', { body: `${s.model_id} ${s.grade} ${s.direction > 0 ? 'LONG' : 'SHORT'} @ ${s.entry.toFixed(2)}` }) } catch { /* ignore */ }
+          toast(`New ${s.grade} setup: ${modelTag(s.model_id)} ${s.direction > 0 ? 'LONG' : 'SHORT'} ${t.active.ticker.split(':')[1]} @ ${s.entry.toFixed(2)}`, 'alert')
+          try { if (Notification.permission === 'granted') new Notification('ICT setup', { body: `${modelTag(s.model_id)} ${s.grade} ${s.direction > 0 ? 'LONG' : 'SHORT'} @ ${s.entry.toFixed(2)}` }) } catch { /* ignore */ }
         }
       }
       list.forEach(s => seen.current.add(s.id))
@@ -189,7 +189,7 @@ function Signals() {
         {rows === null ? <Empty>Pick models and scan.</Empty> : !shown.length ? <Empty>No setups in this period.</Empty> :
           shown.map(s => (
             <button key={s.id} className={`sig ${s.direction > 0 ? 'long' : 'short'}${sel === s.id ? ' sel' : ''}`} onClick={() => { setSel(s.id); t.showSignal(s) }}>
-              <div className="sig-top"><b>{s.model_id}</b><span className="dir">{s.direction > 0 ? 'LONG' : 'SHORT'}</span><span className={`grade g${s.grade.replace('+', 'p')}`}>{s.grade}</span></div>
+              <div className="sig-top"><b>{modelTag(s.model_id)}</b><span className="dir">{s.direction > 0 ? 'LONG' : 'SHORT'}</span><span className={`grade g${s.grade.replace('+', 'p')}`}>{s.grade}</span></div>
               <div className="sig-mid">{nyTime(s.created_time)} NY · {s.window ?? ''}</div>
               <div className="sig-px"><span>E <b>{s.entry.toFixed(d)}</b></span><span>SL {s.stop.toFixed(d)}</span><span>TP {s.targets.map(x => x[0].toFixed(d)).join(' / ')}</span></div>
             </button>

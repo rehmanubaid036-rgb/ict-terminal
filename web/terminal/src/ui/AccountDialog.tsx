@@ -54,15 +54,15 @@ function MyPlan({ onUpgrade }: { onUpgrade: () => void }) {
       {me?.subscriptions && me.subscriptions.length > 0 && (
         <div className="card span2">
           <h4>Subscriptions</h4>
-          <table className="j-table"><thead><tr><th>Plan</th><th>State</th><th>Starts</th><th>Expires</th><th>Days left</th></tr></thead>
-            <tbody>{me.subscriptions.map((s, i) => <tr key={i}><td>{s.plan}</td><td>{s.state}</td><td>{s.starts}</td><td>{s.expires}</td><td>{s.days_left ?? '–'}</td></tr>)}</tbody></table>
+          <div className="table-scroll"><table className="j-table"><thead><tr><th>Plan</th><th>State</th><th>Starts</th><th>Expires</th><th>Days left</th></tr></thead>
+            <tbody>{me.subscriptions.map((s, i) => <tr key={i}><td>{s.plan}</td><td>{s.state}</td><td>{s.starts}</td><td>{s.expires}</td><td>{s.days_left ?? '–'}</td></tr>)}</tbody></table></div>
         </div>
       )}
       {me?.devices && me.devices.list.length > 0 && (
         <div className="card span2">
           <h4>Devices <small>({me.devices.used} of {me.devices.limit || '∞'} used)</small></h4>
-          <table className="j-table"><thead><tr><th>Device</th><th>Type</th><th>Last seen</th></tr></thead>
-            <tbody>{me.devices.list.map((d, i) => <tr key={i}><td>{d.name}{d.this_device ? ' (this one)' : ''}</td><td>{d.type_label}</td><td>{new Date(d.last_seen).toLocaleString()}</td></tr>)}</tbody></table>
+          <div className="table-scroll"><table className="j-table"><thead><tr><th>Device</th><th>Type</th><th>Last seen</th></tr></thead>
+            <tbody>{me.devices.list.map((d, i) => <tr key={i}><td>{d.name}{d.this_device ? ' (this one)' : ''}</td><td>{d.type_label}</td><td>{new Date(d.last_seen).toLocaleString()}</td></tr>)}</tbody></table></div>
         </div>
       )}
     </div>
@@ -221,9 +221,9 @@ function Payments() {
   if (!rows.length) return <Empty>No payments yet.</Empty>
   return (
     <div className="table-wrap">
-      <table className="j-table"><thead><tr><th>#</th><th>Date</th><th>Plan</th><th>Amount</th><th>Paid to</th><th>Reference</th><th>Status</th></tr></thead>
+      <div className="table-scroll"><table className="j-table"><thead><tr><th>#</th><th>Date</th><th>Plan</th><th>Amount</th><th>Paid to</th><th>Reference</th><th>Status</th></tr></thead>
         <tbody>{rows.map(p => <tr key={p.id}><td>{p.id}</td><td>{new Date(p.created_at).toLocaleDateString()}</td><td>{p.plan}</td><td>{p.amount} {p.currency}</td><td>{p.paid_to}</td><td>{p.reference}</td>
-          <td className={p.status === 'paid' ? 'up' : p.status === 'failed' ? 'down' : ''}>{p.status_label}</td></tr>)}</tbody></table>
+          <td className={p.status === 'paid' ? 'up' : p.status === 'failed' ? 'down' : ''}>{p.status_label}</td></tr>)}</tbody></table></div>
     </div>
   )
 }

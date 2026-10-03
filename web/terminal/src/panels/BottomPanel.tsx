@@ -3,6 +3,7 @@ import type { KLineData } from 'klinecharts'
 import { useTerminal } from '../Terminal'
 import { api, errorText, type Signal } from '../api'
 import { toBars } from '../chart/feed'
+import { modelTag } from '../constants'
 import { Empty, nyTime } from '../ui/common'
 import { Icon } from '../ui/icons'
 import { outcome, RESULT_LABEL, type Outcome } from './outcome'
@@ -81,7 +82,7 @@ export function JournalView() {
             <tbody>
               {j.rows.map(({ s, o }) => (
                 <tr key={s.id} onClick={() => t.showSignal(s)}>
-                  <td>{nyTime(s.created_time)}</td><td><b>{s.model_id}</b></td>
+                  <td>{nyTime(s.created_time)}</td><td><b>{modelTag(s.model_id)}</b></td>
                   <td className={s.direction > 0 ? 'up' : 'down'}>{s.direction > 0 ? 'Long' : 'Short'}</td>
                   <td><span className={`grade g${s.grade.replace('+', 'p')}`}>{s.grade}</span></td>
                   <td>{s.entry.toFixed(d)}</td><td>{s.stop.toFixed(d)}</td><td>{s.targets.map(x => x[0].toFixed(d)).join(' / ')}</td>
@@ -130,7 +131,7 @@ export function StatsView() {
           <table className="j-table">
             <thead><tr><th>Model</th><th>Setups</th><th>Triggered</th><th>Closed</th><th>Win %</th><th>Avg R</th><th>Total R</th></tr></thead>
             <tbody>{stats.models.map(r => (
-              <tr key={r.m}><td><b>{r.m}</b></td><td>{r.setups}</td><td>{r.triggered}</td><td>{r.closed}</td><td>{r.win.toFixed(0)}%</td>
+              <tr key={r.m}><td><b>{modelTag(r.m)}</b></td><td>{r.setups}</td><td>{r.triggered}</td><td>{r.closed}</td><td>{r.win.toFixed(0)}%</td>
                 <td className={r.avg >= 0 ? 'up' : 'down'}>{r.avg.toFixed(2)}</td><td className={r.total >= 0 ? 'up' : 'down'}>{r.total.toFixed(1)}</td></tr>
             ))}</tbody>
           </table>

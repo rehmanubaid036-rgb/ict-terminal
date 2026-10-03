@@ -192,3 +192,7 @@ export const DEFAULT_SYMBOLS = ['AXI:XAUUSD', 'AXI:NAS100', 'AXI:US500', 'AXI:BT
 export const PRICESCALE: Record<string, number> = {
   'AXI:XAUUSD': 100, 'AXI:XAGUSD': 1000, 'AXI:NAS100': 10, 'AXI:US500': 10, 'AXI:BTCUSD': 100, 'AXI:EURUSD': 100000, 'AXI:GBPUSD': 100000,
 }
+
+// short label of a model on the chart and in lists (models credited to their author carry the name)
+const MODEL_TAGS: Record<string, string> = { M17: 'M17 Wolf' }
+export const modelTag = (id: string) => MODEL_TAGS[id] ?? id

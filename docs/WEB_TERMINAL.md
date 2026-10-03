@@ -16,7 +16,15 @@ It covers what was built, how to build and test it, and what is still open.
 3. **API** (`api/ictapi/main.py`): the customer's crypto order status / cancel / txid calls are now
    forwarded to the admin panel (`FORWARD_PATTERNS`). Needs an API restart to take effect.
 
-Nothing in the engine, admin panel, EA or database changed.
+4. **New model M17 · Wolf Asia Session (NDOG)** (`engine/ictengine/models/wolf_asia.py`, registered in
+   `models/registry.py`), from the user's PDF "Asia Session Model for Indices NQ/ES" (TheWolfTrades notes).
+   NAS100, US500, EURUSD, GBPUSD only. NDOG (17:00 close → 18:00 open) and its CE, initial BSL/SSL of
+   18:00–19:00, trades 19:00–21:00 NY: raid → MSS/displacement → FVG CE entry, stop beyond the raid (or the
+   NDOG CE), targets 1 / 1.25 / 1.5 standard deviations of the opposite leg (50/25/25). Plans with
+   `allowed_models = all` get it automatically; the terminal labels it "M17 Wolf". The engine runner and API
+   pick it up after an ICT restart.
+
+The admin panel, EA and database did not change.
 
 ## Features (plan section 5)
 

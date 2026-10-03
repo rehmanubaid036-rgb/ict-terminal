@@ -2,6 +2,7 @@
 // model signals, and the drawing tools that klinecharts does not ship.
 import { registerOverlay, type OverlayCreate, type OverlayFigure, type Coordinate, type Chart } from 'klinecharts'
 import type { OverlayObject, Signal } from '../api'
+import { modelTag } from '../constants'
 
 const FONT = 'Inter, -apple-system, "Segoe UI", Roboto, sans-serif'
 const text = (x: number, y: number, t: string, color: string, o: Record<string, unknown> = {}, size = 10): OverlayFigure => ({
@@ -371,7 +372,7 @@ export function signalBoxes(signals: Signal[], groupId: string): OverlayCreate[]
   return signals.map(s => {
     const t = new Date(s.created_time).getTime(), end = new Date(s.expiry).getTime()
     const last = s.targets[s.targets.length - 1][0]
-    return { name: 'signalBox', groupId, lock: true, extendData: { label: `${s.model_id} ${s.direction > 0 ? 'LONG' : 'SHORT'} ${s.grade}`, long: s.direction > 0 },
+    return { name: 'signalBox', groupId, lock: true, extendData: { label: `${modelTag(s.model_id)} ${s.direction > 0 ? 'LONG' : 'SHORT'} ${s.grade}`, long: s.direction > 0 },
       points: [{ timestamp: t, value: s.entry }, { timestamp: Math.max(end, t + 60000), value: s.stop }, { timestamp: t, value: last }] }
   })
 }
@@ -381,6 +382,6 @@ export function signalLines(s: Signal, groupId: string, digitsCount: number): Ov
   const t = new Date(s.created_time).getTime(), end = new Date(s.exit_by ?? s.expiry).getTime() + 2 * 3600_000
   const at = (v: number, color: string, label: string): OverlayCreate =>
     ({ name: 'ictLine', groupId, lock: true, points: [{ timestamp: t, value: v }, { timestamp: end, value: v }], extendData: { color, label, width: 2, boxed: true } })
-  return [at(s.entry, '#2962ff', `${s.model_id} ${s.direction > 0 ? 'BUY' : 'SELL'} ${s.entry.toFixed(digitsCount)}`), at(s.stop, '#ef5350', `SL ${s.stop.toFixed(digitsCount)}`),
+  return [at(s.entry, '#2962ff', `${modelTag(s.model_id)} ${s.direction > 0 ? 'BUY' : 'SELL'} ${s.entry.toFixed(digitsCount)}`), at(s.stop, '#ef5350', `SL ${s.stop.toFixed(digitsCount)}`),
     ...s.targets.map(([v, w], i) => at(v, '#26a69a', `TP${i + 1} ${v.toFixed(digitsCount)} (${Math.round(w * 100)}%)`))]
 }
