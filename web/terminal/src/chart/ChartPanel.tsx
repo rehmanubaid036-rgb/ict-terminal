@@ -189,8 +189,17 @@ export function ChartPanel(p: ChartPanelProps) {
       chart.scrollToTimestamp(t)
       chart.scrollByDistance(-(chart.getSize()?.width ?? 0) * 0.35)
     }
-    if (chart.getDataList().length && chart.getDataList()[0].timestamp <= t) go()
-    else window.setTimeout(go, 1200)
+    // the signal may be older than the loaded bars (or the symbol / interval is still switching):
+    // scroll left to make the chart load older bars until it is there, then centre it
+    let tries = 0, timer = 0
+    const seek = () => {
+      const list = chart.getDataList()
+      if (list.length && list[0].timestamp <= t) { go(); return }
+      if (list.length) chart.scrollToDataIndex(0)
+      if (++tries < 25) timer = window.setTimeout(seek, 600)
+    }
+    seek()
+    return () => window.clearTimeout(timer)
   }, [p.signal, digits])
 
   // ---- drawing --------------------------------------------------------------------------------

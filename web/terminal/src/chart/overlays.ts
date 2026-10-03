@@ -381,6 +381,11 @@ function wolfLevels(s: Signal, groupId: string, full: boolean): OverlayCreate[] 
     out.push({ name: 'ictBox', groupId, lock: true, points: [{ timestamp: t0, value: g.high }, { timestamp: t1, value: g.low }, { timestamp: t0, value: g.ce }],
       extendData: { color: 'rgba(250,204,21,0.10)', border: '#facc15', label: g.significant ? 'NDOG' : 'NDOG (small)', midLabel: 'CE' } })
   }
+  const pm = n.pm_range
+  if (pm) {  // previous session's 15:30-16:00 high / low: the model's final target
+    const from = new Date(pm.start).getTime()
+    out.push(lineAt(pm.high, '#f59e0b', '15:30–16:00 high', true, from), lineAt(pm.low, '#f59e0b', '15:30–16:00 low', true, from))
+  }
   if (n.initial_bsl != null) out.push(lineAt(n.initial_bsl, '#2962ff', 'Initial BSL'))
   if (n.initial_ssl != null) out.push(lineAt(n.initial_ssl, '#ab47bc', 'Initial SSL'))
   if (full) {

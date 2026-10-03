@@ -17,14 +17,17 @@ Per trading day (New York time):
      when a significant NDOG's CE sits between that wick CE and the entry, the stop goes just beyond
      the NDOG CE instead (ICT's example).
   The model reads the 1-minute chart only.
-  5. Targets: standard deviations of the last opposite leg (from the last intermediate-term swing
-     before the extreme to the raid extreme): 1 SD (close half), 1.25 SD and 1.5 SD.
+  5. Targets: the previous session's 15:30-16:00 NY high for a buy (low for a sell), with the standard
+     deviations of the last opposite leg (from the last intermediate-term swing before the extreme to
+     the raid extreme) on the way as partials (1 SD closes half). When that high / low is already
+     behind the entry or nearer than 1R, the targets are 1, 1.25 and 1.5 SD.
   Time first: the structure shift itself must happen after 19:00. Each direction can give one
   setup a day (the journal's 18-08 had a short, then a long).
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+from datetime import time
 
 import numpy as np
 import pandas as pd
@@ -53,8 +56,9 @@ class WolfAsiaConfig:
     min_first_rr: float = 1.0        # 1 SD must pay at least the risk
     max_fvg_delay: int = 10
     timeframe: str = "1m"            # a 1-minute chart model
-    raid_timeframes: tuple[str, ...] = ("15m",)  # swing liquidity that counts for the raid (1m / 5m swings were noise
-                                                  # on NAS100 Jul-Aug 2024; 15m matched the journal best)
+    raid_timeframes: tuple[str, ...] = ()  # PDF: only the initial BSL / SSL and session levels are raided;
+                                            # ("15m",) etc. adds swing liquidity of those timeframes
+    pm_target: bool = True           # previous session's 15:30-16:00 high (buy) / low (sell) is the target
     stop: str = "wick_ce"            # 'wick_ce' (journal) | 'extreme' (beyond the raid extreme + buffer)
     stop_buffer_mult: float = 1.0
     symbols: tuple[str, ...] = SYMBOLS
@@ -156,10 +160,18 @@ def _signal(ctx: Context, s, gap: Ndog | None, initial, bias, t18: pd.Timestamp,
     leg = d * (leg_from - ext)
     if leg <= 0:
         return None
-    prices = [leg_from + d * k * leg for k in cfg.sd_targets]
-    prices = [p for p in prices if d * (p - entry) > 0]
-    if len(prices) < len(cfg.sd_targets) or d * (prices[0] - entry) < cfg.min_first_rr * risk:
-        return None
+    sd_prices = [leg_from + d * k * leg for k in cfg.sd_targets]
+    pm = _pm_range(ctx, t18) if cfg.pm_target else None
+    pm_price = None if pm is None else (pm[0] if d == 1 else pm[1])
+    if pm_price is not None and d * (pm_price - entry) >= cfg.min_first_rr * risk:
+        # partials at the SD levels before it, the 15:30-16:00 high / low last
+        before = [(p, f"{k} SD") for k, p in zip(cfg.sd_targets, sd_prices) if 0 < d * (p - entry) and d * (pm_price - p) > 0]
+        picked = before[:2] + [(pm_price, "15:30-16:00 " + ("high" if d == 1 else "low"))]
+    else:
+        picked = [(p, f"{k} SD") for k, p in zip(cfg.sd_targets, sd_prices) if d * (p - entry) > 0]
+        if len(picked) < len(cfg.sd_targets) or d * (picked[0][0] - entry) < cfg.min_first_rr * risk:
+            return None
+    prices = [p for p, _ in picked]
     bar = ctx.base.iloc[ready]
     if (d == 1 and bar["high"] >= prices[0]) or (d == -1 and bar["low"] <= prices[0]):
         return None  # 1 SD already traded before the order could be placed
@@ -193,10 +205,25 @@ def _signal(ctx: Context, s, gap: Ndog | None, initial, bias, t18: pd.Timestamp,
                "ndog_time": str(t18), "window_end": str(w1),
                "initial_bsl": initial[0].price if initial else None,
                "initial_ssl": initial[1].price if initial else None,
-               "sd_leg": (leg_from, ext), "sd_levels": dict(zip([str(k) for k in cfg.sd_targets], prices)),
+               "sd_leg": (leg_from, ext), "sd_levels": dict(zip([str(k) for k in cfg.sd_targets], sd_prices)),
+               "pm_range": None if pm is None else {"high": pm[0], "low": pm[1], "start": str(pm[2]), "end": str(pm[3])},
                "bias_score": bias.score, "bias_components": bias.components, "draw": bias.draw,
-               "targets_from": [f"{k} SD" for k in cfg.sd_targets]},
+               "targets_from": [n for _, n in picked]},
     )
+
+
+def _pm_range(ctx: Context, t18: pd.Timestamp):
+    """High, low, start and end of 15:30-16:00 NY of the session before this 18:00 open (Friday's for a
+    Sunday open), or None without data."""
+    last = ctx.pos_of(t18 - pd.Timedelta(hours=1)) - 1          # last bar before the 17:00 close
+    if last < 0:
+        return None
+    day = ctx.base.index[last].tz_convert(clock.NY).date()
+    a, b = clock.ny_datetime(day, time(15, 30)), clock.ny_datetime(day, time(16, 0))
+    seg = ctx.base.iloc[ctx.pos_of(a):ctx.pos_of(b)]
+    if not len(seg):
+        return None
+    return float(seg["high"].max()), float(seg["low"].min()), a, b
 
 
 def _leg_start(ctx: Context, d: int, extreme_pos: int, ready: int, fallback: float, max_bars: int = 240) -> float:

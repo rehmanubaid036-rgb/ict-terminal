@@ -23,11 +23,12 @@ It covers what was built, how to build and test it, and what is still open.
    NDOG CE), targets 1 / 1.25 / 1.5 standard deviations of the opposite leg (50/25/25). Plans with
    `allowed_models = all` get it automatically; the terminal labels it "M17 Wolf" and draws it on 1m charts
    only (NDOG + CE, initial BSL/SSL, SD levels, wick CE). The engine runner and API pick it up after an ICT
-   restart. Checked on Dukascopy NAS100 1m (15 Jul - 29 Aug 2024): with the defaults (wick CE stop, raids of
-   15m swings / initial / session levels, structure shift after 19:00, one setup per direction per day)
-   21 filled trades, 28.6% wins, +2.5R, PF 1.15 - a small sample. Against the PDF journal (18-26 Aug) it
-   takes the 18-08 short, no trade on 19-08 and the 20-08 long; the other journal longs it does not take
-   (the journal's entries are partly discretionary).
+   restart. As in the PDF only the initial BSL/SSL and session levels count as raided liquidity
+   (`raid_timeframes=()`); the final target is the previous session's 15:30-16:00 NY high (buy) / low
+   (sell), with 1 / 1.25 SD partials before it (SD targets only when that level is behind the entry or
+   nearer than 1R). Checked on Dukascopy NAS100 1m, 15 Jul - 29 Aug 2024: 18 filled trades, 38.9% wins,
+   +0.8R, PF 1.07 (small sample). Against the PDF journal (18-26 Aug) it takes the 18-08 short, no trade
+   on 19-08, the 20-08 long and a late 25-08 long; the journal is partly discretionary.
 
 The admin panel, EA and database did not change.
 
