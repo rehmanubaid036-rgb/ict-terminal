@@ -140,15 +140,33 @@ LIVE_TTL = 2.0                   # seconds a running month is reused before aski
 _live: dict[tuple, tuple[float, pd.DataFrame]] = {}   # (broker, symbol, year, month) -> (fetched at, bars)
 
 
-def server_minus_ny(mt5, symbol: str, default: int = 7) -> int:
-    """Hours the broker's server clock is ahead of New York, read from a live tick. Falls back to
-    ``default`` (NY+7, the usual "New York close" server) when the market is closed."""
-    tick = mt5.symbol_info_tick(symbol) if hasattr(mt5, "symbol_info_tick") else None
-    if tick is None or not getattr(tick, "time", 0):
+def server_minus_ny(mt5, symbols, default: int = 7) -> int:
+    """Hours the broker's server clock is ahead of New York, read from the freshest live tick of
+    ``symbols`` (a name or a list; put a 24/7 market such as BTCUSD in it so weekends work).
+    Falls back to ``default`` (NY+7, the usual "New York close" server) when no tick is fresh.
+
+    A closed market's last tick is hours old; its age can land close to a whole number of hours and
+    look like a clock offset (a restart at 04:00 UTC on a Saturday read EURUSD's Friday tick as
+    "offset 0" and moved every CFD candle 7 hours). So the freshest tick of several markets is used
+    and it must sit within 2 minutes of a whole hour."""
+    if isinstance(symbols, str):
+        symbols = [symbols]
+    if not hasattr(mt5, "symbol_info_tick"):
         return default
-    diff = (tick.time - time.time()) / 3600
+    utc = pd.Timestamp.now(tz="UTC")
+    weekend = utc.weekday() == 5 or (utc.weekday() == 4 and utc.hour >= 21) or (utc.weekday() == 6 and utc.hour < 22)
+    if weekend:   # FX / CFD ticks are a day old at weekends: only a 24/7 market can tell the clock
+        symbols = [n for n in symbols if n and n.upper().startswith(("BTC", "ETH"))]
+    ticks = []
+    for name in symbols:
+        tick = mt5.symbol_info_tick(name) if name else None
+        if tick is not None and getattr(tick, "time", 0):
+            ticks.append(int(tick.time))
+    if not ticks:
+        return default
+    diff = (max(ticks) - time.time()) / 3600       # server-clock seconds read as UTC, minus UTC now
     hours = round(diff)
-    if abs(diff - hours) > 0.1 or not -12 <= hours <= 14:   # stale tick (closed market)
+    if abs(diff - hours) > 2 / 60 or not -12 <= hours <= 14:   # no fresh tick (closed markets)
         return default
     ny = pd.Timestamp.now(tz=NY).utcoffset().total_seconds() / 3600
     return int(hours - ny)
@@ -190,9 +208,10 @@ def discover(terminal: str) -> dict:
         # that account cannot load): use the first name that really returns candles
         picked = {name: _first_with_data(mt5, items) for name, items in ranked.items()}
         by_name = {s.name: s for s in all_syms}
-        liquid = next((picked[n][0] for n in ("EURUSD", "XAUUSD", "GBPUSD", "BTCUSD") if n in picked), None)
-        if liquid:
-            mt5.symbol_select(liquid, True)
+        # the clock offset from the freshest of several liquid markets (BTCUSD keeps ticking at weekends)
+        liquid = [picked[n][0] for n in ("BTCUSD", "EURUSD", "XAUUSD", "GBPUSD") if n in picked]
+        for name in liquid:
+            mt5.symbol_select(name, True)
         offset = server_minus_ny(mt5, liquid) if liquid else 7
         symbols = {name: {"broker": bname, "kind": kind, "digits": int(getattr(by_name[bname], "digits", 2)),
                           "description": str(getattr(by_name[bname], "description", "") or name)}
