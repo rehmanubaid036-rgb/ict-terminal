@@ -221,7 +221,9 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
   useEffect(() => {
     if (!ready) return
     const check = async () => {
-      const live = stateRef.current.alerts.filter(a => a.active)
+      // a plan with an alert limit only watches that many (alerts made before a downgrade stay listed)
+      const cap = (f.alerts_limit ?? 0) > 0 ? f.alerts_limit! : Infinity
+      const live = stateRef.current.alerts.filter(a => a.active).slice(0, cap)
       if (!live.length) return
       const tickers = [...new Set(live.map(a => a.ticker))]
       try {

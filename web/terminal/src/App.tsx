@@ -30,8 +30,11 @@ function AuthScreen({ onSignedIn }: { onSignedIn: (a: Access) => void }) {
     try {
       if (mode === 'login' || mode === 'register') {
         const r = mode === 'login' ? await api.login(email.trim(), password) : await api.register(email.trim(), password, name.trim())
+        if (!r.token) throw new Error((r as { detail?: string }).detail ?? 'No session returned. Please try again.')
         setToken(r.token)
-        onSignedIn(r.access)
+        const access = r.access ?? (await api.me()).access
+        if (!access) { setToken(''); throw new Error('Could not load your account.') }
+        onSignedIn(access)
       } else if (mode === 'reset') {
         const r = await api.resetPassword(email.trim())
         setInfo(r.message); setMode('code')

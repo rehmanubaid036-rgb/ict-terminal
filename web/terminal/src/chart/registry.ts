@@ -124,3 +124,9 @@ export function setAll(id: number, patch: { lock?: boolean; visible?: boolean })
 }
 
 export function allIds() { return [...entries.keys()] }
+
+// read-only count of drawings on all charts (used by the browser tests)
+;(window as unknown as { __ictCount: () => number }).__ictCount = () =>
+  [...entries.values()].reduce((n, e) => n + e.chart.getOverlays({ groupId: DRAWINGS }).length, 0)
+;(window as unknown as { __ictOverlays: () => unknown[] }).__ictOverlays = () =>
+  [...entries.values()].flatMap(e => e.chart.getOverlays({ groupId: DRAWINGS }).map(o => ({ name: o.name, step: o.currentStep, total: o.totalStep, pts: o.points.length })))

@@ -260,8 +260,11 @@ function Alerts() {
     setNote('')
   }
   const list = t.state.alerts
+  const limit = t.access.features.alerts_limit ?? 0
+  const over = limit > 0 && list.filter(a => a.active).length > limit
   return (
     <div className="alerts">
+      {limit > 0 && <div className={over ? 'err-line' : 'note'}>Your plan allows {limit} active alerts{over ? ` — only the newest ${limit} are watched. Pause or delete some, or upgrade.` : '.'}</div>}
       <div className="alert-form">
         <div className="af-row"><span>{t.active.ticker.split(':')[1]}</span>
           <select value={cond} onChange={e => setCond(e.target.value as typeof cond)}><option value="crossing">Crossing</option><option value="above">Above</option><option value="below">Below</option></select>
