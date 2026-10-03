@@ -93,7 +93,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
   const [drawSeq, setDrawSeq] = useState(0)
   const [signals, setSignals] = useState<Record<number, Signal | null>>({})
   const [crosshair, setCrosshair] = useState<Crosshair | null>(null)
-  const [sideTab, setSideTab] = useState<SideTab | null>(() => (window.innerWidth > 760 ? 'watchlist' : null))
+  const [sideTab, setSideTab] = useState<SideTab | null>(() => (window.innerWidth > 1100 ? 'watchlist' : null))
   const [bottomOpen, setBottomOpen] = useState(false)
   const [account, setAccount] = useState<string | null>(null)
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
