@@ -67,7 +67,7 @@ T = {
 }
 
 COMPONENT_NAMES = {"daily_structure": "daily structure", "h4_structure": "4H structure",
-                   "ipda_zone": "IPDA zone", "pd_reaction": "PDH/PDL reaction"}
+                   "ipda_zone": "IPDA zone", "pd_reaction": "PDH/PDL reaction", "mo_zone": "Midnight Open"}
 
 
 @dataclass
@@ -102,7 +102,7 @@ def ask(ctx: Context, question: str, signals: list[dict] | None = None, lang: st
         return Answer(intent, tr["help"], {})
     if intent == "bias":
         b = bias_at(ctx, t)
-        parts = ", ".join(f"{COMPONENT_NAMES[k]} {'+' if v > 0 else '-' if v < 0 else '0'}" for k, v in b.components.items())
+        parts = ", ".join(f"{COMPONENT_NAMES.get(k, k.replace('_', ' '))} {'+' if v > 0 else '-' if v < 0 else '0'}" for k, v in b.components.items())
         draw = f"{fmt(b.draw)} ({b.draw_source})" if b.draw is not None else "-"
         key = "bias" if b.direction else "no_bias"
         d = tr["bull"] if b.direction > 0 else tr["bear"]
