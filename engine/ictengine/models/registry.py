@@ -7,7 +7,7 @@ from typing import Callable
 
 from ..context import Context
 from ..signals import Signal
-from . import array_models, filters, reversal_models, silver_bullet, wolf_asia
+from . import array_models, asian_q2, filters, reversal_models, silver_bullet, wolf_asia
 
 
 @dataclass(frozen=True)
@@ -29,7 +29,7 @@ MODELS: dict[str, ModelInfo] = {m.id: m for m in (
     ModelInfo("M2", "ICT 2022 Mentorship Model", reversal_models.scan_m2, "WEB"),
     ModelInfo("M3", "Judas Swing / Turtle Soup", reversal_models.scan_m3, "PDF"),
     ModelInfo("M4", "Optimal Trade Entry (OTE)", reversal_models.scan_m4, "PDF"),
-    ModelInfo("M5", "Asian Q2 Judas", reversal_models.scan_m5, "PDF"),
+    ModelInfo("M5", "Asian Q2 Judas", asian_q2.scan_m5, "PDF"),
     ModelInfo("M6", "Asian Range Scalp", reversal_models.scan_m6, "PDF"),
     ModelInfo("M7", "Unicorn", reversal_models.scan_m7, "WEB"),
     ModelInfo("M9", "Market Maker Buy/Sell (simplified)", reversal_models.scan_m9, "WEB"),
