@@ -37,10 +37,10 @@ Notes for Claude sessions working on this repo. See `README.md` for the project 
   database files and backups. Do not commit secrets or databases.
 - `mt5/terminal64.exe` and `mt5/MetaEditor64.exe` are over GitHub's 100 MB limit and
   are ignored; they exist only on the VPS. Keep every committed file under 100 MB.
-- Cloudflare caches CSS/JS for 4 hours (HTML is not cached). After changing
-  `web/site/style.css`, `site.js`, or `web/terminal/dist/ict-theme.css` / `ict-mobile.js`, bump the
-  `?v=N` on their links in the HTML files so visitors get the new version at once.
-- `web/terminal/dist/` has no source in this repo; the phone layout and theme live in
-  `ict-theme.css` + `ict-mobile.js`, linked from `dist/index.html`. Keep those links after a rebuild.
+- Cloudflare caches CSS/JS for 4 hours (HTML is not cached). After changing `web/site/style.css`
+  or `site.js`, bump the `?v=N` on their links in the site's HTML files.
+- The web terminal's source is `web/terminal/` (React + TypeScript + KLineChart 10). Build with
+  `cd web/terminal && npm ci && npm run build`; commit the resulting `web/terminal/dist/`.
+  Details, features and how to test it: `docs/WEB_TERMINAL.md`.
 - `python312/` (bundled Python runtime) and `web/terminal/dist/` (built web terminal)
   are committed on purpose.
