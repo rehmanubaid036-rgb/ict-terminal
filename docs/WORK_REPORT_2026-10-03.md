@@ -124,7 +124,7 @@ NAS100, Oct 2023 - Dec 2024 (16 months, 386 of 418 days downloaded), all models 
 
 | # | Item | Note |
 |---|---|---|
-| 1 | Owner to verify live | AI tab answers (shows 'Midnight Open'); Signals tab selection survives a refresh; guest login; M17 on NAS100 1m after Sunday's open |
+| 1 | Live test - DONE | Claude tested the live site as a guest after the restart: desktop 52/52, phone 41/41, AI, Signals saving, M17 targets OK - see docs/LIVE_TEST_2026-10-03.md. Still to see: M17 / M1 setups after Sunday's open; a real customer login |
 | 2 | EA 1.10 | Compile in MetaEditor, demo test; later redesign for trailing from 1.5R / percentage management |
 | 3 | M1 robustness | Backtest M1 on XAUUSD and US500 (16 months); journal's main model was on gold |
 | 4 | M9 staged model | Rulebook Phase 2 - the only model not complete |
@@ -164,6 +164,7 @@ b9b950f M17 Wolf: back to the earlier setting with the PDF's targets (-1 / -1.25
 6513442 M17 Wolf: SD 0 at the swing the MSS broke, as in the PDF
 02af3a1 Signals tab choices saved with the layout; M13 on indices only
 30e0624 Fix the AI assistant after the Midnight Open bias component
+-       Live test report (docs/LIVE_TEST_2026-10-03.md) and this work report
 ```
 
 
