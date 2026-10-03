@@ -5,7 +5,11 @@ Score components (each -1, 0 or +1):
   h4_structure      direction of the last 4h BOS/MSS
   ipda_zone         +1 if price is in the discount half of the 20-day IPDA range, -1 in premium
   pd_reaction       +1 if today raided the previous day's low and reclaimed it, -1 for the high
-Bias is the sign of the score when |score| >= ``min_score``.
+  mo_zone           rulebook 3.5 Midnight Open filter: +1 below the 00:00 NY open (discount to MO),
+                    -1 above it; 0 before midnight (MO not known yet)
+Bias is the sign of the score when |score| >= ``min_score``. The rulebook's [DEFAULT] is 3, but with
+these components (structure votes with the trend, premium / discount against it) |score| >= 3 came on
+4 of 60 NAS100 days (Jun-Aug 2024); 2 sets a bias on about 40% of days.
 
 The draw on liquidity is the nearest resting daily/4h pool (or PDH/PDL) in the bias direction.
 """
@@ -57,6 +61,11 @@ def bias_at(ctx: Context, t: int, min_score: int = 2) -> Bias:
             comp["pd_reaction"] += 1
         if np.isfinite(lv["pdh"]) and today["high"].max() > lv["pdh"] > price:
             comp["pd_reaction"] -= 1
+
+    comp["mo_zone"] = 0
+    if lv is not None and ctx.minute[t] < 18 * 60 and np.isfinite(lv.get("midnight_open", np.nan)):
+        mo = float(lv["midnight_open"])
+        comp["mo_zone"] = 1 if price < mo else -1 if price > mo else 0
 
     score = int(sum(comp.values()))
     direction = int(np.sign(score)) if abs(score) >= min_score else 0

@@ -35,8 +35,14 @@ def simulate(sig: Signal, df: pd.DataFrame, spread: float = 0.0, be_offset: floa
     start = int(idx.searchsorted(sig.created_time, side="right"))  # first bar opening after the signal bar
     exp_end = int(idx.searchsorted(sig.expiry, side="left"))       # bars opening before expiry may fill
 
+    notes = sig.notes or {}
+    cancel_at = notes.get("cancel_if_close_beyond")   # rulebook: a body close beyond the FVG before the fill
+    if not be_offset:
+        be_offset = float(notes.get("be_offset", 0.0) or 0.0)
     fill = None
     for i in range(start, min(exp_end, len(df))):
+        if cancel_at is not None and ((d == 1 and c[i - 1] < cancel_at) or (d == -1 and c[i - 1] > cancel_at)) and i > start:
+            break                                      # the previous bar closed through the FVG: order cancelled
         if d == 1 and lo[i] <= sig.entry:
             fill = (i, min(o[i], sig.entry))
             break

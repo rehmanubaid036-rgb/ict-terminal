@@ -22,10 +22,15 @@ export function outcome(s: Signal, bars: KLineData[]): Outcome {
   const after = bars.filter(b => b.timestamp >= created)
   if (!after.length) return { result: 'pending', r: 0 }
 
+  const notes = (s.notes ?? {}) as { cancel_if_close_beyond?: number; be_offset?: number }
+  const cancelAt = notes.cancel_if_close_beyond   // rulebook: a body close beyond the FVG before the fill cancels
+  const beOffset = Number(notes.be_offset ?? 0)    // breakeven = entry + a little to cover the spread
   let filled = -1
   for (let i = 0; i < after.length; i++) {
     const b = after[i]
     if (b.timestamp > expiry) break
+    if (i > 1 && cancelAt != null && (long ? after[i - 1].close < cancelAt : after[i - 1].close > cancelAt))
+      return { result: 'not_triggered', r: 0 }
     if (long ? b.low <= s.entry : b.high >= s.entry) { filled = i; break }
   }
   if (filled < 0) return { result: after[after.length - 1].timestamp > expiry ? 'not_triggered' : 'pending', r: 0 }
@@ -41,7 +46,7 @@ export function outcome(s: Signal, bars: KLineData[]): Outcome {
     }
     while (hit < s.targets.length && (long ? b.high >= s.targets[hit][0] : b.low <= s.targets[hit][0])) {
       hit++
-      stop = s.entry      // breakeven after the first target
+      stop = s.entry + (long ? beOffset : -beOffset)      // breakeven after the first target
     }
     if (hit === s.targets.length) {
       return { result: 'full', r: w.reduce((a, x, k) => a + x * rr[k], 0), filledAt: after[filled].timestamp, exitAt: b.timestamp }
