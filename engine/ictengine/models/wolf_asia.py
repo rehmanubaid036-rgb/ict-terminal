@@ -17,10 +17,12 @@ Per trading day (New York time):
      when a significant NDOG's CE sits between that wick CE and the entry, the stop goes just beyond
      the NDOG CE instead (ICT's example).
   The model reads the 1-minute chart only.
-  5. Targets: the previous session's 15:30-16:00 NY high for a buy (low for a sell), with the standard
-     deviations of the last opposite leg (from the last intermediate-term swing before the extreme to
-     the raid extreme) on the way as partials (1 SD closes half). When that high / low is already
-     behind the entry or nearer than 1R, the targets are 1, 1.25 and 1.5 SD.
+  5. Targets: TP1-TP3 at 1, 1.25 and 1.5 standard deviations of the last opposite leg (from the last
+     intermediate-term swing before the extreme to the raid extreme; 1 SD closes half), and the final
+     target at the previous session's 15:30-16:00 NY high for a buy (low for a sell). SD levels at or
+     beyond that high / low are dropped; when it is already behind the entry or nearer than 1R, the
+     final target is 1.5 SD.
+  The ICT Bridge EA trades at most three legs, so for auto-trading the first three targets apply.
   Time first: the structure shift itself must happen after 19:00. Each direction can give one
   setup a day (the journal's 18-08 had a short, then a long).
 """
@@ -164,9 +166,9 @@ def _signal(ctx: Context, s, gap: Ndog | None, initial, bias, t18: pd.Timestamp,
     pm = _pm_range(ctx, t18) if cfg.pm_target else None
     pm_price = None if pm is None else (pm[0] if d == 1 else pm[1])
     if pm_price is not None and d * (pm_price - entry) >= cfg.min_first_rr * risk:
-        # partials at the SD levels before it, the 15:30-16:00 high / low last
+        # TP1-TP3 at the SD levels before it, the 15:30-16:00 high / low as the final target
         before = [(p, f"{k} SD") for k, p in zip(cfg.sd_targets, sd_prices) if 0 < d * (p - entry) and d * (pm_price - p) > 0]
-        picked = before[:2] + [(pm_price, "15:30-16:00 " + ("high" if d == 1 else "low"))]
+        picked = before + [(pm_price, "15:30-16:00 " + ("high" if d == 1 else "low"))]
     else:
         picked = [(p, f"{k} SD") for k, p in zip(cfg.sd_targets, sd_prices) if d * (p - entry) > 0]
         if len(picked) < len(cfg.sd_targets) or d * (picked[0][0] - entry) < cfg.min_first_rr * risk:
@@ -194,7 +196,7 @@ def _signal(ctx: Context, s, gap: Ndog | None, initial, bias, t18: pd.Timestamp,
     exit_by = w1 + pd.Timedelta(minutes=cfg.exit_after_min)
     return Signal(
         model=MODEL, symbol=ctx.symbol, direction=d, created_time=created, entry=entry, stop=stop,
-        targets=allocate(prices), expiry=w1, time_stop=None, exit_by=exit_by, window=WINDOW,
+        targets=_allocate(prices), expiry=w1, time_stop=None, exit_by=exit_by, window=WINDOW,
         grade=grade, score=score, checklist=checklist,
         notes={"author": "Wolf (TheWolfTrades)", "raid_level": raid.level.name, "raid_price": raid.level.price,
                "raid_time": str(ctx.base.index[raid.taken_pos]), "break_kind": str(b.kind),
@@ -210,6 +212,13 @@ def _signal(ctx: Context, s, gap: Ndog | None, initial, bias, t18: pd.Timestamp,
                "bias_score": bias.score, "bias_components": bias.components, "draw": bias.draw,
                "targets_from": [n for _, n in picked]},
     )
+
+
+def _allocate(prices: list[float]) -> list[tuple[float, float]]:
+    """Half at TP1 (1 SD, as in the PDF); with four targets the rest is 20 / 15 / 15."""
+    if len(prices) == 4:
+        return list(zip(prices, [0.5, 0.2, 0.15, 0.15]))
+    return allocate(prices)
 
 
 def _pm_range(ctx: Context, t18: pd.Timestamp):

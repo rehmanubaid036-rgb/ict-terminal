@@ -107,7 +107,7 @@ export function StatsView() {
     const by = new Map<string, Row[]>()
     for (const r of j.rows ?? []) by.set(r.s.model_id, [...(by.get(r.s.model_id) ?? []), r])
     const sum = (rows: Row[]) => {
-      const done = rows.filter(r => ['stop', 'be', 'tp1', 'tp2', 'tp3'].includes(r.o.result))
+      const done = rows.filter(r => ['stop', 'be', 'tp1', 'tp2', 'tp3', 'full'].includes(r.o.result))
       const wins = done.filter(r => r.o.r > 0).length
       const total = done.reduce((a, r) => a + r.o.r, 0)
       return { setups: rows.length, triggered: rows.filter(r => r.o.result !== 'not_triggered' && r.o.result !== 'pending').length, closed: done.length,

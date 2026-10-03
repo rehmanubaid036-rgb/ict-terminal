@@ -349,7 +349,7 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 .j-table tbody tr { cursor: pointer; }
 .j-table tbody tr:hover { background: var(--hover); }
 .res { font-size: 11px; padding: 1px 7px; border-radius: 10px; background: var(--panel2); color: var(--soft); }
-.res.r-tp1, .res.r-tp2, .res.r-tp3 { background: rgba(38,166,154,.18); color: var(--up); }
+.res.r-tp1, .res.r-tp2, .res.r-tp3, .res.r-full { background: rgba(38,166,154,.18); color: var(--up); }
 .res.r-stop { background: rgba(239,83,80,.16); color: var(--down); }
 .res.r-open, .res.r-pending { background: rgba(41,98,255,.16); color: #7aa2ff; }
 .kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }

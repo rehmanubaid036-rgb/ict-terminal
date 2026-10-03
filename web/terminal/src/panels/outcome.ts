@@ -4,11 +4,11 @@
 import type { KLineData } from 'klinecharts'
 import type { Signal } from '../api'
 
-export type Result = 'open' | 'not_triggered' | 'stop' | 'be' | 'tp1' | 'tp2' | 'tp3' | 'pending'
+export type Result = 'open' | 'not_triggered' | 'stop' | 'be' | 'tp1' | 'tp2' | 'tp3' | 'full' | 'pending'
 export interface Outcome { result: Result; r: number; filledAt?: number; exitAt?: number }
 
 export const RESULT_LABEL: Record<Result, string> = {
-  pending: 'Waiting', open: 'Running', not_triggered: 'Not triggered', stop: 'Stop loss', be: 'Breakeven', tp1: 'TP1 hit', tp2: 'TP2 hit', tp3: 'TP3 (full)',
+  pending: 'Waiting', open: 'Running', not_triggered: 'Not triggered', stop: 'Stop loss', be: 'Breakeven', tp1: 'TP1 hit', tp2: 'TP2 hit', tp3: 'TP3 hit', full: 'All targets',
 }
 
 export function outcome(s: Signal, bars: KLineData[]): Outcome {
@@ -44,7 +44,7 @@ export function outcome(s: Signal, bars: KLineData[]): Outcome {
       stop = s.entry      // breakeven after the first target
     }
     if (hit === s.targets.length) {
-      return { result: 'tp3', r: w.reduce((a, x, k) => a + x * rr[k], 0), filledAt: after[filled].timestamp, exitAt: b.timestamp }
+      return { result: 'full', r: w.reduce((a, x, k) => a + x * rr[k], 0), filledAt: after[filled].timestamp, exitAt: b.timestamp }
     }
     if (b.timestamp > exitBy) {
       const r = w.slice(0, hit).reduce((a, x, k) => a + x * rr[k], 0)
