@@ -367,6 +367,8 @@ export function engineOverlays(objects: OverlayObject[], groupId: string): Overl
 export interface Bias { direction: number; score: number; components: Record<string, number>; draw: number | null; draw_source?: string; ipda_position: number | null; as_of: number }
 export const biasOf = (objects: OverlayObject[]): Bias | null => (objects.find(o => o.kind === 'bias') as unknown as Bias) ?? null
 
+const FIB_COLORS: Record<string, string> = { '0': '#9ca3af', '1': '#9ca3af', '1.5': '#7e57c2', '2': '#f06292', '2.5': '#f59e0b' }
+
 /** M17 Wolf Asia: the levels the model is built on (NDOG + CE, initial BSL / SSL, and for the
  * selected setup the standard-deviation leg and the wick CE stop). */
 function wolfLevels(s: Signal, groupId: string, full: boolean): OverlayCreate[] {
@@ -388,14 +390,15 @@ function wolfLevels(s: Signal, groupId: string, full: boolean): OverlayCreate[] 
   }
   if (n.initial_bsl != null) out.push(lineAt(n.initial_bsl, '#2962ff', 'Initial BSL'))
   if (n.initial_ssl != null) out.push(lineAt(n.initial_ssl, '#ab47bc', 'Initial SSL'))
-  if (full) {
-    const ts = new Date(s.created_time).getTime()
-    if (Array.isArray(n.sd_leg)) {
-      out.push(lineAt(n.sd_leg[0], '#9ca3af', 'SD 0', false, ts), lineAt(n.sd_leg[1], '#9ca3af', 'SD 1 (leg)', false, ts))
-      for (const [k, v] of Object.entries(n.sd_levels ?? {})) out.push(lineAt(v as number, '#26a69a', `-${k} SD`, true, ts))
-    }
-    if (n.wick_ce != null) out.push(lineAt(n.wick_ce, '#ef5350', 'Wick C.E', true, new Date(n.wick_time ?? s.created_time).getTime()))
+  // fib of the leg (0 = raid extreme / stop, 1 = start of the opposite leg, 1.5 / 2 / 2.5 extensions),
+  // drawn from the leg's start like a fib tool
+  if (n.fib) {
+    const ts = new Date(s.created_time).getTime() - 30 * 60_000
+    for (const [k, v] of Object.entries(n.fib as Record<string, number>))
+      out.push(lineAt(v, FIB_COLORS[k] ?? '#9ca3af', k, false, ts))
   }
+  if (full && n.wick_ce != null && n.stop_mode === 'wick_ce')
+    out.push(lineAt(n.wick_ce, '#ef5350', 'Wick C.E', true, new Date(n.wick_time ?? s.created_time).getTime()))
   return out
 }
 

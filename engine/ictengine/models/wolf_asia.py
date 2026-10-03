@@ -13,15 +13,13 @@ Per trading day (New York time):
   3. The algorithm comes online at 19:00: trades are taken 19:00-21:00 only. Liquidity on one
      side is taken (from 18:00 on), then a market structure shift / displacement and an FVG
      created inside the window; limit entry at the FVG's CE.
-  4. Stop at the CE of the wick of the candle that made the leg extreme ("Wick C.E" in the journal);
-     when a significant NDOG's CE sits between that wick CE and the entry, the stop goes just beyond
-     the NDOG CE instead (ICT's example).
-  The model reads the 1-minute chart only.
-  5. Targets: TP1 = 2R (double the stop), TP2 = 4R (double TP1), TP3 = 8R ... and the final target at
-     the previous session's 15:30-16:00 NY high for a buy (low for a sell). Half closes at TP1, the
-     other half is shared equally. When that high / low is not at least 2R away the targets are 2R,
-     4R and 8R. The standard deviations of the last opposite leg (from the last intermediate-term swing
-     before the extreme to the raid extreme) are drawn on the chart for reference.
+  4. Stop at fib level 0: the raid extreme (+ a small buffer). ('wick_ce' puts it at the CE of the wick
+     of the extreme candle, as in the journal; a significant NDOG's CE between that and the entry
+     tightens it.)
+  5. Targets (fib of the leg): 0 = the raid extreme, 1 = where the last opposite leg started (the
+     last intermediate-term swing before the extreme); TP1-TP4 at levels 1, 1.5, 2 and 2.5, the ones
+     beyond the entry. Half closes at TP1, the rest is shared equally. ('doubling' mode: 2R, 4R, 8R ...
+     to the previous session's 15:30-16:00 high / low.)
   Time first: the structure shift itself must happen after 19:00. Each direction can give one
   setup a day (the journal's 18-08 had a short, then a long).
 """
@@ -54,7 +52,9 @@ class WolfAsiaConfig:
     exit_after_min: int = 90         # any runner is closed 22:30 NY
     gap_min_fvg: float = 10.0        # significant NDOG = 10 x min FVG (20 handles on NAS100)
     sd_targets: tuple[float, ...] = (1.0, 1.25, 1.5)   # standard deviations drawn on the chart (not targets)
-    first_target_r: float = 2.0      # TP1 in R (double the stop); each next target doubles the one before
+    target_mode: str = "fib"         # 'fib': levels 1 / 1.5 / 2 / 2.5 of the leg (0 = raid extreme) | 'doubling'
+    fib_levels: tuple[float, ...] = (1.0, 1.5, 2.0, 2.5)
+    first_target_r: float = 2.0      # doubling mode: TP1 in R; each next target doubles the one before
     max_targets: int = 30            # up to the final target (a safety cap only)
     min_first_rr: float = 1.0        # 1 SD must pay at least the risk
     max_fvg_delay: int = 10
@@ -62,7 +62,7 @@ class WolfAsiaConfig:
     raid_timeframes: tuple[str, ...] = ()  # PDF: only the initial BSL / SSL and session levels are raided;
                                             # ("15m",) etc. adds swing liquidity of those timeframes
     pm_target: bool = True           # previous session's 15:30-16:00 high (buy) / low (sell) is the target
-    stop: str = "wick_ce"            # 'wick_ce' (journal) | 'extreme' (beyond the raid extreme + buffer)
+    stop: str = "extreme"            # 'extreme' (fib level 0 = the raid extreme + buffer) | 'wick_ce' (journal)
     stop_buffer_mult: float = 1.0
     symbols: tuple[str, ...] = SYMBOLS
 
@@ -149,7 +149,7 @@ def _signal(ctx: Context, s, gap: Ndog | None, initial, bias, t18: pd.Timestamp,
     else:
         buf = ctx.spec.stop_buffer * cfg.stop_buffer_mult
         stop = ext - d * buf
-    ndog_stop = bool(gap and gap.significant and d * (gap.ce - stop) > 0 and d * (entry - gap.ce) > 2 * buf)
+    ndog_stop = bool(cfg.stop == "wick_ce" and gap and gap.significant and d * (gap.ce - stop) > 0 and d * (entry - gap.ce) > 2 * buf)
     if ndog_stop:
         stop = gap.ce - d * buf
     risk = d * (entry - stop)
@@ -166,21 +166,28 @@ def _signal(ctx: Context, s, gap: Ndog | None, initial, bias, t18: pd.Timestamp,
     sd_prices = [leg_from + d * k * leg for k in cfg.sd_targets]
     pm = _pm_range(ctx, t18) if cfg.pm_target else None
     pm_price = None if pm is None else (pm[0] if d == 1 else pm[1])
-    # TP1 = 2R (double the stop), every next target doubles the one before (4R, 8R, 16R ...), all the way
-    # to the final target at the previous session's 15:30-16:00 high (buy) / low (sell). Without that
-    # level at least TP1 away: 2R, 4R, 8R.
-    first = cfg.first_target_r
-    final_ok = pm_price is not None and d * (pm_price - entry) >= first * risk
-    picked = []
-    m = first
-    while len(picked) < (cfg.max_targets - 1 if final_ok else 3):
-        p = entry + d * m * risk
-        if final_ok and d * (pm_price - p) < 0.25 * risk:      # this level is (almost) the final target
-            break
-        picked.append((p, f"{m:g}R"))
-        m *= 2
-    if final_ok:
-        picked.append((pm_price, "15:30-16:00 " + ("high" if d == 1 else "low")))
+    if cfg.target_mode == "fib":
+        # Fib of the leg: 0 = the raid extreme (the stop), 1 = where the opposite leg started; the
+        # targets are levels 1, 1.5, 2 and 2.5 of that range (the ones beyond the entry)
+        picked = [(ext + d * k * leg, f"fib {k:g}") for k in cfg.fib_levels]
+        picked = [(p, n) for p, n in picked if d * (p - entry) > 0]
+        if len(picked) < 2 or d * (picked[-1][0] - entry) < cfg.min_first_rr * risk:
+            return None
+    else:
+        # doubling: TP1 = 2R (double the stop), every next target doubles the one before (4R, 8R ...),
+        # all the way to the final target at the previous session's 15:30-16:00 high / low
+        first = cfg.first_target_r
+        final_ok = pm_price is not None and d * (pm_price - entry) >= first * risk
+        picked = []
+        m = first
+        while len(picked) < (cfg.max_targets - 1 if final_ok else 3):
+            p = entry + d * m * risk
+            if final_ok and d * (pm_price - p) < 0.25 * risk:      # this level is (almost) the final target
+                break
+            picked.append((p, f"{m:g}R"))
+            m *= 2
+        if final_ok:
+            picked.append((pm_price, "15:30-16:00 " + ("high" if d == 1 else "low")))
     prices = [p for p, _ in picked]
     bar = ctx.base.iloc[ready]
     if (d == 1 and bar["high"] >= prices[0]) or (d == -1 and bar["low"] <= prices[0]):
@@ -211,11 +218,12 @@ def _signal(ctx: Context, s, gap: Ndog | None, initial, bias, t18: pd.Timestamp,
                "break_time": str(b.time), "fvg": (float(g.bottom), float(g.top)),
                "ndog": None if gap is None else {"low": gap.low, "high": gap.high, "ce": gap.ce,
                                                  "size": gap.size, "significant": gap.significant},
-               "ndog_stop": ndog_stop, "wick_ce": wick_ce, "wick_time": str(xbar.name),
+               "ndog_stop": ndog_stop, "stop_mode": cfg.stop, "wick_ce": wick_ce, "wick_time": str(xbar.name),
                "ndog_time": str(t18), "window_end": str(w1),
                "initial_bsl": initial[0].price if initial else None,
                "initial_ssl": initial[1].price if initial else None,
-               "sd_leg": (leg_from, ext), "sd_levels": dict(zip([str(k) for k in cfg.sd_targets], sd_prices)),
+               "sd_leg": (leg_from, ext),
+               "fib": {f"{k:g}": ext + d * k * leg for k in (0.0, 1.0) + tuple(cfg.fib_levels[1:])}, "sd_levels": dict(zip([str(k) for k in cfg.sd_targets], sd_prices)),
                "pm_range": None if pm is None else {"high": pm[0], "low": pm[1], "start": str(pm[2]), "end": str(pm[3])},
                "bias_score": bias.score, "bias_components": bias.components, "draw": bias.draw,
                "targets_from": [n for _, n in picked]},
