@@ -45,7 +45,7 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 .link:hover { text-decoration: underline; }
 
 /* ---- app layout ----------------------------------------------------------------------------- */
-.app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+.app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; }
 .workspace { flex: 1; min-height: 0; display: flex; }
 .center { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .boot { height: 100dvh; display: grid; place-content: center; justify-items: center; gap: 14px; color: var(--muted); }
@@ -425,6 +425,7 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
   .topbar::-webkit-scrollbar { display: none; }
   .topbar > * { flex: none; }
   .topbar .grow { flex: 1 0 4px; }
+  .account-pill { position: sticky; right: 0; z-index: 2; background: linear-gradient(var(--accent-soft), var(--accent-soft)), var(--bar); box-shadow: 0 0 0 4px var(--bar), -16px 0 12px 2px var(--bar); }
   .brand { padding-right: 2px; }
   .symbol-btn { padding: 6px 8px; }
   .tf-group button { padding: 7px 9px; }
@@ -434,7 +435,7 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
   .tool { width: 38px; height: 34px; }
   .tool-sep { width: 1px; height: 22px; margin: 0 4px; }
   .tool-more { display: none; }
-  .center { order: 0; }
+  .center { order: 0; flex: 1 1 0; min-height: 0; }
   .side { order: 1; flex-direction: column-reverse; border-left: 0; border-top: 1px solid var(--line); }
   .rail { width: 100%; flex-direction: row; justify-content: space-around; padding: 2px 4px calc(2px + env(safe-area-inset-bottom)); }
   .rail button { width: auto; flex: 1; height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 10px; }
