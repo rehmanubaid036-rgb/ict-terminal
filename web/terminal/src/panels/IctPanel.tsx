@@ -1,9 +1,9 @@
-// The ICT tab: every ICT layer and model of the active chart in one place, each on / off with one click.
+// The ICT dropdown: the active chart's ICT indicators and ICT models, each on / off with one click.
 import { useTerminal } from '../Terminal'
 import { ICT_LAYERS, ONE_MINUTE_MODELS, WOLF_MODELS, modelTag, timeframeByLabel } from '../constants'
 import { Switch, toast } from '../ui/common'
 
-export function IctPanel() {
+export function IctPanel({ onDone }: { onDone?: () => void }) {
   const t = useTerminal()
   const a = t.active
   const f = t.access.features
@@ -12,23 +12,23 @@ export function IctPanel() {
     <div className="ict-panel">
       <div className="ict-chart">
         <span>On the chart <b>{a.ticker.split(':')[1] ?? a.ticker}</b> · {timeframeByLabel(a.tf).label}</span>
-        <button className="link" onClick={() => { t.updateActive({ ict: a.ict, models: a.models, requireBias: a.requireBias }, 'all'); toast('ICT layers and models copied to every chart.') }}>Apply to all charts</button>
+        <button className="btn ghost sm" onClick={() => { t.updateActive({ ict: a.ict, models: a.models, requireBias: a.requireBias }, 'all'); toast('ICT indicators and models applied to every chart.'); onDone?.() }}>Apply to all charts</button>
       </div>
+      <div className="ict-cols">
+        <section>
+          <div className="ict-sec-head">
+            <h5>ICT indicators <em>{a.ict.length}</em></h5>
+            {f.ict_indicators && <button className="link" onClick={() => t.updateActive({ ict: allOn ? [] : ICT_LAYERS.map(l => l.id) })}>{allOn ? 'None' : 'All'}</button>}
+          </div>
+          {!f.ict_indicators ? <p className="note">ICT indicators are not part of your plan. <button className="link" onClick={() => t.openAccount('plans')}>See plans</button></p>
+            : ICT_LAYERS.map(l => (
+              <ToggleRow key={l.id} on={a.ict.includes(l.id)} title={l.label} desc={l.desc}
+                onChange={() => t.updateActive(c => ({ ict: c.ict.includes(l.id) ? c.ict.filter(x => x !== l.id) : [...c.ict, l.id] }))} />
+            ))}
+        </section>
 
-      <section>
-        <div className="ict-sec-head">
-          <h5>ICT indicators <em>{a.ict.length}</em></h5>
-          {f.ict_indicators && <button className="link" onClick={() => t.updateActive({ ict: allOn ? [] : ICT_LAYERS.map(l => l.id) })}>{allOn ? 'None' : 'All'}</button>}
-        </div>
-        {!f.ict_indicators ? <p className="note">ICT indicators are not part of your plan. <button className="link" onClick={() => t.openAccount('plans')}>See plans</button></p>
-          : ICT_LAYERS.map(l => (
-            <ToggleRow key={l.id} on={a.ict.includes(l.id)} title={l.label} desc={l.desc}
-              onChange={() => t.updateActive(c => ({ ict: c.ict.includes(l.id) ? c.ict.filter(x => x !== l.id) : [...c.ict, l.id] }))} />
-          ))}
-      </section>
-
-      <ModelSection title="ICT models" wolf={false} />
-      <ModelSection title="Wolf models" wolf />
+        <ModelSection title="ICT models" wolf={false} />
+      </div>
     </div>
   )
 }

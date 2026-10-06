@@ -7,12 +7,10 @@ import { Icon } from '../ui/icons'
 import { Empty, Switch, fmtPrice, nyTime, toast, useIsPhone } from '../ui/common'
 import { DRAWINGS, getChart, getEntry, notify, onRegistryChange, snapshot } from '../chart/registry'
 import { JournalView, StatsView, EngineView } from './BottomPanel'
-import { IctPanel } from './IctPanel'
 
-export type SideTab = 'ict' | 'watchlist' | 'signals' | 'assistant' | 'alerts' | 'objects' | 'data' | 'journal'
+export type SideTab = 'watchlist' | 'signals' | 'assistant' | 'alerts' | 'objects' | 'data' | 'journal'
 
 const TABS: { id: SideTab; icon: string; label: string; phoneOnly?: boolean }[] = [
-  { id: 'ict', icon: 'ict', label: 'ICT' },
   { id: 'watchlist', icon: 'list', label: 'Watchlist' },
   { id: 'signals', icon: 'target', label: 'Signals' },
   { id: 'assistant', icon: 'spark', label: 'AI assistant' },
@@ -36,7 +34,6 @@ export function SidePanel() {
             <button className="icon-btn" onClick={() => t.setSideTab(null)} aria-label="Close panel"><Icon name="close" size={16} /></button>
           </div>
           <div className="side-content">
-            {tab === 'ict' && <IctPanel />}
             {tab === 'watchlist' && <Watchlist />}
             {tab === 'signals' && <Signals />}
             {tab === 'assistant' && <Assistant />}

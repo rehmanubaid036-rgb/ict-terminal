@@ -44,7 +44,7 @@ export function Popover({ anchor, onClose, children, align = 'left', className, 
     if (!a) return
     const top = a.bottom + 4
     setPos(align === 'right' ? { right: Math.max(8, window.innerWidth - a.right), top, maxHeight: window.innerHeight - top - 12 }
-      : { left: Math.min(a.left, window.innerWidth - 260), top, maxHeight: window.innerHeight - top - 12 })
+      : { left: Math.max(8, Math.min(a.left, window.innerWidth - (ref.current?.offsetWidth ?? 260) - 8)), top, maxHeight: window.innerHeight - top - 12 })
   }, [anchor, align, phone])
   useEffect(() => {
     const down = (e: MouseEvent | TouchEvent) => {

@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { useTerminal } from '../Terminal'
 import { api, type SearchItem } from '../api'
 import { CHART_TYPES, FAVORITE_TFS, INDICATORS, LAYOUTS, TIMEFRAMES, parseTimeframe, timeframeByLabel, type LayoutId, WOLF_MODELS } from '../constants'
-import { ModelSection } from '../panels/IctPanel'
+import { IctPanel, ModelSection } from '../panels/IctPanel'
 import { Icon } from './icons'
 import { Modal, Popover, Switch, toast, useIsPhone } from './common'
 import { getEntry, undo, redo } from '../chart/registry'
 
-type Menu = 'tf' | 'type' | 'wolf' | 'layout' | 'more' | null
+type Menu = 'tf' | 'type' | 'ict' | 'wolf' | 'layout' | 'more' | null
 
 export function TopBar() {
   const t = useTerminal()
@@ -50,7 +50,7 @@ export function TopBar() {
       <span className="divider" />
       <button ref={refs.type} className="tb-btn" title="Chart type" onClick={() => toggle('type')}><Icon name="candles" /></button>
       <button className="tb-btn text" title="Indicators" onClick={() => setIndicators(true)}><Icon name="indicators" /><span>Indicators</span></button>
-      <button ref={refs.ict} className={`tb-btn text${a.ict.length + ictModels.length ? ' lit' : ''}${t.sideTab === 'ict' ? ' on' : ''}`} title="ICT: indicators and models, one click on / off" onClick={() => t.setSideTab(t.sideTab === 'ict' ? null : 'ict')}><Icon name="ict" /><span>ICT</span>{a.ict.length + ictModels.length > 0 && <em>{a.ict.length + ictModels.length}</em>}</button>
+      <button ref={refs.ict} className={`tb-btn text${a.ict.length + ictModels.length ? ' lit' : ''}${menu === 'ict' ? ' on' : ''}`} title="ICT: indicators and models, one click on / off" onClick={() => toggle('ict')}><Icon name="ict" /><span>ICT</span>{a.ict.length + ictModels.length > 0 && <em>{a.ict.length + ictModels.length}</em>}</button>
       <button ref={refs.wolf} className={`tb-btn text wolf-btn${wolfModels.length ? ' lit' : ''}`} title="Wolf Models: your custom models" onClick={() => toggle('wolf')}><Icon name="target" /><span>Wolf Models</span>{wolfModels.length > 0 && <em>{wolfModels.length}</em>}</button>
       <span className="divider" />
       <button className="tb-btn" title="Create alert (Alt+A)" onClick={() => t.setSideTab('alerts')}><Icon name="bell" /></button>
@@ -85,10 +85,15 @@ export function TopBar() {
           ))}
         </Popover>
       )}
+      {menu === 'ict' && (
+        <Popover anchor={refs.ict} onClose={close} className="menu-panel ict-menu" title="ICT">
+          <IctPanel onDone={close} />
+        </Popover>
+      )}
       {menu === 'wolf' && (
         <Popover anchor={refs.wolf} onClose={close} className="menu-panel" align="right" title="Wolf Models">
           <ModelSection title="Your custom models" wolf />
-          <div className="menu-foot"><button className="btn ghost sm" onClick={() => { close(); t.setSideTab('ict') }}>Open the ICT panel</button></div>
+          <div className="menu-foot"><button className="btn ghost sm" onClick={() => { const c = t.active; t.updateActive({ models: c.models, requireBias: c.requireBias }, 'all'); toast('Models applied to every chart.'); close() }}>Apply to all charts</button></div>
         </Popover>
       )}
       {menu === 'layout' && <LayoutMenu anchor={refs.layout} onClose={close} />}
