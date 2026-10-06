@@ -99,6 +99,14 @@ export interface SearchItem { symbol: string; full_name: string; description: st
 export interface Bars { s: string; t?: number[]; o?: number[]; h?: number[]; l?: number[]; c?: number[]; v?: number[] }
 export interface ModelInfo { id: string; name: string; source: string; allowed: boolean }
 export interface Quote { symbol: string; price: number | null; change: number | null; change_pct: number | null; time?: number }
+// ---- community ---------------------------------------------------------------------------------
+export interface CommunityStatus { enabled: boolean; rules: string; rooms: { key: string; name: string }[]; nickname: string; rules_accepted: boolean; banned: boolean; ban_reason: string; muted_until: string | null; write_in_seconds: number }
+export interface ChatMsg { id: number; room: string; nick: string; text: string; at: string; mine: boolean; staff: boolean }
+export interface IdeaComment { id: number; nick: string; staff: boolean; text: string; at: string; mine: boolean }
+export interface IdeaCard { id: number; title: string; symbol: string; timeframe: string; direction: 'long' | 'short' | 'neutral'; nick: string; staff: boolean; at: string; likes: number; views: number; comments: number; thumb: string; mine: boolean; liked: boolean; excerpt: string }
+export interface IdeaFull extends IdeaCard { body: string; image: string; chart: { ticker?: string; tf?: string } | null; comment_list: IdeaComment[] }
+export interface NewIdea { title: string; body: string; symbol: string; timeframe: string; direction: string; image: string; thumb: string; chart: { ticker: string; tf: string } }
+
 export interface CalendarEvent { time: number; currency: string; impact: string; title: string }
 
 export interface Signal {
@@ -158,6 +166,20 @@ export const api = {
   models: () => get<ModelInfo[]>('/api/v1/models'),
   signals: (symbol: string, from: number, to: number, models: string[], require_bias: boolean, signal?: AbortSignal, source: 'store' | 'scan' = 'store') =>
     get<{ signals: Signal[]; delay_minutes?: number; covered?: boolean }>('/api/v1/signals', { symbol, from, to, models: models.join(','), require_bias, source }, signal),
+  community: {
+    status: () => get<CommunityStatus>('/api/v1/community/status'),
+    join: (nickname: string, accept_rules: boolean) => post<{ profile: { nickname: string } }>('/api/v1/community/join', { nickname, accept_rules }),
+    messages: (room: string, after_id = 0) => get<{ messages: ChatMsg[] }>('/api/v1/community/messages', { room, after_id }),
+    say: (room: string, text: string) => post<{ message: ChatMsg }>('/api/v1/community/messages', { room, text }),
+    report: (id: number) => post<{ reported: boolean }>(`/api/v1/community/messages/${id}/report`, {}),
+    ideas: (q: { symbol?: string; sort?: string; page?: number; mine?: string }) => get<{ ideas: IdeaCard[]; more: boolean; page: number }>('/api/v1/community/ideas', q),
+    idea: (id: number) => get<{ idea: IdeaFull }>(`/api/v1/community/ideas/${id}`),
+    share: (i: NewIdea) => post<{ idea: IdeaFull }>('/api/v1/community/ideas', i),
+    like: (id: number) => post<{ liked: boolean; likes: number }>(`/api/v1/community/ideas/${id}/like`, {}),
+    comment: (id: number, text: string) => post<{ comment: IdeaComment }>(`/api/v1/community/ideas/${id}/comment`, { text }),
+    remove: (id: number) => post<{ deleted: boolean }>(`/api/v1/community/ideas/${id}/delete`, {}),
+    reportIdea: (id: number) => post<{ reported: boolean }>(`/api/v1/community/ideas/${id}/report`, {}),
+  },
   calendar: (from: number, to: number, impact: string) => get<{ events: CalendarEvent[] }>('/api/v1/calendar', { from, to, impact }),
   engineStatus: () => get<{ symbols: any[] }>('/api/v1/engine/status'),
   ask: (symbol: string, question: string, lang: string) => post<{ text: string }>('/api/v1/agent/ask', { symbol, question, lang }),

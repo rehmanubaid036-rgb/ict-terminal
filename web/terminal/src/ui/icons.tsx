@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 
 const P: Record<string, ReactNode> = {
   cursor: <path d="M12 3v18M3 12h18" />,
+  community: <><circle cx="9" cy="8" r="3" /><path d="M3 19c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5" /><circle cx="17" cy="9" r="2.4" /><path d="M16 13.6c2.8-.3 5 1.6 5 4.4" /></>,
   dotCursor: <circle cx="12" cy="12" r="3.2" fill="currentColor" />,
   arrowCursor: <path d="M6 3v15l4-4 3 7 2.5-1-3-7h6Z" />,
   star: <path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z" />,
