@@ -41,7 +41,7 @@ export interface SignalsPrefs {
   notify: boolean                // alert on new A / A+ setups
 }
 export const DEFAULT_SIGNALS: SignalsPrefs = { models: null, span: 604800, grade: 'all', bias: true, notify: false }
-const SPAN_VALUES = [14400, 43200, 86400, 259200, 604800]
+const SPAN_VALUES = [1800, 3600, 14400, 43200, 86400, 259200, 604800]
 
 function parseSignals(x: any): SignalsPrefs {
   if (!x || typeof x !== 'object') return { ...DEFAULT_SIGNALS }

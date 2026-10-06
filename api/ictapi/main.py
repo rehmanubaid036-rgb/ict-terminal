@@ -328,6 +328,8 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
             raise HTTPException(404, "No layout with this name.")
         return {"deleted": name}
 
+    scan_cache: dict[tuple, tuple[float, list]] = {}
+
     @app.get("/api/v1/signals")
     def signals(symbol: str, frm: int = Query(alias="from"), to: int = Query(...), models: str = "",
                 require_bias: bool = True, source: str = "store", a: dict = Depends(logged_in)):
@@ -351,22 +353,31 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
             end = min(end, pd.Timestamp.now(tz="UTC") - pd.Timedelta(minutes=delay))
         if not ids or end <= start:
             return {"symbol": i.ticker, "source": source, "signals": [], "delay_minutes": delay}
+        # covered: the engine runner watches this symbol, so the store is complete for it
+        covered = any(r.get("symbol") == i.symbol for r in store.status())
         if source == "store":
-            return {"symbol": i.ticker, "source": "store", "delay_minutes": delay,
+            return {"symbol": i.ticker, "source": "store", "delay_minutes": delay, "covered": covered,
                     "signals": store.signals(i.symbol, start, end, ids, bias_filter=require_bias)}
+        # a scan is heavy: one per symbol / models / period every 5 minutes, shared by every user
+        key = (i.ticker, tuple(sorted(ids)), require_bias, int(start.timestamp()) // 300, int(end.timestamp()) // 300)
+        hit = scan_cache.get(key)
+        if hit and time.time() - hit[0] < 300:
+            return {"symbol": i.ticker, "source": "scan", "delay_minutes": delay, "covered": covered, "signals": hit[1]}
         df = provider.candles(i.ticker, start - pd.Timedelta(days=30), end)
-        if len(df) < 1000:
-            return {"symbol": i.ticker, "signals": []}
-        ctx = Context(i.symbol, df)
         out = []
-        for mid in ids:
-            for s in MODELS[mid].scan(ctx, require_bias=require_bias):
-                if start <= s.created_time < end:
-                    d = s.to_dict()
-                    d["model_id"] = mid
-                    out.append(d)
-        out.sort(key=lambda d: d["created_time"])
-        return {"symbol": i.ticker, "source": "scan", "delay_minutes": delay, "signals": out}
+        if len(df) >= 1000:
+            ctx = Context(i.symbol, df)
+            for mid in ids:
+                for s in MODELS[mid].scan(ctx, require_bias=require_bias):
+                    if start <= s.created_time < end:
+                        d = s.to_dict()
+                        d["model_id"] = mid
+                        out.append(d)
+            out.sort(key=lambda d: d["created_time"])
+        if len(scan_cache) > 200:
+            scan_cache.clear()
+        scan_cache[key] = (time.time(), out)
+        return {"symbol": i.ticker, "source": "scan", "delay_minutes": delay, "covered": covered, "signals": out}
 
     def _long_levels(ticker: str, last: pd.Timestamp) -> pd.DataFrame:
         """Daily levels of ~95 days (for the 60-day IPDA), cached 5 minutes: past days never change."""

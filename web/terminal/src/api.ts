@@ -156,8 +156,8 @@ export const api = {
   overlays: (symbol: string, resolution: string, from: number, to: number, indicators: string[], signal?: AbortSignal) =>
     get<{ objects: OverlayObject[] }>('/api/v1/ict/overlays', { symbol, resolution, from, to, indicators: indicators.join(',') }, signal),
   models: () => get<ModelInfo[]>('/api/v1/models'),
-  signals: (symbol: string, from: number, to: number, models: string[], require_bias: boolean, signal?: AbortSignal) =>
-    get<{ signals: Signal[]; delay_minutes?: number }>('/api/v1/signals', { symbol, from, to, models: models.join(','), require_bias }, signal),
+  signals: (symbol: string, from: number, to: number, models: string[], require_bias: boolean, signal?: AbortSignal, source: 'store' | 'scan' = 'store') =>
+    get<{ signals: Signal[]; delay_minutes?: number; covered?: boolean }>('/api/v1/signals', { symbol, from, to, models: models.join(','), require_bias, source }, signal),
   calendar: (from: number, to: number, impact: string) => get<{ events: CalendarEvent[] }>('/api/v1/calendar', { from, to, impact }),
   engineStatus: () => get<{ symbols: any[] }>('/api/v1/engine/status'),
   ask: (symbol: string, question: string, lang: string) => post<{ text: string }>('/api/v1/agent/ask', { symbol, question, lang }),

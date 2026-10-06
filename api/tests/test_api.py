@@ -162,3 +162,12 @@ def test_calendar_events(client, monkeypatch):
     ev = r.json()["events"]
     assert [e["title"] for e in ev] == ["Non-Farm Payrolls", "FOMC Statement"]
     assert ev[1]["time"] == int(pd.Timestamp("2026-09-16 18:00", tz="UTC").timestamp()) and ev[1]["currency"] == "USD"
+
+
+def test_signals_tell_if_the_runner_covers_the_symbol(client):
+    frm, to = int(pd.Timestamp("2026-09-02", tz="UTC").timestamp()), int(pd.Timestamp("2026-09-04", tz="UTC").timestamp())
+    r = client.get("/api/v1/signals", params={"symbol": "AXI:XAUUSD", "from": frm, "to": to, "models": "M1"})
+    assert r.status_code == 200 and r.json()["covered"] in (True, False)
+    p = {"symbol": "AXI:XAUUSD", "from": frm, "to": to, "models": "M1", "source": "scan", "require_bias": "false"}
+    a, b = client.get("/api/v1/signals", params=p).json(), client.get("/api/v1/signals", params=p).json()
+    assert a["source"] == "scan" and a["signals"] == b["signals"]          # the second answer comes from the cache

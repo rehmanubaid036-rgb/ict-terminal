@@ -528,3 +528,28 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 .chart-watermark { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; font-size: clamp(32px, 8vw, 96px); font-weight: 700; color: var(--text); opacity: .06; z-index: 0; }
 .chart-watermark small { font-size: .35em; }
 .chart-canvas { position: relative; z-index: 1; }
+
+/* ---- ICT panel ---- */
+.ict-panel { display: flex; flex-direction: column; gap: 14px; }
+.ict-chart { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted); }
+.ict-chart b { color: var(--text); }
+.ict-panel section { display: flex; flex-direction: column; gap: 2px; }
+.ict-sec-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.ict-sec-head h5 { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.ict-sec-head h5 em { font-style: normal; color: var(--accent); margin-left: 4px; }
+.ict-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 8px; border: 0; border-radius: 8px; background: none; color: var(--text); text-align: left; cursor: pointer; }
+.ict-row:hover { background: var(--hover); }
+.ict-row.on { background: var(--accent-soft); }
+.ict-row.disabled { opacity: .5; cursor: not-allowed; }
+.ict-row-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ict-row-text b { font-size: 13px; font-weight: 600; }
+.ict-row-text small { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ict-row .switch { flex: none; pointer-events: none; }
+.menu-panel .ict-row { padding: 6px; }
+.tb-btn.wolf-btn svg { color: #f59e0b; }
+/* signals symbol search */
+.sig-symbol { display: flex; align-items: center; gap: 6px; }
+.sig-search { position: relative; flex: 1; min-width: 0; }
+.sig-search input { width: 100%; }
+.chip-x { flex: none; border: 1px solid var(--accent); background: var(--accent-soft); color: var(--text); border-radius: 999px; padding: 3px 9px; font-size: 12px; cursor: pointer; }
+.sig-sym { margin-left: 6px; font-size: 11px; color: var(--muted); }

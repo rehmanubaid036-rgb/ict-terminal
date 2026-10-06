@@ -7,10 +7,12 @@ import { Icon } from '../ui/icons'
 import { Empty, Switch, fmtPrice, nyTime, toast, useIsPhone } from '../ui/common'
 import { DRAWINGS, getChart, getEntry, notify, onRegistryChange, snapshot } from '../chart/registry'
 import { JournalView, StatsView, EngineView } from './BottomPanel'
+import { IctPanel } from './IctPanel'
 
-export type SideTab = 'watchlist' | 'signals' | 'assistant' | 'alerts' | 'objects' | 'data' | 'journal'
+export type SideTab = 'ict' | 'watchlist' | 'signals' | 'assistant' | 'alerts' | 'objects' | 'data' | 'journal'
 
 const TABS: { id: SideTab; icon: string; label: string; phoneOnly?: boolean }[] = [
+  { id: 'ict', icon: 'ict', label: 'ICT' },
   { id: 'watchlist', icon: 'list', label: 'Watchlist' },
   { id: 'signals', icon: 'target', label: 'Signals' },
   { id: 'assistant', icon: 'spark', label: 'AI assistant' },
@@ -34,6 +36,7 @@ export function SidePanel() {
             <button className="icon-btn" onClick={() => t.setSideTab(null)} aria-label="Close panel"><Icon name="close" size={16} /></button>
           </div>
           <div className="side-content">
+            {tab === 'ict' && <IctPanel />}
             {tab === 'watchlist' && <Watchlist />}
             {tab === 'signals' && <Signals />}
             {tab === 'assistant' && <Assistant />}
@@ -128,7 +131,7 @@ function Watchlist() {
 }
 
 // ---- signals ----------------------------------------------------------------------------------
-const SPANS: [string, number][] = [['4h', 14400], ['12h', 43200], ['24h', 86400], ['3d', 259200], ['7d', 604800]]
+const SPANS: [string, number][] = [['30m', 1800], ['1h', 3600], ['4h', 14400], ['12h', 43200], ['24h', 86400], ['3d', 259200], ['7d', 604800]]
 function Signals() {
   const t = useTerminal()
   const f = t.access.features
@@ -145,17 +148,31 @@ function Signals() {
   const [rows, setRows] = useState<Signal[] | null>(null)
   const [busy, setBusy] = useState(false)
   const [sel, setSel] = useState<string | number | null>(null)
+  const [symbol, setSymbol] = useState<string | null>(null)     // null = the active chart's symbol
+  const [q, setQ] = useState('')
+  const [found, setFound] = useState<SearchItem[]>([])
   const seen = useRef<Set<string | number>>(new Set())
-  const scan = async (quiet = false) => {
+  const ticker = symbol ?? t.active.ticker
+  useEffect(() => {
+    if (!q.trim()) { setFound([]); return }
+    const id = window.setTimeout(() => api.search(q.trim()).then(setFound).catch(() => setFound([])), 150)
+    return () => window.clearTimeout(id)
+  }, [q])
+  const [uncovered, setUncovered] = useState(false)
+  // deep: the Scan button also computes setups for symbols the engine runner does not watch
+  const scan = async (quiet = false, deep = false) => {
     if (!picked.length) return
     setBusy(!quiet)
     try {
       const now = Math.floor(Date.now() / 1000)
-      const r = await api.signals(t.active.ticker, now - span, now + 60, picked, bias)
+      let r = await api.signals(ticker, now - span, now + 60, picked, bias)
+      // symbols the engine runner does not watch have no stored setups: scan them now
+      if (deep && r.covered === false) r = await api.signals(ticker, now - span, now + 60, picked, bias, undefined, 'scan')
+      setUncovered(r.covered === false && !deep)
       const list = r.signals.reverse()
       if (quiet && notify_) {
         for (const s of list) if (!seen.current.has(s.id) && (s.grade === 'A+' || s.grade === 'A')) {
-          toast(`New ${s.grade} setup: ${modelTag(s.model_id)} ${s.direction > 0 ? 'LONG' : 'SHORT'} ${t.active.ticker.split(':')[1]} @ ${s.entry.toFixed(2)}`, 'alert')
+          toast(`New ${s.grade} setup: ${modelTag(s.model_id)} ${s.direction > 0 ? 'LONG' : 'SHORT'} ${ticker.split(':')[1]} @ ${s.entry.toFixed(2)}`, 'alert')
           try { if (Notification.permission === 'granted') new Notification('ICT setup', { body: `${modelTag(s.model_id)} ${s.grade} ${s.direction > 0 ? 'LONG' : 'SHORT'} @ ${s.entry.toFixed(2)}` }) } catch { /* ignore */ }
         }
       }
@@ -164,18 +181,26 @@ function Signals() {
     } catch (e) { if (!quiet) toast(errorText(e), 'error') }
     finally { setBusy(false) }
   }
-  useEffect(() => { void scan() }, [t.active.ticker]) // eslint-disable-line
+  useEffect(() => { void scan() }, [ticker, span]) // eslint-disable-line
   useEffect(() => {
     if (!notify_) return
     try { if (Notification.permission === 'default') void Notification.requestPermission() } catch { /* ignore */ }
     const id = window.setInterval(() => void scan(true), 60000)
     return () => window.clearInterval(id)
-  }, [notify_, picked.join(), bias, t.active.ticker]) // eslint-disable-line
+  }, [notify_, picked.join(), bias, ticker]) // eslint-disable-line
   if (!f.signals) return <Locked text="Live model setups are not part of your plan." />
   const shown = (rows ?? []).filter(s => grade === 'all' || (grade === 'A+' ? s.grade === 'A+' : s.grade.startsWith('A')))
   const d = Math.round(Math.log10(t.active.pricescale))
   return (
     <div className="signals">
+      <div className="sig-symbol">
+        <div className="sig-search">
+          <input value={q} placeholder={`Search a symbol (now ${ticker.split(':')[1] ?? ticker})`} onChange={e => setQ(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && found[0]) { setSymbol(found[0].symbol); setQ('') } if (e.key === 'Escape') setQ('') }} />
+          {found.length > 0 && <div className="wl-drop">{found.slice(0, 10).map(s => <button key={s.symbol} onClick={() => { setSymbol(s.symbol); setQ('') }}><b>{s.symbol.split(':')[1]}</b><span>{s.description}</span></button>)}</div>}
+        </div>
+        {symbol && <button className="chip-x" title="Back to the chart's symbol" onClick={() => setSymbol(null)}>{symbol.split(':')[1]} ✕</button>}
+      </div>
       <div className="model-chips">
         {t.models.map(m => {
           const ok = t.allowed(m.id)
@@ -194,13 +219,13 @@ function Signals() {
           onClick={() => { t.updateActive({ models: picked }); toast(`${picked.length} model${picked.length > 1 ? 's' : ''} drawn on the chart.`) }}>Draw on chart</button>
         <span className="note">Saved with your layout</span>
       </div>
-      <button className="btn primary block" disabled={busy || !picked.length} onClick={() => void scan()}>{busy ? 'Scanning…' : `Scan ${t.active.ticker.split(':')[1]}`}</button>
+      <button className="btn primary block" disabled={busy || !picked.length} onClick={() => void scan(false, true)}>{busy ? 'Scanning…' : `Scan ${ticker.split(':')[1] ?? ticker}`}</button>
       {f.signal_delay_minutes ? <div className="note">Your plan shows setups {f.signal_delay_minutes} minutes late.</div> : null}
       <div className="sig-list">
-        {rows === null ? <Empty>Pick models and scan.</Empty> : !shown.length ? <Empty>No setups in this period.</Empty> :
+        {rows === null ? <Empty>Pick models and scan.</Empty> : !shown.length ? <Empty>{uncovered ? `The engine does not watch ${ticker.split(':')[1] ?? ticker} live. Press Scan to look for setups now.` : 'No setups in this period.'}</Empty> :
           shown.map(s => (
-            <button key={s.id} className={`sig ${s.direction > 0 ? 'long' : 'short'}${sel === s.id ? ' sel' : ''}`} onClick={() => { setSel(s.id); t.showSignal(s) }}>
-              <div className="sig-top"><b>{modelTag(s.model_id)}</b><span className="dir">{s.direction > 0 ? 'LONG' : 'SHORT'}</span><span className={`grade g${s.grade.replace('+', 'p')}`}>{s.grade}</span></div>
+            <button key={s.id} className={`sig ${s.direction > 0 ? 'long' : 'short'}${sel === s.id ? ' sel' : ''}`} onClick={() => { setSel(s.id); if (symbol && symbol !== t.active.ticker) t.setTicker(symbol); t.showSignal({ ...s, symbol: '' }) }}>
+              <div className="sig-top"><b>{modelTag(s.model_id)}</b>{symbol && <small className="sig-sym">{symbol.split(':')[1]}</small>}<span className="dir">{s.direction > 0 ? 'LONG' : 'SHORT'}</span><span className={`grade g${s.grade.replace('+', 'p')}`}>{s.grade}</span></div>
               <div className="sig-mid">{nyTime(s.created_time)} NY · {s.window ?? ''}</div>
               <div className="sig-px"><span>E <b>{s.entry.toFixed(d)}</b></span><span>SL {s.stop.toFixed(d)}</span><span>TP {s.targets.map(x => x[0].toFixed(d)).join(' / ')}</span></div>
             </button>
