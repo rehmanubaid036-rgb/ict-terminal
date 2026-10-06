@@ -2,7 +2,7 @@
 // model signals, and the drawing tools that klinecharts does not ship.
 import { registerOverlay, type OverlayCreate, type OverlayFigure, type Coordinate, type Chart } from 'klinecharts'
 import type { OverlayObject, Signal } from '../api'
-import { modelTag } from '../constants'
+import { modelTag, WOLF_MODELS } from '../constants'
 
 const FONT = 'Inter, -apple-system, "Segoe UI", Roboto, sans-serif'
 const text = (x: number, y: number, t: string, color: string, o: Record<string, unknown> = {}, size = 10): OverlayFigure => ({
@@ -367,6 +367,39 @@ export function engineOverlays(objects: OverlayObject[], groupId: string): Overl
 export interface Bias { direction: number; score: number; components: Record<string, number>; draw: number | null; draw_source?: string; ipda_position: number | null; as_of: number }
 export const biasOf = (objects: OverlayObject[]): Bias | null => (objects.find(o => o.kind === 'bias') as unknown as Bias) ?? null
 
+const FIB_COLORS: Record<string, string> = { '0': '#9ca3af', '1': '#9ca3af', '1.5': '#7e57c2', '2': '#f06292', '2.5': '#f59e0b',
+  '-1': '#26a69a', '-1.25': '#7e57c2', '-1.5': '#f59e0b' }
+
+/** M17 Wolf Asia: the levels the model is built on (NDOG + CE, initial BSL / SSL, the SD tool on the
+ * last opposite leg, and for the selected setup the MSS level and the wick C.E stop). */
+function wolfLevels(s: Signal, groupId: string, full: boolean): OverlayCreate[] {
+  const n = (s.notes ?? {}) as Record<string, any>
+  if (!n.ndog_time) return []
+  const t0 = new Date(n.ndog_time).getTime(), t1 = new Date(n.window_end ?? s.expiry).getTime()
+  const lineAt = (v: number, color: string, label: string, dashed = true, from = t0): OverlayCreate =>
+    ({ name: 'ictLine', groupId, lock: true, points: [{ timestamp: from, value: v }, { timestamp: t1, value: v }], extendData: { color, label, dashed, labelStart: true } })
+  const out: OverlayCreate[] = []
+  const g = n.ndog
+  if (g && g.high > g.low) {
+    out.push({ name: 'ictBox', groupId, lock: true, points: [{ timestamp: t0, value: g.high }, { timestamp: t1, value: g.low }, { timestamp: t0, value: g.ce }],
+      extendData: { color: 'rgba(250,204,21,0.10)', border: '#facc15', label: g.significant ? 'NDOG' : 'NDOG (small)', midLabel: 'CE' } })
+  }
+  if (n.initial_bsl != null) out.push(lineAt(n.initial_bsl, '#2962ff', 'Initial BSL'))
+  if (n.initial_ssl != null) out.push(lineAt(n.initial_ssl, '#ab47bc', 'Initial SSL'))
+  // fib of the leg (0 = raid extreme / stop, 1 = start of the opposite leg, 1.5 / 2 / 2.5 extensions),
+  // drawn from the leg's start like a fib tool
+  if (n.fib) {
+    const ts = new Date(s.created_time).getTime() - 30 * 60_000
+    for (const [k, v] of Object.entries(n.fib as Record<string, number>))
+      out.push(lineAt(v, FIB_COLORS[k] ?? '#9ca3af', k, false, ts))
+  }
+  if (full && n.wick_ce != null && n.stop_mode === 'wick_ce')
+    out.push(lineAt(n.wick_ce, '#ef5350', 'Wick C.E', true, new Date(n.wick_time ?? s.created_time).getTime()))
+  if (full && n.mss_level != null)
+    out.push(lineAt(n.mss_level, '#f59e0b', 'MSS', false, new Date(n.wick_time ?? s.created_time).getTime()))
+  return out
+}
+
 /** "TP3 · 3R", "TP8 · 15:30–16:00 high" (what the model says the target is), else "TP3". */
 function targetLabel(s: Signal, i: number): string {
   const from = String(((s.notes ?? {}).targets_from as string[] | undefined)?.[i] ?? '')
@@ -384,7 +417,7 @@ export function signalBoxes(signals: Signal[], groupId: string): OverlayCreate[]
     const right = Math.max(end, t + 60000)
     const tps: OverlayCreate[] = s.targets.map(([v], i) => ({ name: 'ictLine', groupId, lock: true,
       points: [{ timestamp: t, value: v }, { timestamp: right, value: v }], extendData: { color: '#26a69a', label: targetLabel(s, i), dashed: true } }))
-    return [boxed, ...tps]
+    return [...(WOLF_MODELS.has(s.model_id) ? wolfLevels(s, groupId, false) : []), boxed, ...tps]
   })
 }
 
@@ -394,5 +427,6 @@ export function signalLines(s: Signal, groupId: string, digitsCount: number): Ov
   const at = (v: number, color: string, label: string): OverlayCreate =>
     ({ name: 'ictLine', groupId, lock: true, points: [{ timestamp: t, value: v }, { timestamp: end, value: v }], extendData: { color, label, width: 2, boxed: true } })
   return [at(s.entry, '#2962ff', `${modelTag(s.model_id)} ${s.direction > 0 ? 'BUY' : 'SELL'} ${s.entry.toFixed(digitsCount)}`), at(s.stop, '#ef5350', `SL ${s.stop.toFixed(digitsCount)}`),
-    ...s.targets.map(([v, w], i) => at(v, '#26a69a', `${targetLabel(s, i)}  ${v.toFixed(digitsCount)} (${Math.round(w * 100)}%)`))]
+    ...s.targets.map(([v, w], i) => at(v, '#26a69a', `${targetLabel(s, i)}  ${v.toFixed(digitsCount)} (${Math.round(w * 100)}%)`)),
+    ...(WOLF_MODELS.has(s.model_id) ? wolfLevels(s, groupId, true) : [])]
 }
