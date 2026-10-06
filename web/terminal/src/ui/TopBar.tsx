@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTerminal } from '../Terminal'
 import { api, type SearchItem } from '../api'
-import { CHART_TYPES, FAVORITE_TFS, INDICATORS, LAYOUTS, TIMEFRAMES, parseTimeframe, timeframeByLabel, type LayoutId, ONE_MINUTE_MODELS, WOLF_MODELS } from '../constants'
+import { CHART_TYPES, FAVORITE_TFS, INDICATORS, LAYOUTS, TIMEFRAMES, parseTimeframe, timeframeByLabel, type LayoutId, WOLF_MODELS } from '../constants'
 import { ModelSection } from '../panels/IctPanel'
 import { Icon } from './icons'
 import { Modal, Popover, Switch, toast, useIsPhone } from './common'
 import { getEntry, undo, redo } from '../chart/registry'
 
-type Menu = 'tf' | 'type' | 'ict' | 'models' | 'wolf' | 'layout' | 'more' | null
+type Menu = 'tf' | 'type' | 'wolf' | 'layout' | 'more' | null
 
 export function TopBar() {
   const t = useTerminal()
@@ -17,10 +17,9 @@ export function TopBar() {
   const [interval, setInterval] = useState<string | null>(null)
   const [indicators, setIndicators] = useState(false)
   const refs = { tf: useRef<HTMLButtonElement>(null), type: useRef<HTMLButtonElement>(null), ict: useRef<HTMLButtonElement>(null),
-    models: useRef<HTMLButtonElement>(null), wolf: useRef<HTMLButtonElement>(null), layout: useRef<HTMLButtonElement>(null), more: useRef<HTMLButtonElement>(null) }
+    wolf: useRef<HTMLButtonElement>(null), layout: useRef<HTMLButtonElement>(null), more: useRef<HTMLButtonElement>(null) }
   const a = t.active
   const tf = timeframeByLabel(a.tf)
-  const f = t.access.features
   const ictModels = a.models.filter(m => !WOLF_MODELS.has(m)), wolfModels = a.models.filter(m => WOLF_MODELS.has(m))
 
   useEffect(() => {
@@ -51,8 +50,7 @@ export function TopBar() {
       <span className="divider" />
       <button ref={refs.type} className="tb-btn" title="Chart type" onClick={() => toggle('type')}><Icon name="candles" /></button>
       <button className="tb-btn text" title="Indicators" onClick={() => setIndicators(true)}><Icon name="indicators" /><span>Indicators</span></button>
-      <button ref={refs.ict} className={`tb-btn text${a.ict.length ? ' lit' : ''}`} title="ICT panel: indicators and models, one click on / off" onClick={() => t.setSideTab(t.sideTab === 'ict' ? null : 'ict')}><Icon name="ict" /><span>ICT</span>{a.ict.length > 0 && <em>{a.ict.length}</em>}</button>
-      <button ref={refs.models} className={`tb-btn text${ictModels.length ? ' lit' : ''}`} title="ICT model indicators" onClick={() => toggle('models')}><Icon name="models" /><span>Models</span>{ictModels.length > 0 && <em>{ictModels.length}</em>}</button>
+      <button ref={refs.ict} className={`tb-btn text${a.ict.length + ictModels.length ? ' lit' : ''}${t.sideTab === 'ict' ? ' on' : ''}`} title="ICT: indicators and models, one click on / off" onClick={() => t.setSideTab(t.sideTab === 'ict' ? null : 'ict')}><Icon name="ict" /><span>ICT</span>{a.ict.length + ictModels.length > 0 && <em>{a.ict.length + ictModels.length}</em>}</button>
       <button ref={refs.wolf} className={`tb-btn text wolf-btn${wolfModels.length ? ' lit' : ''}`} title="Wolf Models: your custom models" onClick={() => toggle('wolf')}><Icon name="target" /><span>Wolf Models</span>{wolfModels.length > 0 && <em>{wolfModels.length}</em>}</button>
       <span className="divider" />
       <button className="tb-btn" title="Create alert (Alt+A)" onClick={() => t.setSideTab('alerts')}><Icon name="bell" /></button>
@@ -87,28 +85,6 @@ export function TopBar() {
           ))}
         </Popover>
       )}
-      {menu === 'models' && (
-        <Popover anchor={refs.models} onClose={close} className="menu-panel" title="ICT model indicators">
-          {!f.signals ? <Locked text="Model setups are not part of your plan." onUpgrade={() => { close(); t.openAccount('plans') }} /> : <>
-            <div className="menu-head"><span>Each model draws its setups: entry, stop and targets</span></div>
-            <div className="check-grid">
-              {t.models.filter(m => !WOLF_MODELS.has(m.id)).map(m => {
-                const ok = t.allowed(m.id)
-                return (
-                  <label key={m.id} className={`check${ok ? '' : ' disabled'}`} title={m.name}>
-                    <input type="checkbox" disabled={!ok} checked={ok && a.models.includes(m.id)} onChange={() => t.updateActive(c => ({ models: c.models.includes(m.id) ? c.models.filter(x => x !== m.id) : [...c.models, m.id] }))} />
-                    <span><b>{m.id}</b><small>{m.name}{ONE_MINUTE_MODELS.has(m.id) ? ' · 1m chart' : ''}{ok ? '' : ' 🔒'}</small></span>
-                  </label>
-                )
-              })}
-            </div>
-            <div className="menu-foot">
-              <Switch checked={a.requireBias} onChange={v => t.updateActive({ requireBias: v })} label="Only setups with the daily bias" />
-              {f.signal_delay_minutes ? <span className="note">Your plan shows setups {f.signal_delay_minutes} min late.</span> : null}
-            </div>
-          </>}
-        </Popover>
-      )}
       {menu === 'wolf' && (
         <Popover anchor={refs.wolf} onClose={close} className="menu-panel" align="right" title="Wolf Models">
           <ModelSection title="Your custom models" wolf />
@@ -141,10 +117,6 @@ export function TopBar() {
 }
 
 const TF_NAMES: Record<string, string> = { '1m': '1 minute', '3m': '3 minutes', '5m': '5 minutes', '15m': '15 minutes', '30m': '30 minutes', '1H': '1 hour', '2H': '2 hours', '4H': '4 hours', D: '1 day', W: '1 week', M: '1 month' }
-
-function Locked({ text, onUpgrade }: { text: string; onUpgrade: () => void }) {
-  return <div className="locked"><Icon name="lock" /><p>{text}</p><button className="btn primary sm" onClick={onUpgrade}>See plans</button></div>
-}
 
 export function LayoutGlyph({ id }: { id: string }) {
   const cells: Record<string, string> = {
