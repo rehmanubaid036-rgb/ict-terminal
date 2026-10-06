@@ -691,3 +691,52 @@ def internal_verify(request):
     access, device_error = services.access_for_token(token, ip=client_ip(request), **device_info(data, request))
     return ok(valid=access["is_vip"], reason=device_error, access=access,
               logout=access.get("status") == "session_mismatch")
+
+
+# ── community ideas (reading is open to everyone; posting needs an account and a nickname) ───────
+def _viewer(request):
+    token = services.resolve_token(bearer(request))
+    return token.user if token else None
+
+
+@method("GET", "POST")
+def community_ideas(request):
+    if request.method == "POST":
+        token = services.resolve_token(bearer(request))
+        if token is None:
+            return error("Please log in to share an idea.", 401)
+        return _community(lambda: {"idea": community.post_idea(token.user, body(request))})
+    q = request.GET
+    page = q.get("page", "1")
+    return _community(lambda: community.ideas(_viewer(request), q.get("symbol", "")[:30], q.get("sort", "new"),
+                                              int(page) if page.isdigit() else 1, q.get("mine") == "1"))
+
+
+@method("GET")
+def community_idea(request, idea_id):
+    return _community(lambda: {"idea": community.idea(_viewer(request), idea_id)})
+
+
+@method("POST")
+@token_required
+def community_idea_like(request, idea_id):
+    return _community(lambda: community.like_idea(request.api_token.user, idea_id))
+
+
+@method("POST")
+@token_required
+def community_idea_comment(request, idea_id):
+    return _community(lambda: {"comment": community.comment_idea(request.api_token.user, idea_id,
+                                                                  str(body(request).get("text") or ""))})
+
+
+@method("POST")
+@token_required
+def community_idea_delete(request, idea_id):
+    return _community(lambda: community.delete_idea(request.api_token.user, idea_id))
+
+
+@method("POST")
+@token_required
+def community_idea_report(request, idea_id):
+    return _community(lambda: community.report_idea(request.api_token.user, idea_id))

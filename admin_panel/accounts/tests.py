@@ -1411,3 +1411,50 @@ class SeedPlansTests(TestCase):
         call_command("seed_plans", stdout=open(__import__("os").devnull, "w"))
         self.assertEqual(Plan.objects.filter(name="Pro Monthly").count(), 1)
         self.assertFalse(Plan.objects.filter(slug="pro-monthly").exists())
+
+
+class IdeaTests(CommunityTests):
+    """Community ideas: open to read, accounts with a nickname post, like and comment; same filters."""
+    PIC = "data:image/jpeg;base64," + "A" * 200
+
+    def share(self, auth, **extra):
+        data = {"title": "Gold long from the NY AM FVG", "body": "Bias bullish, draw on PDH.", "symbol": "AXI:XAUUSD",
+                "timeframe": "5m", "direction": "long", "image": self.PIC, "chart": {"ticker": "AXI:XAUUSD", "tf": "5m"}}
+        data.update(extra)
+        return self.client.post("/api/v1/community/ideas", json.dumps(data), content_type="application/json", headers=auth)
+
+    def test_share_list_read_like_comment(self):
+        self.assertEqual(self.share(self.a).json()["code"], "join_needed")          # nickname first
+        self.join(self.a, "GoldHunter")
+        r = self.share(self.a)
+        self.assertEqual(r.status_code, 200, r.content)
+        idea = r.json()["idea"]
+        self.assertEqual((idea["symbol"], idea["nick"], idea["direction"]), ("XAUUSD", "GoldHunter", "long"))
+        # anyone can read, without logging in
+        lst = self.client.get("/api/v1/community/ideas").json()
+        self.assertEqual([i["title"] for i in lst["ideas"]], ["Gold long from the NY AM FVG"])
+        self.assertNotIn("image", lst["ideas"][0])                                   # the list stays light
+        one = self.client.get(f"/api/v1/community/ideas/{idea['id']}").json()["idea"]
+        self.assertEqual((one["image"], one["chart"]["tf"], one["views"]), (self.PIC, "5m", 1))
+        self.assertEqual(self.client.get("/api/v1/community/ideas?symbol=NAS100").json()["ideas"], [])
+        # likes toggle, comments count
+        self.join(self.b, "NasTrader")
+        like = lambda: self.client.post(f"/api/v1/community/ideas/{idea['id']}/like", headers=self.b).json()
+        self.assertEqual(like(), {"success": True, "liked": True, "likes": 1})
+        self.assertEqual(like()["likes"], 0)
+        c = self.client.post(f"/api/v1/community/ideas/{idea['id']}/comment", json.dumps({"text": "Nice read"}),
+                             content_type="application/json", headers=self.b).json()
+        self.assertEqual(c["comment"]["nick"], "NasTrader")
+        one = self.client.get(f"/api/v1/community/ideas/{idea['id']}", headers=self.a).json()["idea"]
+        self.assertEqual((one["comments"], [x["text"] for x in one["comment_list"]], one["mine"]), (1, ["Nice read"], True))
+
+    def test_filters_and_delete(self):
+        self.join(self.a, "GoldHunter")
+        self.join(self.b, "NasTrader")
+        self.assertEqual(self.share(self.a, title="join my telegram t.me/x").json()["code"], "rules")
+        self.assertEqual(self.share(self.a, image="javascript:alert(1)").json()["code"], "image")
+        self.assertEqual(self.share(self.a, image="").json()["code"], "image")
+        idea = self.share(self.a).json()["idea"]
+        self.assertEqual(self.client.post(f"/api/v1/community/ideas/{idea['id']}/delete", headers=self.b).status_code, 404)
+        self.assertEqual(self.client.post(f"/api/v1/community/ideas/{idea['id']}/delete", headers=self.a).json()["deleted"], True)
+        self.assertEqual(self.client.get("/api/v1/community/ideas").json()["ideas"], [])

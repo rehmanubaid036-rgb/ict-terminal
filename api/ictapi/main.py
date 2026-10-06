@@ -42,10 +42,16 @@ FORWARD = {
     ("GET", "plans"), ("GET", "app-config"), ("GET", "payments/methods"), ("POST", "payments/submit"),
     ("GET", "payments/mine"), ("GET", "payments/crypto/networks"), ("POST", "payments/crypto/order"),
     ("GET", "payments/crypto/open"),
+    # community: chat (accounts with a nickname) and ideas (open to read)
+    ("GET", "community/status"), ("POST", "community/join"), ("GET", "community/messages"), ("POST", "community/messages"),
+    ("GET", "community/ideas"), ("POST", "community/ideas"),
 }
 # a customer's own crypto order: status, cancel, transaction hash (the panel checks ownership)
 FORWARD_PATTERNS = [("GET", re.compile(r"payments/crypto/order/\d+")),
-                    ("POST", re.compile(r"payments/crypto/order/\d+/(cancel|txid)"))]
+                    ("POST", re.compile(r"payments/crypto/order/\d+/(cancel|txid)")),
+                    ("POST", re.compile(r"community/messages/\d+/report")),
+                    ("GET", re.compile(r"community/ideas/\d+")),
+                    ("POST", re.compile(r"community/ideas/\d+/(like|comment|delete|report)"))]
 
 
 def forwarded(method: str, path: str) -> bool:
@@ -501,8 +507,9 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
                 body = await request.json()
             except ValueError:
                 body = {}
+        query = {k: v for k, v in request.query_params.items()} if request.method == "GET" else None
         status, data = await run_in_threadpool(auth.forward, request.method, path, body, dict(request.headers),
-                                               request.client.host if request.client else "")
+                                               request.client.host if request.client else "", query)
         token = _token(request)
         if path in ("auth/logout", "auth/password/change") and status == 200:
             auth.forget(token)

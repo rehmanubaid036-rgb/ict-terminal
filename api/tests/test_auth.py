@@ -23,14 +23,15 @@ class FakeAuth(AuthClient):
     def __init__(self):
         super().__init__(panel_url="http://panel.test", secret="s")
         self.users = {"free": FREE, "pro": PRO, "noplan": NO_PLAN}
-        self.forwarded = []
+        self.forwarded, self.queries = [], []
         self.forgotten = []
 
     def verify(self, token="", *a, **k):
         return dict(self.users.get(token, GUEST))
 
-    def forward(self, method, path, json_body=None, headers=None, client_ip=""):
+    def forward(self, method, path, json_body=None, headers=None, client_ip="", query=None):
         self.forwarded.append((method, path, json_body, (headers or {}).get("authorization")))
+        self.queries.append(query)
         return 200, {"success": True, "path": path, "access": PRO if path == "auth/me" else None}
 
     def forget(self, token=""):
@@ -107,6 +108,15 @@ def test_account_calls_are_forwarded(api, fake):
     assert fake.forgotten == ["pro"]
     assert api.get("/api/v1/not-a-route").status_code == 404
     assert api.delete("/api/v1/plans").status_code == 405
+
+
+def test_community_calls_are_forwarded_with_their_query(api, fake):
+    assert api.get("/api/v1/community/messages", params={"room": "ict", "after_id": 5}).json()["path"] == "community/messages"
+    assert fake.queries[-1] == {"room": "ict", "after_id": "5"}
+    assert api.get("/api/v1/community/ideas/12").json()["path"] == "community/ideas/12"
+    for p in ("community/ideas", "community/ideas/12/like", "community/ideas/12/comment", "community/messages/3/report"):
+        assert api.post("/api/v1/" + p, json={}).json()["path"] == p
+    assert api.post("/api/v1/community/ideas/12/hack", json={}).status_code == 404
 
 
 class _Resp:

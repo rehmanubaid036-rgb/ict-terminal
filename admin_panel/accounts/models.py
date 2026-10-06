@@ -802,7 +802,7 @@ class ChatProfile(models.Model):
 
 
 class ChatMessage(models.Model):
-    ROOMS = [("general", "General"), ("gold", "Gold & metals"), ("forex", "Forex"), ("indices", "Indices"),
+    ROOMS = [("general", "General"), ("ict", "ICT concepts & models"), ("gold", "Gold & metals"), ("forex", "Forex"), ("indices", "Indices"),
              ("crypto", "Crypto"), ("ea", "EAs & copy trading")]
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="chat_messages")
@@ -830,3 +830,63 @@ class ChatReport(models.Model):
     class Meta:
         constraints = [models.UniqueConstraint(fields=["message", "reporter"], name="chat_report_once")]
         verbose_name = "Community report"
+
+
+class Idea(models.Model):
+    """A trade idea shared in the community: a chart picture with the author's view (nickname only)."""
+    LONG, SHORT, NEUTRAL = "long", "short", "neutral"
+    DIRECTIONS = [(LONG, "Long"), (SHORT, "Short"), (NEUTRAL, "Neutral / education")]
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="ideas")
+    title = models.CharField(max_length=100)
+    body = models.TextField(max_length=2000, blank=True)
+    symbol = models.CharField(max_length=30, db_index=True)
+    timeframe = models.CharField(max_length=8, blank=True)
+    direction = models.CharField(max_length=8, choices=DIRECTIONS, default=NEUTRAL)
+    image = models.TextField(blank=True, help_text="Chart picture (JPEG data URL)")
+    thumb = models.TextField(blank=True, help_text="Small picture for the list (JPEG data URL)")
+    chart = models.TextField(blank=True, help_text="Chart setup (JSON) so readers can open it in their terminal")
+    likes = models.PositiveIntegerField(default=0)
+    views = models.PositiveIntegerField(default=0)
+    comments_count = models.PositiveIntegerField(default=0)
+    reports = models.PositiveIntegerField(default=0)
+    hidden = models.BooleanField(default=False, help_text="Deleted by the author or an admin, or hidden by reports")
+    hidden_reason = models.CharField(max_length=120, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Community idea"
+
+    def __str__(self):
+        return f"{self.symbol} {self.title[:40]}"
+
+
+class IdeaLike(models.Model):
+    idea = models.ForeignKey(Idea, on_delete=models.CASCADE, related_name="like_set")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["idea", "user"], name="idea_like_once")]
+
+
+class IdeaComment(models.Model):
+    idea = models.ForeignKey(Idea, on_delete=models.CASCADE, related_name="comment_set")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="idea_comments")
+    text = models.CharField(max_length=500)
+    hidden = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+        verbose_name = "Idea comment"
+
+
+class IdeaReport(models.Model):
+    idea = models.ForeignKey(Idea, on_delete=models.CASCADE, related_name="report_set")
+    reporter = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["idea", "reporter"], name="idea_report_once")]

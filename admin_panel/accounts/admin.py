@@ -10,7 +10,7 @@ from django.utils import timezone
 from django.utils.html import format_html, format_html_join
 
 from .models import (Ad, ApiToken, ChatMessage, ChatProfile, ChatReport, CryptoOrder, CryptoTransfer, CryptoWallet, CryptoWalletChange, CustomerProfile, Device, DeviceClaim, EaConnection, LoginEvent, Payment, PaymentMethod,
-                     Plan, SiteSettings, SocialAccount, Subscription, TrialGrant)
+                     Idea, IdeaComment, Plan, SiteSettings, SocialAccount, Subscription, TrialGrant)
 from . import services
 from .services import active_subscriptions
 
@@ -853,3 +853,53 @@ class ChatReportAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+
+@admin.register(Idea)
+class IdeaAdmin(admin.ModelAdmin):
+    list_display = ("created_at", "symbol", "timeframe", "direction", "title", "nickname", "likes", "comments_count",
+                    "views", "reports", "hidden")
+    list_filter = ("direction", "hidden", "symbol")
+    search_fields = ("title", "body", "symbol", "user__chat_profile__nickname", "user__email")
+    date_hierarchy = "created_at"
+    readonly_fields = ("user", "likes", "views", "comments_count", "reports", "created_at", "picture")
+    exclude = ("image", "thumb", "chart")
+    actions = ["hide_ideas", "restore_ideas"]
+
+    def has_add_permission(self, request):
+        return False
+
+    @admin.display(description="Nickname")
+    def nickname(self, obj):
+        prof = getattr(obj.user, "chat_profile", None)
+        return prof.nickname if prof else "-"
+
+    @admin.display(description="Chart")
+    def picture(self, obj):
+        from django.utils.html import format_html
+        return format_html('<img src="{}" style="max-width:640px;border-radius:8px">', obj.image) if obj.image else "-"
+
+    @admin.action(description="Delete (hide) ideas")
+    def hide_ideas(self, request, queryset):
+        n = queryset.update(hidden=True, hidden_reason=f"Deleted by {request.user}")
+        self.message_user(request, f"Deleted {n} idea(s).", messages.WARNING)
+
+    @admin.action(description="Restore ideas")
+    def restore_ideas(self, request, queryset):
+        self.message_user(request, f"Restored {queryset.update(hidden=False, hidden_reason='')} idea(s).", messages.SUCCESS)
+
+
+@admin.register(IdeaComment)
+class IdeaCommentAdmin(admin.ModelAdmin):
+    list_display = ("created_at", "idea", "text", "hidden")
+    list_filter = ("hidden",)
+    search_fields = ("text", "user__chat_profile__nickname")
+    readonly_fields = ("idea", "user", "text", "created_at")
+    actions = ["hide_comments"]
+
+    def has_add_permission(self, request):
+        return False
+
+    @admin.action(description="Delete (hide) comments")
+    def hide_comments(self, request, queryset):
+        self.message_user(request, f"Deleted {queryset.update(hidden=True)} comment(s).", messages.WARNING)

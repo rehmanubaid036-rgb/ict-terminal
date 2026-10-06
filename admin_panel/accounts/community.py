@@ -18,7 +18,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import F
 from django.utils import timezone
 
-from .models import ChatMessage, ChatProfile, ChatReport, SiteSettings
+from .models import ChatMessage, ChatProfile, ChatReport, Idea, IdeaComment, IdeaLike, IdeaReport, SiteSettings
 
 ROOMS = dict(ChatMessage.ROOMS)
 PAGE = 50
@@ -247,3 +247,188 @@ def report(user, message_id, reason=""):
         m.hidden, m.hidden_reason = True, f"Hidden after {m.reports} reports"
         m.save(update_fields=["hidden", "hidden_reason"])
     return {"reported": True, "hidden": m.hidden}
+
+
+# ── ideas: chart pictures with the author's view, likes and comments ─────────────────────────────
+IDEA_PAGE = 20
+IMAGE_MAX, THUMB_MAX, CHART_MAX = 450_000, 70_000, 60_000      # bytes of the data URLs / chart JSON
+IDEAS_PER_DAY = 10
+SYMBOL_RE = re.compile(r"^[A-Za-z0-9_.:\-]{1,30}$")
+
+
+def _member(user, action="post"):
+    """The poster's profile: the same nickname, rules, wait time, bans and mutes as the chat."""
+    site = SiteSettings.load()
+    if not site.community_enabled:
+        raise CommunityError("The community is closed right now.", "closed", 403)
+    p = profile_of(user)
+    if p is None or not p.rules_accepted_at:
+        raise CommunityError("Choose a nickname and accept the rules first.", "join_needed", 403)
+    if p.banned:
+        raise CommunityError("You are banned from the community.", "banned", 403)
+    if p.muted:
+        raise CommunityError(f"You are muted until {timezone.localtime(p.muted_until):%H:%M}.", "muted", 403)
+    wait = (user.date_joined + timedelta(minutes=site.community_wait_minutes) - timezone.now()).total_seconds()
+    if wait > 0:
+        raise CommunityError(f"New accounts can {action} after {site.community_wait_minutes} minutes "
+                             f"({int(wait // 60) + 1} min left).", "wait", 403)
+    return p
+
+
+def _clean(p, text, what):
+    if is_abusive(text):
+        _strike(p, f"Please keep it respectful: abusive language is not allowed in the {what} (rule 2).")
+    if has_contact(text):
+        _strike(p, f"Links, emails, phone numbers and @handles are not allowed in the {what} (rules 3 and 4).")
+
+
+def _nick(user):
+    p = getattr(user, "chat_profile", None)
+    return p.nickname if p else "member"
+
+
+def idea_row(i, me=None, full=False):
+    row = {"id": i.pk, "title": i.title, "symbol": i.symbol, "timeframe": i.timeframe, "direction": i.direction,
+           "nick": _nick(i.user), "staff": i.user.is_staff, "at": i.created_at.isoformat(), "likes": i.likes,
+           "views": i.views, "comments": i.comments_count, "thumb": i.thumb, "mine": bool(me and i.user_id == me.pk),
+           "liked": bool(me and IdeaLike.objects.filter(idea=i, user=me).exists()),
+           "excerpt": i.body[:160]}
+    if full:
+        import json
+        try:
+            chart = json.loads(i.chart) if i.chart else None
+        except ValueError:
+            chart = None
+        row.update(body=i.body, image=i.image, chart=chart,
+                   comment_list=[{"id": c.pk, "nick": _nick(c.user), "staff": c.user.is_staff, "text": c.text,
+                                  "at": c.created_at.isoformat(), "mine": bool(me and c.user_id == me.pk)}
+                                 for c in i.comment_set.select_related("user", "user__chat_profile").filter(hidden=False)])
+    return row
+
+
+def ideas(me=None, symbol="", sort="new", page=1, mine=False):
+    qs = Idea.objects.select_related("user", "user__chat_profile").filter(hidden=False).defer("image", "chart")
+    if symbol:
+        qs = qs.filter(symbol__iexact=symbol.split(":")[-1])
+    if mine and me is not None:
+        qs = qs.filter(user=me)
+    qs = qs.order_by("-likes", "-created_at") if sort == "top" else qs.order_by("-created_at")
+    page = max(1, int(page or 1))
+    rows = list(qs[(page - 1) * IDEA_PAGE: page * IDEA_PAGE + 1])
+    return {"ideas": [idea_row(i, me) for i in rows[:IDEA_PAGE]], "more": len(rows) > IDEA_PAGE, "page": page}
+
+
+def idea(me, idea_id):
+    i = Idea.objects.select_related("user", "user__chat_profile").filter(pk=int(idea_id), hidden=False).first()
+    if i is None:
+        raise CommunityError("Idea not found.", "missing", 404)
+    Idea.objects.filter(pk=i.pk).update(views=F("views") + 1)
+    i.views += 1
+    return idea_row(i, me, full=True)
+
+
+def _picture(value, limit, what):
+    value = str(value or "")
+    if not value:
+        return ""
+    if not value.startswith(("data:image/jpeg;base64,", "data:image/png;base64,", "data:image/webp;base64,")):
+        raise CommunityError(f"The {what} must be a JPEG, PNG or WebP picture.", "image")
+    if len(value) > limit:
+        raise CommunityError(f"The {what} is too big.", "image")
+    return value
+
+
+def post_idea(user, data):
+    p = _member(user, "share ideas")
+    import json
+    title = re.sub(r"\s+", " ", str(data.get("title") or "")).strip()
+    text = str(data.get("body") or "").strip()
+    symbol = str(data.get("symbol") or "").strip().split(":")[-1].upper()
+    tf = str(data.get("timeframe") or "").strip()[:8]
+    direction = str(data.get("direction") or Idea.NEUTRAL)
+    if len(title) < 5:
+        raise CommunityError("Give the idea a title (5-100 characters).", "title")
+    if len(title) > 100 or len(text) > 2000:
+        raise CommunityError("Title up to 100 characters, description up to 2000.", "long")
+    if not SYMBOL_RE.match(symbol):
+        raise CommunityError("Pick the symbol of the idea.", "symbol")
+    if direction not in dict(Idea.DIRECTIONS):
+        direction = Idea.NEUTRAL
+    image = _picture(data.get("image"), IMAGE_MAX, "chart picture")
+    thumb = _picture(data.get("thumb"), THUMB_MAX, "small picture")
+    if not image:
+        raise CommunityError("Add a chart picture.", "image")
+    chart = data.get("chart")
+    chart = json.dumps(chart)[:CHART_MAX] if isinstance(chart, dict) else ""
+    if Idea.objects.filter(user=user, created_at__gte=timezone.now() - timedelta(days=1)).count() >= IDEAS_PER_DAY:
+        raise CommunityError(f"Up to {IDEAS_PER_DAY} ideas a day.", "slow", 429)
+    _clean(p, f"{title} {text}", "idea")
+    i = Idea.objects.create(user=user, title=title, body=text, symbol=symbol, timeframe=tf, direction=direction,
+                            image=image, thumb=thumb or image if len(image) <= THUMB_MAX else thumb, chart=chart)
+    return idea_row(i, user, full=True)
+
+
+def like_idea(user, idea_id):
+    _member(user, "like ideas")
+    i = Idea.objects.filter(pk=int(idea_id), hidden=False).first()
+    if i is None:
+        raise CommunityError("Idea not found.", "missing", 404)
+    gone = IdeaLike.objects.filter(idea=i, user=user).delete()[0]
+    if gone:
+        Idea.objects.filter(pk=i.pk, likes__gt=0).update(likes=F("likes") - 1)
+    else:
+        try:
+            with transaction.atomic():
+                IdeaLike.objects.create(idea=i, user=user)
+            Idea.objects.filter(pk=i.pk).update(likes=F("likes") + 1)
+        except IntegrityError:
+            pass
+    i.refresh_from_db()
+    return {"liked": not gone, "likes": i.likes}
+
+
+def comment_idea(user, idea_id, text):
+    p = _member(user, "comment")
+    i = Idea.objects.filter(pk=int(idea_id), hidden=False).first()
+    if i is None:
+        raise CommunityError("Idea not found.", "missing", 404)
+    text = re.sub(r"\s+", " ", (text or "")).strip()
+    if not text:
+        raise CommunityError("Write a comment first.", "empty")
+    if len(text) > 500:
+        raise CommunityError("Comments can be up to 500 characters.", "long")
+    last = IdeaComment.objects.filter(user=user).order_by("-pk").first()
+    if last and (timezone.now() - last.created_at).total_seconds() < SLOW_SECONDS:
+        raise CommunityError("Slow down a little: one comment every 5 seconds.", "slow", 429)
+    _clean(p, text, "comment")
+    c = IdeaComment.objects.create(idea=i, user=user, text=text)
+    Idea.objects.filter(pk=i.pk).update(comments_count=F("comments_count") + 1)
+    return {"id": c.pk, "nick": _nick(user), "staff": user.is_staff, "text": c.text, "at": c.created_at.isoformat(), "mine": True}
+
+
+def delete_idea(user, idea_id):
+    i = Idea.objects.filter(pk=int(idea_id), hidden=False).first()
+    if i is None or (i.user_id != user.pk and not user.is_staff):
+        raise CommunityError("Idea not found.", "missing", 404)
+    i.hidden, i.hidden_reason = True, "Deleted by the author" if i.user_id == user.pk else f"Deleted by {user}"
+    i.save(update_fields=["hidden", "hidden_reason"])
+    return {"deleted": True}
+
+
+def report_idea(user, idea_id):
+    i = Idea.objects.filter(pk=int(idea_id), hidden=False).first()
+    if i is None:
+        raise CommunityError("Idea not found.", "missing", 404)
+    if i.user_id == user.pk:
+        raise CommunityError("You can't report your own idea.", "own")
+    try:
+        with transaction.atomic():
+            IdeaReport.objects.create(idea=i, reporter=user)
+    except IntegrityError:
+        return {"reported": True}
+    Idea.objects.filter(pk=i.pk).update(reports=F("reports") + 1)
+    i.refresh_from_db()
+    if i.reports >= HIDE_AFTER_REPORTS:
+        i.hidden, i.hidden_reason = True, f"Hidden after {i.reports} reports"
+        i.save(update_fields=["hidden", "hidden_reason"])
+    return {"reported": True}

@@ -120,7 +120,8 @@ class AuthClient:
             for k in [k for k in self._cache if k[0] == "t:" + token]:
                 self._cache.pop(k, None)
 
-    def forward(self, method: str, path: str, json_body=None, headers=None, client_ip: str = "") -> tuple[int, dict]:
+    def forward(self, method: str, path: str, json_body=None, headers=None, client_ip: str = "",
+                query: dict | None = None) -> tuple[int, dict]:
         """Proxies a customer-facing call (login, register, plans, payments ...) to the panel."""
         out = self._service_headers(client_ip)
         incoming = {k.lower(): v for k, v in (headers or {}).items()}
@@ -129,7 +130,8 @@ class AuthClient:
                 out[name] = incoming[name.lower()]
         timeout = self.CRYPTO_TIMEOUT if path.startswith("payments/crypto/") else self.TIMEOUT
         try:
-            r = self.http.request(method, f"{self.panel_url}/api/v1/{path}", json=json_body, headers=out, timeout=timeout)
+            r = self.http.request(method, f"{self.panel_url}/api/v1/{path}", json=json_body, headers=out, timeout=timeout,
+                                  params=query or None)
             try:
                 return r.status_code, r.json()
             except ValueError:
