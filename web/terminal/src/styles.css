@@ -223,7 +223,8 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 .chart-chips button { padding: 5px 10px; border-radius: 7px; font-size: 12px; color: var(--muted); white-space: nowrap; }
 .chart-chips button.on { color: var(--accent); background: var(--accent-soft); }
 
-.ctx-menu { position: fixed; z-index: 95; width: 240px; padding: 6px; background: var(--panel); border: 1px solid var(--line2); border-radius: 10px; box-shadow: var(--shadow); display: flex; flex-direction: column; animation: pop .1s; }
+.ctx-menu { position: fixed; z-index: 95; width: 240px; padding: 6px; background: var(--panel); border: 1px solid var(--line2); border-radius: 10px; box-shadow: var(--shadow); display: flex; flex-direction: column; animation: pop .1s; overflow-y: auto; overscroll-behavior: contain; }
+.ctx-menu > * { flex: none; }
 .ctx-menu > button { text-align: left; padding: 7px 10px; border-radius: 6px; }
 .ctx-menu > button:hover { background: var(--hover); }
 .ctx-menu > button.danger { color: var(--down); }
