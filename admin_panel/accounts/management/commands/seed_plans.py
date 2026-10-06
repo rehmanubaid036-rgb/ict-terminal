@@ -31,5 +31,9 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         for data in DEFAULT_PLANS:
-            _, created = Plan.objects.get_or_create(slug=data["slug"], defaults=data)
-            self.stdout.write(f"{'created' if created else 'exists '}  {data['name']}")
+            # a plan edited in the admin (new slug, same name) also counts as existing
+            if Plan.objects.filter(slug=data["slug"]).exists() or Plan.objects.filter(name=data["name"]).exists():
+                self.stdout.write(f"exists   {data['name']}")
+                continue
+            Plan.objects.create(**data)
+            self.stdout.write(f"created  {data['name']}")

@@ -1401,3 +1401,13 @@ class GuestLoginTests(TestCase):
 
     def test_needs_a_device_id(self):
         self.assertEqual(self.post("auth/guest", {}).status_code, 400)
+
+
+class SeedPlansTests(TestCase):
+    def test_seed_plans_keeps_a_plan_renamed_in_the_admin(self):
+        from django.core.management import call_command
+        call_command("seed_plans", stdout=open(__import__("os").devnull, "w"))
+        Plan.objects.filter(slug="pro-monthly").update(slug="pro")       # slug changed by the admin
+        call_command("seed_plans", stdout=open(__import__("os").devnull, "w"))
+        self.assertEqual(Plan.objects.filter(name="Pro Monthly").count(), 1)
+        self.assertFalse(Plan.objects.filter(slug="pro-monthly").exists())
