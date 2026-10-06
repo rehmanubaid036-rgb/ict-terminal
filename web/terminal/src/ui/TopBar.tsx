@@ -128,6 +128,8 @@ export function TopBar() {
       {menu === 'layout' && <LayoutMenu anchor={refs.layout} onClose={close} />}
       {menu === 'more' && (
         <Popover anchor={refs.more} onClose={close} className="menu-panel narrow" align="right" title="Settings">
+          <button className="btn ghost sm" onClick={() => { close(); t.openSettings() }}><Icon name="gear" size={15} /> Chart settings…</button>
+          <div className="menu-sep" />
           <Switch checked={t.theme === 'dark'} onChange={v => t.setTheme(v ? 'dark' : 'light')} label="Dark theme" />
           <Switch checked={t.bottomOpen} onChange={v => { t.setBottomOpen(v); close() }} label="Journal & stats panel" />
           <div className="menu-sep" />

@@ -85,3 +85,58 @@ def fomc_flat(signals: list[Signal], events: list[NewsEvent], minutes_before: in
                 s.notes["fomc_flat"] = str(flat)
     return signals
 
+
+
+# ---- live calendar (chart events) ----------------------------------------------------------------
+FF_URL = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
+_ff_cache: dict = {"at": 0.0, "events": []}
+
+
+def parse_ff(rows: list[dict]) -> list[NewsEvent]:
+    """ForexFactory weekly JSON rows -> events (bad rows are skipped)."""
+    out = []
+    for r in rows or []:
+        try:
+            t = pd.Timestamp(r["date"])
+            t = t.tz_localize("UTC") if t.tzinfo is None else t.tz_convert("UTC")
+            out.append(NewsEvent(t, str(r.get("country", ""))[:3].upper(), str(r.get("impact", "Low")), str(r.get("title", ""))[:80]))
+        except (KeyError, ValueError, TypeError):
+            continue
+    return out
+
+
+def ff_week(fetch=None, ttl: float = 3600.0) -> list[NewsEvent]:
+    """This week's events from the ForexFactory feed, cached for an hour (10 min after a failure)."""
+    import json
+    import time as _time
+    import urllib.request
+
+    now = _time.time()
+    if now - _ff_cache["at"] < ttl:
+        return _ff_cache["events"]
+    try:
+        if fetch is None:
+            req = urllib.request.Request(FF_URL, headers={"User-Agent": "ICT-Terminal/1.0"})
+            with urllib.request.urlopen(req, timeout=8) as r:
+                rows = json.loads(r.read().decode("utf-8"))
+        else:
+            rows = fetch()
+        _ff_cache.update(at=now, events=parse_ff(rows))
+    except Exception:  # noqa: BLE001 - the chart works without the feed
+        _ff_cache["at"] = now - ttl + 600
+    return _ff_cache["events"]
+
+
+def calendar(start: pd.Timestamp, end: pd.Timestamp, impacts=("High",), live: list[NewsEvent] | None = None) -> list[NewsEvent]:
+    """Events between start and end (UTC): the live feed plus the rebuilt USD history. A rebuilt event
+    is left out when the feed has an event of that currency at the same time (the feed names it)."""
+    live = list(live or [])
+    fed = {(e.time, e.currency) for e in live}
+    events = [e for e in us_high_impact_history(start.date(), end.date()) if (e.time, e.currency) not in fed] + live
+    seen, out = set(), []
+    for e in sorted(events, key=lambda e: e.time):
+        key = (e.time, e.title)
+        if start <= e.time <= end and e.impact in impacts and key not in seen:
+            seen.add(key)
+            out.append(e)
+    return out

@@ -81,6 +81,8 @@ export function Popover({ anchor, onClose, children, align = 'left', className, 
 export interface Toast { id: number; text: string; kind: 'error' | 'info' | 'alert' }
 let toastId = 1
 let pushFn: (t: Toast) => void = () => {}
+let alertMs = 15000
+export const setAlertToastSeconds = (sec: number) => { alertMs = sec * 1000 }
 export const toast = (text: string, kind: Toast['kind'] = 'info') => pushFn({ id: toastId++, text, kind })
 
 export function Toasts() {
@@ -88,7 +90,7 @@ export function Toasts() {
   useEffect(() => {
     pushFn = t => {
       setList(l => (l.some(x => x.text === t.text) ? l : [...l.slice(-3), t]))
-      window.setTimeout(() => setList(l => l.filter(x => x.id !== t.id)), t.kind === 'alert' ? 15000 : 6000)
+      window.setTimeout(() => setList(l => l.filter(x => x.id !== t.id)), t.kind === 'alert' ? alertMs : 6000)
     }
   }, [])
   return (

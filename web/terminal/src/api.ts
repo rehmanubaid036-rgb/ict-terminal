@@ -99,6 +99,8 @@ export interface SearchItem { symbol: string; full_name: string; description: st
 export interface Bars { s: string; t?: number[]; o?: number[]; h?: number[]; l?: number[]; c?: number[]; v?: number[] }
 export interface ModelInfo { id: string; name: string; source: string; allowed: boolean }
 export interface Quote { symbol: string; price: number | null; change: number | null; change_pct: number | null; time?: number }
+export interface CalendarEvent { time: number; currency: string; impact: string; title: string }
+
 export interface Signal {
   id: string | number
   model: string
@@ -156,6 +158,7 @@ export const api = {
   models: () => get<ModelInfo[]>('/api/v1/models'),
   signals: (symbol: string, from: number, to: number, models: string[], require_bias: boolean, signal?: AbortSignal) =>
     get<{ signals: Signal[]; delay_minutes?: number }>('/api/v1/signals', { symbol, from, to, models: models.join(','), require_bias }, signal),
+  calendar: (from: number, to: number, impact: string) => get<{ events: CalendarEvent[] }>('/api/v1/calendar', { from, to, impact }),
   engineStatus: () => get<{ symbols: any[] }>('/api/v1/engine/status'),
   ask: (symbol: string, question: string, lang: string) => post<{ text: string }>('/api/v1/agent/ask', { symbol, question, lang }),
 

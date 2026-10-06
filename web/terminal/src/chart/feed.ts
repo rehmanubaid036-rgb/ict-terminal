@@ -83,7 +83,8 @@ export class Feed {
             else callback([], { forward: false, backward: false })
             return
           }
-          const tf = this.tf!
+          if (!this.tf || !this.ticker) { callback([], { forward: false, backward: false }); return }  // not set up yet
+          const tf = this.tf
           if (type === 'init') {
             const to = Math.floor(Date.now() / 1000) + tf.seconds
             this.initAbort?.abort()        // symbol / interval changed again: drop the old load

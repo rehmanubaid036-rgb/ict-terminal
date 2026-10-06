@@ -24,6 +24,7 @@ from ictengine.context import Context
 from ictengine.core.levels import daily_levels
 from ictengine.data.mt5 import MT5Error
 from ictengine.models.registry import MODELS
+from ictengine.news import calendar as news_calendar, ff_week
 from ictengine.store import LayoutError, Store
 from ictengine.time_overlays import LAYERS as TIME_LAYERS_ENGINE, time_layers
 
@@ -254,6 +255,17 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
         allowed = a.get("features", {}).get("models") or []
         return [{"id": m.id, "name": m.name, "source": m.source,
                  "allowed": allowed == "all" or m.id in allowed} for m in MODELS.values()]
+
+    @app.get("/api/v1/calendar")
+    async def calendar(frm: int = Query(alias="from"), to: int = Query(...), impact: str = "High", a: dict = Depends(access)):
+        """Economic events for the chart (ForexFactory week + FOMC / NFP history)."""
+        start, end = utc_range(frm, to)
+        if end - start > pd.Timedelta(days=400):
+            start = end - pd.Timedelta(days=400)
+        impacts = ("High", "Medium") if impact == "Medium" else ("High",)
+        live = await run_in_threadpool(ff_week)
+        return {"events": [{"time": int(e.time.timestamp()), "currency": e.currency, "impact": e.impact, "title": e.title}
+                           for e in news_calendar(start, end, impacts, live)]}
 
     @app.get("/api/v1/engine/status")
     def engine_status():

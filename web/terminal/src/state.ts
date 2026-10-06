@@ -1,3 +1,4 @@
+import { DEFAULT_SETTINGS, parseSettings, type ChartSettings } from './chart/settings'
 // Terminal state and its saved form (the account's "__autosave__" layout, plus named layouts).
 import { CHART_TYPES, ICT_IDS, LAYOUTS, PRICESCALE, timeframeByLabel, type ChartTypeId, type LayoutId } from './constants'
 
@@ -54,6 +55,7 @@ function parseSignals(x: any): SignalsPrefs {
 }
 
 export interface TerminalState {
+  chart: ChartSettings
   layout: LayoutId
   active: number
   charts: ChartConf[]
@@ -78,13 +80,14 @@ export function defaultState(): TerminalState {
     layout: '1', active: 0, charts: seeds.map(([t, tf], i) => newChart(i, t, tf)),
     sync: { symbol: false, interval: false, crosshair: true, drawings: false }, watchlist: [], alerts: [],
     signals: { ...DEFAULT_SIGNALS },
+    chart: { ...DEFAULT_SETTINGS },
   }
 }
 
 /** What goes to /api/v1/layouts. Drawings come from the live charts. */
 export function serialize(s: TerminalState, drawingsOf: (id: number) => Drawing[]) {
   return {
-    v: 2, layout: s.layout, active: s.active, sync: s.sync, watchlist: s.watchlist, alerts: s.alerts, signals: s.signals,
+    v: 2, layout: s.layout, active: s.active, sync: s.sync, watchlist: s.watchlist, alerts: s.alerts, signals: s.signals, chart: s.chart,
     charts: s.charts.map(c => ({ ...c, drawings: drawingsOf(c.id) })),
   }
 }
@@ -132,6 +135,7 @@ export function parse(data: any, maxCharts: number): { state: TerminalState; dra
     watchlist: Array.isArray(data?.watchlist) ? data.watchlist.filter((x: unknown) => typeof x === 'string').slice(0, 50) : [],
     alerts: Array.isArray(data?.alerts) ? data.alerts.filter((a: any) => typeof a?.ticker === 'string' && Number.isFinite(a?.price)).slice(0, 200) : [],
     signals: parseSignals(data?.signals),
+    chart: parseSettings(data?.chart),
   }
   const drawings = base.charts.map((_, i) => (Array.isArray(data?.charts?.[i]?.drawings) ? data.charts[i].drawings.filter(validDrawing) : []))
   return { state, drawings }

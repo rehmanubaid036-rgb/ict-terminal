@@ -2,10 +2,13 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { init, dispose, type Chart, type Crosshair, type Overlay, type OverlayMode } from 'klinecharts'
 import { api, errorText, isAbort, type Signal } from '../api'
 import { timeframeByLabel, indicatorDef, DRAW_COLORS, ONE_MINUTE_MODELS } from '../constants'
-import type { ChartConf } from '../state'
+import type { ChartConf, PriceAlert } from '../state'
 import { Feed } from './feed'
 import { engineOverlays, signalBoxes, signalLines, biasOf, type Bias, type DrawStyle } from './overlays'
-import { chartStyles, type Theme } from './theme'
+import { chartStyles, chartCssBackground, type Theme } from './theme'
+import type { ChartSettings } from './settings'
+import { EVENTS, loadCalendar, relTime, eventAt } from './events'
+import type { CalendarEvent } from '../api'
 import { DRAWINGS, register, unregister, getEntry, snapshot, notify, drawingHooks, removeSelected, onRegistryChange } from './registry'
 
 const ICT = 'ict'
@@ -18,6 +21,8 @@ export interface ChartPanelProps {
   conf: ChartConf
   active: boolean
   theme: Theme
+  settings: ChartSettings
+  alerts: PriceAlert[]
   tool: string | null
   magnet: OverlayMode
   drawSeq: number
@@ -46,13 +51,17 @@ export function ChartPanel(p: ChartPanelProps) {
   const [biasOpen, setBiasOpen] = useState(false)
   const [selected, setSelected] = useState<Overlay | null>(null)
   const [replayTick, setReplayTick] = useState(0)
+  const [events, setEvents] = useState<CalendarEvent[]>([])
+  const [tip, setTip] = useState<{ x: number; e: CalendarEvent } | null>(null)
+  const [, setClock] = useState(0)
+  const st = p.settings
   const tf = timeframeByLabel(conf.tf)
   const digits = Math.max(0, Math.round(Math.log10(conf.pricescale || 100)))
 
   // ---- create the chart once -------------------------------------------------------------------
   useEffect(() => {
     if (!box.current) return
-    const chart = init(box.current, { timezone: 'America/New_York', styles: chartStyles(p.theme, conf.chartType) })
+    const chart = init(box.current, { timezone: p.settings.timezone, styles: chartStyles(p.theme, conf.chartType, p.settings) })
     if (!chart) return
     chartRef.current = chart
     const feed = new Feed()
@@ -61,6 +70,7 @@ export function ChartPanel(p: ChartPanelProps) {
     feed.onNewBar = () => refreshOverlays.current(0)
     feed.onLoaded = () => { props.current.onLoaded?.(); refreshOverlays.current(0) }
     chart.setDataLoader(feed.loader())
+    chart.createIndicator({ name: EVENTS, paneId: 'candle_pane' }, true)
     register(conf.id, chart, feed)
     const onCross = (c: unknown) => props.current.onCrosshair(conf.id, (c as Crosshair) ?? null)
     chart.subscribeAction('onCrosshairChange', onCross)
@@ -93,26 +103,51 @@ export function ChartPanel(p: ChartPanelProps) {
     feed.tf = tf
     feed.heikin = heikin
     if (feed.mode === 'replay') feed.stopReplay()
-    chart.setStyles(chartStyles(p.theme, conf.chartType))
-    const [exch, sym] = conf.ticker.includes(':') ? conf.ticker.split(':') : ['', conf.ticker]
-    chart.setStyles({ candle: { tooltip: { title: { template: `${sym} · ${tf.label}${exch ? ' · ' + exch : ''}` },
-      legend: { template: [{ title: 'O ', value: '{open}' }, { title: 'H ', value: '{high}' }, { title: 'L ', value: '{low}' }, { title: 'C ', value: '{close}' }, { title: 'Vol ', value: '{volume}' }] } } } } as any)
-    chart.setSymbol({ ticker: conf.ticker, pricePrecision: digits, volumePrecision: 0 })
+    chart.setSymbol({ ticker: conf.ticker, pricePrecision: st.precision >= 0 ? st.precision : digits, volumePrecision: 0 })
     chart.setPeriod(tf.period)
     if (onlyHeikin) chart.resetData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conf.ticker, tf.label, conf.chartType, digits, p.theme])
+  }, [conf.ticker, tf.label, conf.chartType, digits, st.precision])
+
+  // ---- chart settings (styles, status line, scale, time zone) -----------------------------------
+  const setKey = JSON.stringify(st)
+  useEffect(() => {
+    const chart = chartRef.current
+    if (!chart) return
+    chart.setStyles(chartStyles(p.theme, conf.chartType, st))
+    const [exch, sym] = conf.ticker.includes(':') ? conf.ticker.split(':') : ['', conf.ticker]
+    const title = st.titleMode === 'ticker' ? sym : st.titleMode === 'ticker_tf' ? `${sym} · ${tf.label}` : `${sym} · ${tf.label}${exch ? ' · ' + exch : ''}`
+    chart.setStyles({ candle: { tooltip: { title: { template: title } } } } as any)
+    chart.setTimezone(st.timezone)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setKey, p.theme, conf.chartType, conf.ticker, tf.label])
 
   useEffect(() => {
-    chartRef.current?.overrideYAxis({ paneId: 'candle_pane', name: conf.axis })
-  }, [conf.axis])
+    chartRef.current?.overrideYAxis({ paneId: 'candle_pane', name: conf.axis, position: st.scale })
+  }, [conf.axis, st.scale])
+
+  // ---- events layer: session breaks, economic events, alert lines --------------------------------
+  useEffect(() => {
+    if (!st.econEvents && !st.latestNews) { setEvents([]); return }
+    let gone = false
+    const load = () => loadCalendar(st.eventImpact).then(e => { if (!gone) setEvents(e) })
+    load()
+    const t = window.setInterval(() => { load(); setClock(n => n + 1) }, 60_000)
+    return () => { gone = true; window.clearInterval(t) }
+  }, [st.econEvents, st.latestNews, st.eventImpact])
+  const alertKey = p.alerts.map(a => a.price + a.note).join('|')
+  useEffect(() => {
+    chartRef.current?.overrideIndicator({ name: EVENTS, paneId: 'candle_pane',
+      extendData: { s: st, intraday: tf.seconds < 86400, events, alerts: p.alerts.map(a => ({ price: a.price, note: a.note })), digits } })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setKey, events, alertKey, tf.seconds, digits])
 
   // ---- indicators ----------------------------------------------------------------------------
   const indKey = JSON.stringify(conf.indicators)
   useEffect(() => {
     const chart = chartRef.current
     if (!chart) return
-    chart.removeIndicator()
+    for (const i of chart.getIndicators()) if (i.name !== EVENTS) chart.removeIndicator({ id: i.id })
     for (const ind of conf.indicators) {
       const def = indicatorDef(ind.name)
       const value = { name: ind.name, ...(ind.params?.length ? { calcParams: ind.params } : {}) }
@@ -137,7 +172,9 @@ export function ChartPanel(p: ChartPanelProps) {
     timer.current = window.setTimeout(async () => {
       const chart = chartRef.current
       if (!chart) return
-      const { ict, models, requireBias, ticker } = props.current.conf
+      const { ict, models: chosen, requireBias, ticker } = props.current.conf
+      const ideas = props.current.settings
+      const models = ideas.ideas ? chosen : []
       if (!ict.length && !models.length) { chart.removeOverlay({ groupId: ICT }); setBias(null); return }
       const list = chart.getDataList()
       if (list.length < 3) return
@@ -157,7 +194,8 @@ export function ChartPanel(p: ChartPanelProps) {
         ])
         if (id !== req.current || !chartRef.current) return
         chart.removeOverlay({ groupId: ICT })
-        chart.createOverlay([...engineOverlays(ov.objects, ICT), ...signalBoxes(sg.signals.filter(x => tf.label === '1m' || !ONE_MINUTE_MODELS.has(x.model_id)), ICT)])
+        chart.createOverlay([...engineOverlays(ov.objects, ICT), ...signalBoxes(sg.signals.filter(x => (tf.label === '1m' || !ONE_MINUTE_MODELS.has(x.model_id))
+          && (ideas.ideasGrade === 'all' || (ideas.ideasGrade === 'A' ? ['A', 'A+'] : ['A+']).includes(x.grade))), ICT)])
         setBias(ict.includes('bias') ? biasOf(ov.objects) : null)
       } catch (e) {
         if (id === req.current && !isAbort(e)) props.current.onError(errorText(e))
@@ -174,7 +212,7 @@ export function ChartPanel(p: ChartPanelProps) {
     refreshOverlays.current(50)
     return () => chart.unsubscribeAction('onVisibleRangeChange', onRange)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conf.ict.join(), conf.models.join(), conf.requireBias, conf.ticker, tf.label])
+  }, [conf.ict.join(), conf.models.join(), conf.requireBias, conf.ticker, tf.label, st.ideas, st.ideasGrade])
 
   // ---- selected signal ------------------------------------------------------------------------
   useEffect(() => {
@@ -183,7 +221,9 @@ export function ChartPanel(p: ChartPanelProps) {
     chart.removeOverlay({ groupId: SIGNAL })
     const s = p.signal
     if (!s) return
-    chart.createOverlay(signalLines(s, SIGNAL, digits))
+    if (props.current.settings.sigLines) {
+      chart.createOverlay(signalLines(s, SIGNAL, digits).map(o => (props.current.settings.sigLabels ? o : { ...o, extendData: { ...(o.extendData as object), label: '' } })))
+    }
     const t = new Date(s.created_time).getTime()
     const go = () => {
       chart.scrollToTimestamp(t)
@@ -200,7 +240,7 @@ export function ChartPanel(p: ChartPanelProps) {
     }
     seek()
     return () => window.clearTimeout(timer)
-  }, [p.signal, digits])
+  }, [p.signal, digits, st.sigLines, st.sigLabels])
 
   // ---- drawing --------------------------------------------------------------------------------
   useEffect(() => {
@@ -260,9 +300,22 @@ export function ChartPanel(p: ChartPanelProps) {
   const toolbarStyle: CSSProperties = { display: selected && p.active ? 'flex' : 'none' }
 
   const feed = feedRef.current
+  const now = Date.now()
+  const next = st.latestNews ? events.find(e => e.time * 1000 > now - 15 * 60_000) : undefined
+  const symName = conf.ticker.includes(':') ? conf.ticker.split(':')[1] : conf.ticker
   return (
     <div className={`chart-panel${p.active ? ' active' : ''}${p.hidden ? ' hidden' : ''}`}
       onMouseDown={p.onActivate} onTouchStart={p.onActivate}
+      style={{ background: chartCssBackground(p.theme, st) }}
+      onMouseMove={e => {
+        const chart = chartRef.current
+        if (!chart || !st.econEvents || !events.length) { if (tip) setTip(null); return }
+        const r = e.currentTarget.getBoundingClientRect()
+        const size = chart.getSize('candle_pane')
+        const x = e.clientX - r.left, y = e.clientY - r.top
+        const hit = size ? eventAt(chart, events, x, y, size.height) : null
+        if (hit?.time !== tip?.e.time || hit?.title !== tip?.e.title) setTip(hit ? { x, e: hit } : null)
+      }}
       onContextMenu={e => {
         if ((e.target as HTMLElement).closest('.draw-bar, .bias-box')) return
         e.preventDefault()
@@ -272,10 +325,13 @@ export function ChartPanel(p: ChartPanelProps) {
         {loading && <span className="loading" title="Loading ICT layers">ICT…</span>}
         {feed?.mode === 'replay' && <span className="replay-tag">REPLAY</span>}
         {tf.group > 1 && <span className="tag-note" title="Built here from smaller bars">custom {tf.label}</span>}
+        {next && <span className={`news-tag ${next.impact.toLowerCase()}`} title={new Date(next.time * 1000).toLocaleString()}>📅 {next.currency} {next.title} {relTime(next.time, now)}</span>}
       </div>
       {p.showClose && <button className="chart-close" title="Close this chart" onMouseDown={e => e.stopPropagation()} onClick={p.onClose}>✕</button>}
+      {st.watermark && <div className="chart-watermark">{symName}<small>{tf.label}</small></div>}
       <div ref={box} className="chart-canvas" />
-      {bias && (
+      {tip && <div className="event-tip" style={{ left: tip.x }}><b className={tip.e.impact.toLowerCase()}>{tip.e.currency} · {tip.e.impact}</b>{tip.e.title}<small>{new Date(tip.e.time * 1000).toLocaleString()} · {relTime(tip.e.time, now)}</small></div>}
+      {bias && st.biasBadge && (
         <div className={`bias-box${biasOpen ? ' open' : ''}`} onClick={() => setBiasOpen(o => !o)} title={`as of ${new Date(bias.as_of * 1000).toLocaleString()}`}>
           <div className="bias-head">Daily Bias <b className={bias.direction > 0 ? 'up' : bias.direction < 0 ? 'down' : ''}>{bias.direction > 0 ? 'Bullish' : bias.direction < 0 ? 'Bearish' : 'Neutral'}</b> <span className="muted">score {bias.score}</span> <span className="caret">{biasOpen ? '▾' : '▸'}</span></div>
           {biasOpen && <>

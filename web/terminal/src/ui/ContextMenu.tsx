@@ -34,6 +34,7 @@ export function ContextMenu({ x, y, onClose }: { x: number; y: number; onClose: 
         {(['normal', 'logarithm', 'percentage'] as const).map(m => <button key={m} className={a.axis === m ? 'on' : ''} onClick={run(() => t.updateActive({ axis: m }))}>{m === 'normal' ? 'Regular' : m === 'logarithm' ? 'Log' : 'Percent'}</button>)}
       </div>
       <div className="menu-sep" />
+      <button onClick={run(() => t.openSettings())}>Settings…</button>
       <button onClick={run(t.screenshot)}>Save a picture of the chart</button>
       <button onClick={run(() => (t.replay.on ? t.stopReplay() : t.startReplay()))}>{t.replay.on ? 'Stop replay' : 'Bar replay from here'}</button>
       <button onClick={run(() => t.setSideTab('objects'))}>Object tree…</button>

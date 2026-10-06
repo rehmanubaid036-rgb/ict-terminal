@@ -8,6 +8,9 @@ import { registerOverlays } from './chart/overlays'
 import { registerIndicators } from './chart/indicators'
 import { drawingsOf, getChart, getEntry, notify, setDrawingHooks, setPending, snapshot, undo, redo, removeSelected } from './chart/registry'
 import { chartBackground, type Theme } from './chart/theme'
+import { registerEvents, loadCalendar } from './chart/events'
+import type { ChartSettings } from './chart/settings'
+import { ChartSettingsDialog, type SettingsTab } from './ui/ChartSettingsDialog'
 import { TopBar } from './ui/TopBar'
 import { Toolbar } from './ui/Toolbar'
 import { SidePanel, type SideTab } from './panels/SidePanel'
@@ -15,11 +18,12 @@ import { BottomPanel } from './panels/BottomPanel'
 import { ContextMenu } from './ui/ContextMenu'
 import { ReplayBar } from './ui/ReplayBar'
 import { AccountDialog } from './ui/AccountDialog'
-import { Toasts, toast, useIsPhone } from './ui/common'
+import { Toasts, toast, useIsPhone, setAlertToastSeconds } from './ui/common'
 import { useHotkeys } from './hotkeys'
 
 registerOverlays()
 registerIndicators()
+registerEvents()
 
 export interface TerminalApi {
   access: Access
@@ -28,6 +32,8 @@ export interface TerminalApi {
   active: ChartConf
   theme: Theme
   setTheme: (t: Theme) => void
+  setChartSettings: (p: Partial<ChartSettings>) => void
+  openSettings: (tab?: SettingsTab) => void
   setActive: (i: number) => void
   updateActive: (patch: Partial<ChartConf> | ((c: ChartConf) => Partial<ChartConf>), syncKey?: keyof Sync | 'all') => void
   setTicker: (t: string) => void
@@ -100,11 +106,13 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
   const [replay, setReplayState] = useState({ on: false, playing: false, speed: 1 })
   const [maximized, setMaximized] = useState(false)
+  const [settingsTab, setSettingsTab] = useState<SettingsTab | null>(null)
   const stateRef = useRef(state)
   stateRef.current = state
 
   const setTheme = (t: Theme) => { setThemeState(t); try { localStorage.setItem('ict.theme', t) } catch { /* ignore */ } }
   useEffect(() => { document.documentElement.dataset.theme = theme }, [theme])
+  useEffect(() => setAlertToastSeconds(state.chart.alertToastSec), [state.chart.alertToastSec])
 
   const visible = layoutCharts(state.layout)
   const active = state.charts[Math.min(state.active, visible - 1)]
@@ -217,6 +225,26 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
     }
   }, [phone])
 
+  // ---- news notification: 5 minutes before a high-impact event ------------------------------------
+  const told = useRef(new Set<string>())
+  useEffect(() => {
+    if (!ready || !state.chart.newsNotify) return
+    const check = async () => {
+      const now = Date.now()
+      for (const e of await loadCalendar(stateRef.current.chart.eventImpact)) {
+        const left = e.time * 1000 - now, key = e.time + e.title
+        if (e.impact !== 'High' || left < 0 || left > 5 * 60_000 || told.current.has(key)) continue
+        told.current.add(key)
+        const msg = `${e.currency} ${e.title} in ${Math.max(1, Math.round(left / 60_000))} min`
+        toast(`📅 News: ${msg}`, 'alert')
+        try { if (Notification.permission === 'granted') new Notification('ICT Terminal news', { body: msg, icon: '/terminal/favicon.svg' }) } catch { /* ignore */ }
+      }
+    }
+    const t = window.setInterval(check, 30_000)
+    check()
+    return () => window.clearInterval(t)
+  }, [ready, state.chart.newsNotify])
+
   // ---- price alerts ----------------------------------------------------------------------------
   const lastPrices = useRef<Record<string, number>>({})
   useEffect(() => {
@@ -241,7 +269,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
             fired.push(a.id)
             const msg = `${a.ticker.split(':')[1]} ${a.condition === 'crossing' ? 'crossed' : a.condition === 'above' ? 'is above' : 'is below'} ${a.price}${a.note ? ` — ${a.note}` : ''}`
             toast(`⏰ Alert: ${msg}`, 'alert')
-            beep()
+            if (stateRef.current.chart.alertSound) beep()
             try { if (Notification.permission === 'granted') new Notification('ICT Terminal alert', { body: msg, icon: '/terminal/favicon.svg' }) } catch { /* ignore */ }
           }
         }
@@ -289,7 +317,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
     const ch = getChart(active.id)
     if (!ch) return
     const a = document.createElement('a')
-    a.href = ch.getConvertPictureUrl(true, 'png', chartBackground(theme))
+    a.href = ch.getConvertPictureUrl(true, 'png', chartBackground(theme, state.chart))
     a.download = `${active.ticker.replace(':', '_')}_${active.tf}_${new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '')}.png`
     a.click()
   }
@@ -310,6 +338,8 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
 
   const t: TerminalApi = {
     access, state, models, active, theme, setTheme,
+    setChartSettings: p => setState(s => ({ ...s, chart: { ...s.chart, ...p } })),
+    openSettings: tab => setSettingsTab(tab ?? 'symbol'),
     setActive: i => setState(s => (s.active === i ? s : { ...s, active: i })),
     updateActive, setTicker, setTf, setLayout,
     setSync: patch => setState(s => ({ ...s, sync: { ...s.sync, ...patch } })),
@@ -358,7 +388,8 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
           <div className="center">
             <div className={layoutClass}>
               {charts.map((c, i) => (
-                <ChartPanel key={c.id} conf={c} theme={theme} active={i === Math.min(state.active, visible - 1)}
+                <ChartPanel key={c.id} conf={c} theme={theme} settings={state.chart}
+                  alerts={state.alerts.filter(a => a.active && a.ticker === c.ticker)} active={i === Math.min(state.active, visible - 1)}
                   hidden={(phone || maximized) && visible > 1 && i !== Math.min(state.active, visible - 1)}
                   tool={tool} magnet={magnet} signal={signals[c.id] ?? null} showClose={visible > 1 && !phone}
                   onActivate={() => t.setActive(i)}
@@ -396,6 +427,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
         </div>
         {menu && <ContextMenu x={menu.x} y={menu.y} onClose={() => setMenu(null)} />}
         {account && <AccountDialog tab={account} onClose={() => setAccount(null)} onAccess={onAccess} />}
+        {settingsTab && <ChartSettingsDialog tab={settingsTab} onClose={() => setSettingsTab(null)} />}
         <Toasts />
       </div>
     </Ctx.Provider>
