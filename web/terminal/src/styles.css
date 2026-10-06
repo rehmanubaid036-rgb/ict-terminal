@@ -570,3 +570,16 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 .sig-pop button { text-align: left; padding: 7px 8px; border: 0; border-radius: 6px; background: none; color: var(--text); cursor: pointer; }
 .sig-pop button:hover { background: var(--hover); }
 .sig-pop button.danger { color: var(--down); }
+
+/* favorites toolbar (floating, draggable) and cursors */
+.fav-bar { position: fixed; z-index: 40; display: flex; align-items: center; gap: 2px; padding: 4px 6px; background: var(--panel); border: 1px solid var(--line2); border-radius: 10px; box-shadow: var(--shadow); }
+.fav-bar button { width: 34px; height: 32px; display: grid; place-items: center; border: 0; border-radius: 6px; background: none; color: var(--soft); cursor: pointer; }
+.fav-bar button:hover { background: var(--hover); color: var(--text); }
+.fav-bar button.on { color: var(--blue); }
+.fav-grip { cursor: grab; color: var(--muted); padding: 0 4px; font-size: 14px; user-select: none; touch-action: none; }
+.fav-grip:active { cursor: grabbing; }
+.fav-star { margin-left: auto; padding: 0 2px; color: var(--muted); font-size: 14px; line-height: 1; }
+.fav-star:hover, .fav-star.on { color: #f5a623; }
+.chart-panel.cursor-dot .chart-canvas canvas { cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12'><circle cx='6' cy='6' r='3' fill='%232962ff' stroke='white' stroke-width='1'/></svg>") 6 6, crosshair !important; }
+.chart-panel.cursor-arrow .chart-canvas canvas { cursor: default !important; }
+.tool-flyout > button > span:first-of-type { flex: 1; }

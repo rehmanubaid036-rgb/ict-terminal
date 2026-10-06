@@ -11,6 +11,7 @@ import { chartBackground, type Theme } from './chart/theme'
 import { registerEvents, loadCalendar } from './chart/events'
 import type { ChartSettings } from './chart/settings'
 import { ChartSettingsDialog, type SettingsTab } from './ui/ChartSettingsDialog'
+import { FavBar, type CursorKind } from './ui/FavBar'
 import { TopBar } from './ui/TopBar'
 import { Toolbar } from './ui/Toolbar'
 import { SidePanel, type SideTab } from './panels/SidePanel'
@@ -32,6 +33,10 @@ export interface TerminalApi {
   active: ChartConf
   theme: Theme
   setTheme: (t: Theme) => void
+  cursor: CursorKind
+  setCursor: (c: CursorKind) => void
+  favBarOn: boolean
+  setFavBarOn: (v: boolean) => void
   setChartSettings: (p: Partial<ChartSettings>) => void
   openSettings: (tab?: SettingsTab) => void
   setActive: (i: number) => void
@@ -107,6 +112,10 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
   const [replay, setReplayState] = useState({ on: false, playing: false, speed: 1 })
   const [maximized, setMaximized] = useState(false)
   const [settingsTab, setSettingsTab] = useState<SettingsTab | null>(null)
+  const [cursor, setCursorState] = useState<CursorKind>(() => (['cross', 'dot', 'arrow'].includes(localStorage.getItem('ict.cursor') ?? '') ? localStorage.getItem('ict.cursor') as CursorKind : 'cross'))
+  const [favBarOn, setFavBarState] = useState(() => localStorage.getItem('ict.favBar') !== '0')
+  const setCursor = (c: CursorKind) => { setCursorState(c); try { localStorage.setItem('ict.cursor', c) } catch { /* ignore */ } }
+  const setFavBarOn = (v: boolean) => { setFavBarState(v); try { localStorage.setItem('ict.favBar', v ? '1' : '0') } catch { /* ignore */ } }
   const stateRef = useRef(state)
   stateRef.current = state
 
@@ -337,7 +346,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
   }
 
   const t: TerminalApi = {
-    access, state, models, active, theme, setTheme,
+    access, state, models, active, theme, setTheme, cursor, setCursor, favBarOn, setFavBarOn,
     setChartSettings: p => setState(s => ({ ...s, chart: { ...s.chart, ...p } })),
     openSettings: tab => setSettingsTab(tab ?? 'symbol'),
     setActive: i => setState(s => (s.active === i ? s : { ...s, active: i })),
@@ -388,7 +397,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
           <div className="center">
             <div className={layoutClass}>
               {charts.map((c, i) => (
-                <ChartPanel key={c.id} conf={c} theme={theme} settings={state.chart}
+                <ChartPanel key={c.id} conf={c} theme={theme} settings={state.chart} cursor={cursor}
                   alerts={state.alerts.filter(a => a.active && a.ticker === c.ticker)} active={i === Math.min(state.active, visible - 1)}
                   hidden={(phone || maximized) && visible > 1 && i !== Math.min(state.active, visible - 1)}
                   tool={tool} magnet={magnet} signal={signals[c.id] ?? null} showClose={visible > 1 && !phone}
@@ -428,6 +437,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
         </div>
         {menu && <ContextMenu x={menu.x} y={menu.y} onClose={() => setMenu(null)} />}
         {account && <AccountDialog tab={account} onClose={() => setAccount(null)} onAccess={onAccess} />}
+        {!phone && <FavBar />}
         {settingsTab && <ChartSettingsDialog tab={settingsTab} onClose={() => setSettingsTab(null)} />}
         <Toasts />
       </div>

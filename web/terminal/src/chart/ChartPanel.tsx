@@ -24,6 +24,7 @@ export interface ChartPanelProps {
   active: boolean
   theme: Theme
   settings: ChartSettings
+  cursor: 'cross' | 'dot' | 'arrow'
   alerts: PriceAlert[]
   tool: string | null
   magnet: OverlayMode
@@ -123,8 +124,10 @@ export function ChartPanel(p: ChartPanelProps) {
     const title = st.titleMode === 'ticker' ? sym : st.titleMode === 'ticker_tf' ? `${sym} · ${tf.label}` : `${sym} · ${tf.label}${exch ? ' · ' + exch : ''}`
     chart.setStyles({ candle: { tooltip: { title: { template: title } } } } as any)
     chart.setTimezone(st.timezone)
+    const lines = p.cursor === 'cross'
+    chart.setStyles({ crosshair: { horizontal: { line: { show: lines } }, vertical: { line: { show: lines } } } } as any)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setKey, p.theme, conf.chartType, conf.ticker, tf.label])
+  }, [setKey, p.theme, conf.chartType, conf.ticker, tf.label, p.cursor])
 
   useEffect(() => {
     chartRef.current?.overrideYAxis({ paneId: 'candle_pane', name: conf.axis, position: st.scale })
@@ -318,7 +321,7 @@ export function ChartPanel(p: ChartPanelProps) {
   const next = st.latestNews ? events.find(e => e.time * 1000 > now - 15 * 60_000) : undefined
   const symName = conf.ticker.includes(':') ? conf.ticker.split(':')[1] : conf.ticker
   return (
-    <div className={`chart-panel${p.active ? ' active' : ''}${p.hidden ? ' hidden' : ''}`}
+    <div className={`chart-panel cursor-${p.cursor}${p.active ? ' active' : ''}${p.hidden ? ' hidden' : ''}`}
       onMouseDown={p.onActivate} onTouchStart={p.onActivate}
       style={{ background: chartCssBackground(p.theme, st) }}
       onMouseMove={e => {
