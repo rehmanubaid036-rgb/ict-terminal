@@ -61,8 +61,9 @@ def test_models_and_signals(client):
     assert r["signals"] and all(s["model_id"] == "M1" for s in r["signals"])
     s = r["signals"][0]
     assert {"entry", "stop", "targets", "expiry", "grade", "checklist"} <= set(s)
-    assert client.get("/api/v1/signals", params={"symbol": "AXI:XAUUSD", "from": 0, "to": 10,
-                                                 "models": "M99"}).status_code == 400
+    # a removed model (still named in an old saved layout) is skipped, not an error
+    gone = client.get("/api/v1/signals", params={"symbol": "AXI:XAUUSD", "from": 0, "to": 10, "models": "M99"})
+    assert gone.status_code == 200 and gone.json()["signals"] == []
 
 
 def test_signals_from_store_and_engine_status(client, store):

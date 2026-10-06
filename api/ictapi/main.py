@@ -337,10 +337,8 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
         Only the plan's models are returned, and a plan delay hides the newest signals."""
         feature(a, "signals", "Your plan does not include live signals.")
         i = _info(symbol)
-        ids = [m for m in models.split(",") if m] or list(MODELS)
-        unknown = set(ids) - set(MODELS)
-        if unknown:
-            raise HTTPException(400, f"unknown models {sorted(unknown)}")
+        # unknown ids (a model removed since the layout was saved) are skipped
+        ids = [m for m in models.split(",") if m in MODELS] if models.strip(",") else list(MODELS)
         if source not in ("store", "scan"):
             raise HTTPException(400, "source must be 'store' or 'scan'")
         f = a.get("features", {})
