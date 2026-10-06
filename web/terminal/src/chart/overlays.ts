@@ -105,7 +105,7 @@ export function registerOverlays() {
       if (c.length < 3) return []
       const [en, st, tp] = c, e = overlay.extendData
       const x = Math.min(en.x, st.x), w = Math.max(Math.abs(st.x - en.x), 6)
-      return [rect(x, Math.min(en.y, st.y), w, Math.abs(st.y - en.y), 'rgba(239,83,80,0.22)'), rect(x, Math.min(en.y, tp.y), w, Math.abs(tp.y - en.y), 'rgba(38,166,154,0.22)'),
+      return [rect(x, Math.min(en.y, st.y), w, Math.abs(st.y - en.y), 'rgba(239,83,80,0.22)', undefined, false), rect(x, Math.min(en.y, tp.y), w, Math.abs(tp.y - en.y), 'rgba(38,166,154,0.22)', undefined, false),
         line({ x, y: en.y }, { x: x + w, y: en.y }, '#2962ff'), text(x, tp.y, e.label, '#ffffff', { baseline: e.long ? 'bottom' : 'top', bg: e.long ? '#26a69a' : '#ef5350' })]
     },
   })

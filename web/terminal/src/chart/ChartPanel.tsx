@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 import { init, dispose, type Chart, type Crosshair, type Overlay, type OverlayMode } from 'klinecharts'
 import { api, errorText, isAbort, type Signal } from '../api'
-import { timeframeByLabel, indicatorDef, DRAW_COLORS, ONE_MINUTE_MODELS } from '../constants'
+import { timeframeByLabel, indicatorDef, DRAW_COLORS, ONE_MINUTE_MODELS, modelTag } from '../constants'
 import type { ChartConf, PriceAlert } from '../state'
 import { Feed } from './feed'
 import { engineOverlays, signalBoxes, signalLines, biasOf, type Bias, type DrawStyle } from './overlays'
 import { chartStyles, chartCssBackground, type Theme } from './theme'
 import type { ChartSettings } from './settings'
 import { EVENTS, loadCalendar, relTime, eventAt } from './events'
+import { closeSignal, isClosed } from './closed'
 import type { CalendarEvent } from '../api'
 import { DRAWINGS, register, unregister, getEntry, snapshot, notify, drawingHooks, removeSelected, onRegistryChange } from './registry'
 
@@ -36,6 +38,7 @@ export interface ChartPanelProps {
   onMenu: (x: number, y: number) => void
   onClose: () => void
   onAlert: (price: number) => void
+  onSignal: (s: Signal | null) => void
   onLoaded?: () => void
 }
 
@@ -54,6 +57,7 @@ export function ChartPanel(p: ChartPanelProps) {
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [tip, setTip] = useState<{ x: number; e: CalendarEvent } | null>(null)
   const [, setClock] = useState(0)
+  const [pop, setPop] = useState<{ s: Signal; x: number; y: number } | null>(null)
   const st = p.settings
   const tf = timeframeByLabel(conf.tf)
   const digits = Math.max(0, Math.round(Math.log10(conf.pricescale || 100)))
@@ -194,8 +198,12 @@ export function ChartPanel(p: ChartPanelProps) {
         ])
         if (id !== req.current || !chartRef.current) return
         chart.removeOverlay({ groupId: ICT })
-        chart.createOverlay([...engineOverlays(ov.objects, ICT), ...signalBoxes(sg.signals.filter(x => (tf.label === '1m' || !ONE_MINUTE_MODELS.has(x.model_id))
-          && (ideas.ideasGrade === 'all' || (ideas.ideasGrade === 'A' ? ['A', 'A+'] : ['A+']).includes(x.grade))), ICT)])
+        const shown = sg.signals.filter(x => (tf.label === '1m' || !ONE_MINUTE_MODELS.has(x.model_id)) && !isClosed(x.id)
+          && (ideas.ideasGrade === 'all' || (ideas.ideasGrade === 'A' ? ['A', 'A+'] : ['A+']).includes(x.grade)))
+        // a click on a trade box opens its small menu (show lines / close)
+        const boxes = shown.flatMap(s => signalBoxes([s], ICT).map(o => (o.name !== 'signalBox' ? o
+          : { ...o, onClick: (e: any) => { setPop({ s, x: e.pageX ?? 0, y: e.pageY ?? 0 }) } })))
+        chart.createOverlay([...engineOverlays(ov.objects, ICT), ...boxes])
         setBias(ict.includes('bias') ? biasOf(ov.objects) : null)
       } catch (e) {
         if (id === req.current && !isAbort(e)) props.current.onError(errorText(e))
@@ -213,6 +221,12 @@ export function ChartPanel(p: ChartPanelProps) {
     return () => chart.unsubscribeAction('onVisibleRangeChange', onRange)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conf.ict.join(), conf.models.join(), conf.requireBias, conf.ticker, tf.label, st.ideas, st.ideasGrade])
+
+  useEffect(() => {
+    const again = () => { setPop(null); refreshOverlays.current(0) }
+    window.addEventListener('ict:closed-signals', again)
+    return () => window.removeEventListener('ict:closed-signals', again)
+  }, [])
 
   // ---- selected signal ------------------------------------------------------------------------
   useEffect(() => {
@@ -325,11 +339,15 @@ export function ChartPanel(p: ChartPanelProps) {
         {loading && <span className="loading" title="Loading ICT layers">ICT…</span>}
         {feed?.mode === 'replay' && <span className="replay-tag">REPLAY</span>}
         {tf.group > 1 && <span className="tag-note" title="Built here from smaller bars">custom {tf.label}</span>}
+        {p.signal && <button className="sig-chip" title="Remove this trade's lines from the chart" onMouseDown={e => e.stopPropagation()}
+          onClick={() => p.onSignal(null)}>{modelTag(p.signal.model_id)} {p.signal.direction > 0 ? 'LONG' : 'SHORT'} ✕</button>}
         {next && <span className={`news-tag ${next.impact.toLowerCase()}`} title={new Date(next.time * 1000).toLocaleString()}>📅 {next.currency} {next.title} {relTime(next.time, now)}</span>}
       </div>
       {p.showClose && <button className="chart-close" title="Close this chart" onMouseDown={e => e.stopPropagation()} onClick={p.onClose}>✕</button>}
       {st.watermark && <div className="chart-watermark">{symName}<small>{tf.label}</small></div>}
       <div ref={box} className="chart-canvas" />
+      {pop && <SignalPop {...pop} onClose={() => setPop(null)} onShow={() => { p.onSignal(pop.s); setPop(null) }}
+        onRemove={() => { if (p.signal?.id === pop.s.id) p.onSignal(null); closeSignal(pop.s.id) }} />}
       {tip && <div className="event-tip" style={{ left: tip.x }}><b className={tip.e.impact.toLowerCase()}>{tip.e.currency} · {tip.e.impact}</b>{tip.e.title}<small>{new Date(tip.e.time * 1000).toLocaleString()} · {relTime(tip.e.time, now)}</small></div>}
       {bias && st.biasBadge && (
         <div className={`bias-box${biasOpen ? ' open' : ''}`} onClick={() => setBiasOpen(o => !o)} title={`as of ${new Date(bias.as_of * 1000).toLocaleString()}`}>
@@ -357,3 +375,25 @@ export function ChartPanel(p: ChartPanelProps) {
 }
 
 const BIAS_NAMES: Record<string, string> = { daily_structure: 'Daily structure', h4_structure: '4H structure', ipda_zone: 'IPDA 20D zone', pd_reaction: 'PDH/PDL reaction', mo_zone: 'Midnight Open' }
+
+/** The small menu of a model trade clicked on the chart. */
+function SignalPop({ s, x, y, onClose, onShow, onRemove }: { s: Signal; x: number; y: number; onClose: () => void; onShow: () => void; onRemove: () => void }) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const out = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) onClose() }
+    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    const t = window.setTimeout(() => document.addEventListener('mousedown', out), 0)
+    window.addEventListener('keydown', key)
+    return () => { window.clearTimeout(t); document.removeEventListener('mousedown', out); window.removeEventListener('keydown', key) }
+  }, [onClose])
+  const left = Math.min(x + 8, window.innerWidth - 230), top = Math.min(y + 8, window.innerHeight - 150)
+  return createPortal(
+    <div ref={ref} className="sig-pop" style={{ left, top }} onMouseDown={e => e.stopPropagation()}>
+      <div className="sig-pop-head"><b>{modelTag(s.model_id)}</b> {s.direction > 0 ? 'LONG' : 'SHORT'} <span className={`grade g${s.grade.replace('+', 'p')}`}>{s.grade}</span></div>
+      <small>{new Date(s.created_time).toLocaleString()}</small>
+      <button onClick={onShow}>Show entry, stop and targets</button>
+      <button className="danger" onClick={onRemove}>✕ Close this trade on the chart</button>
+    </div>,
+    document.body,
+  )
+}

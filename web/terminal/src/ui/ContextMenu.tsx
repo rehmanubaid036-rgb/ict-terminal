@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useTerminal } from '../Terminal'
 import { getChart, getEntry, removeAll } from '../chart/registry'
 import { CHART_TYPES } from '../constants'
+import { reopenAll } from '../chart/closed'
 
 export function ContextMenu({ x, y, onClose }: { x: number; y: number; onClose: () => void }) {
   const t = useTerminal()
@@ -35,6 +36,7 @@ export function ContextMenu({ x, y, onClose }: { x: number; y: number; onClose: 
       </div>
       <div className="menu-sep" />
       <button onClick={run(() => t.openSettings())}>Settings…</button>
+      <button onClick={run(reopenAll)}>Show closed model trades again</button>
       <button onClick={run(t.screenshot)}>Save a picture of the chart</button>
       <button onClick={run(() => (t.replay.on ? t.stopReplay() : t.startReplay()))}>{t.replay.on ? 'Stop replay' : 'Bar replay from here'}</button>
       <button onClick={run(() => t.setSideTab('objects'))}>Object tree…</button>

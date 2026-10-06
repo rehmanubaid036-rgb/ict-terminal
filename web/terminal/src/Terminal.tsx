@@ -407,6 +407,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
                       return { ...s, charts: list, layout: (order[0] ?? '1') as LayoutId, active: 0 }
                     })
                   }}
+                  onSignal={sig => setSignals(m => ({ ...m, [c.id]: sig }))}
                   onAlert={price => t.addAlert({ ticker: c.ticker, condition: 'crossing', price: Number(price.toFixed(Math.round(Math.log10(c.pricescale)))), note: '' })}
                 />
               ))}

@@ -560,3 +560,13 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 .ict-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
 .ict-cols > section { min-width: 0; }
 @media (max-width: 760px) { .ict-cols { grid-template-columns: 1fr; } }
+
+/* model trade on the chart: close button and menu */
+.chart-tags .sig-chip { pointer-events: auto; cursor: pointer; font: 600 11px var(--font); color: var(--text); background: var(--panel2); border: 1px solid var(--line2); border-radius: 4px; padding: 1px 7px; }
+.chart-tags .sig-chip:hover { border-color: var(--down); color: var(--down); }
+.sig-pop { position: fixed; z-index: 96; width: 220px; padding: 8px; display: flex; flex-direction: column; gap: 2px; background: var(--panel); border: 1px solid var(--line2); border-radius: 10px; box-shadow: var(--shadow); animation: pop .1s; }
+.sig-pop-head { display: flex; align-items: center; gap: 6px; padding: 2px 4px; }
+.sig-pop small { color: var(--muted); padding: 0 4px 4px; }
+.sig-pop button { text-align: left; padding: 7px 8px; border: 0; border-radius: 6px; background: none; color: var(--text); cursor: pointer; }
+.sig-pop button:hover { background: var(--hover); }
+.sig-pop button.danger { color: var(--down); }
