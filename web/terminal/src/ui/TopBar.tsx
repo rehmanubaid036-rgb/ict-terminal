@@ -12,7 +12,7 @@ import { Icon } from './icons'
 import { Modal, Popover, Switch, toast, useIsPhone } from './common'
 import { getEntry, undo, redo } from '../chart/registry'
 
-type Menu = 'tf' | 'type' | 'ict' | 'wolf' | 'compare' | 'layout' | 'more' | null
+type Menu = 'tf' | 'type' | 'ict' | 'wolf' | 'compare' | 'layout' | 'templates' | 'more' | null
 
 export function TopBar() {
   const t = useTerminal()
@@ -23,7 +23,7 @@ export function TopBar() {
   const [indicators, setIndicators] = useState(false)
   const [screener, setScreener] = useState(false)
   const refs = { tf: useRef<HTMLButtonElement>(null), type: useRef<HTMLButtonElement>(null), ict: useRef<HTMLButtonElement>(null),
-    wolf: useRef<HTMLButtonElement>(null), compare: useRef<HTMLButtonElement>(null), layout: useRef<HTMLButtonElement>(null), more: useRef<HTMLButtonElement>(null) }
+    wolf: useRef<HTMLButtonElement>(null), compare: useRef<HTMLButtonElement>(null), templates: useRef<HTMLButtonElement>(null), layout: useRef<HTMLButtonElement>(null), more: useRef<HTMLButtonElement>(null) }
   const a = t.active
   const tf = timeframeByLabel(a.tf)
   const ictModels = a.models.filter(m => !WOLF_MODELS.has(m)), wolfModels = a.models.filter(m => WOLF_MODELS.has(m))
@@ -57,6 +57,7 @@ export function TopBar() {
       <span className="divider" />
       <button ref={refs.type} className="tb-btn" title="Chart type" onClick={() => toggle('type')}><Icon name="candles" /></button>
       <button className="tb-btn text" title="Indicators" onClick={() => setIndicators(true)}><Icon name="indicators" /><span>Indicators</span></button>
+      <button ref={refs.templates} className={`tb-btn text${menu === 'templates' ? ' on' : ''}`} title="Templates: ready chart setups (indicators, ICT layers, models, layout) in one click" onClick={() => toggle('templates')}><Icon name="template" /><span>Templates</span></button>
       <button ref={refs.compare} className={`tb-btn text${a.compare?.length ? ' lit' : ''}`} title="Compare symbols (SMT)" onClick={() => toggle('compare')}><Icon name="plus" /><span>Compare</span>{a.compare?.length ? <em>{a.compare.length}</em> : null}</button>
       <button ref={refs.ict} className={`tb-btn text${a.ict.length + ictModels.length ? ' lit' : ''}${menu === 'ict' ? ' on' : ''}`} title="ICT: indicators and models, one click on / off" onClick={() => toggle('ict')}><Icon name="ict" /><span>ICT</span>{a.ict.length + ictModels.length > 0 && <em>{a.ict.length + ictModels.length}</em>}</button>
       <button ref={refs.wolf} className={`tb-btn text wolf-btn${wolfModels.length ? ' lit' : ''}`} title="Wolf Models: your custom models" onClick={() => toggle('wolf')}><Icon name="target" /><span>Wolf Models</span>{wolfModels.length > 0 && <em>{wolfModels.length}</em>}</button>
@@ -109,6 +110,7 @@ export function TopBar() {
         </Popover>
       )}
       {menu === 'layout' && <LayoutMenu anchor={refs.layout} onClose={close} />}
+      {menu === 'templates' && <TemplatesMenu anchor={refs.templates} onClose={close} />}
       {menu === 'more' && (
         <Popover anchor={refs.more} onClose={close} className="menu-panel narrow" align="right" title="Settings">
           <button className="btn ghost sm" onClick={() => { close(); t.openSettings() }}><Icon name="gear" size={15} /> Chart settings…</button>
@@ -142,6 +144,34 @@ export function LayoutGlyph({ id }: { id: string }) {
     '4': 'M3 4h18v16H3zM12 4v16M3 12h18', '6': 'M3 4h18v16H3zM9 4v16M15 4v16M3 12h18', '8': 'M3 4h18v16H3zM7.5 4v16M12 4v16M16.5 4v16M3 12h18',
   }
   return <svg className="ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}><path d={cells[id] ?? cells['1']} /></svg>
+}
+
+/** Ready chart setups shared by the admin. The ★ one is what new users see first. */
+function TemplatesMenu({ anchor, onClose }: { anchor: React.RefObject<HTMLButtonElement | null>; onClose: () => void }) {
+  const t = useTerminal()
+  const [list, setList] = useState<Awaited<ReturnType<typeof api.templates>> | null>(null)
+  const load = () => api.templates().then(setList).catch(() => setList({ templates: [], default: null, can_edit: false }))
+  useEffect(() => { void load() }, [])
+  const act = async (f: () => Promise<unknown>) => { try { await f(); await load() } catch (e) { toast((e as Error).message, 'error') } }
+  return (
+    <Popover anchor={anchor} onClose={onClose} className="menu-panel tpl-menu" title="Templates">
+      <div className="note">A template sets the charts: layout, intervals, indicators, ICT layers and models. Your watchlist, alerts and drawings stay.</div>
+      {list === null ? <div className="note">Loading…</div> : list.templates.length === 0 ? <div className="note">No templates yet.</div> :
+        list.templates.map(s => (
+          <div key={s.name} className="saved-row">
+            <button className="grow-btn" title="Apply to my screen" onClick={() => { if (window.confirm(`Apply the template "${s.name}"? It replaces the charts on your screen.`)) { void t.applyTemplate(s.name); onClose() } }}>
+              {s.default && <span className="tpl-star" title="Default: new users start with this">★</span>}{s.name}</button>
+            {list.can_edit && !s.default && <button className="link" title="New users start with this one" onClick={() => void act(() => api.defaultTemplate(s.name))}>Make default</button>}
+            {list.can_edit && <button className="icon-btn" title="Delete template" onClick={() => { if (window.confirm(`Delete the template "${s.name}"?`)) void act(() => api.deleteTemplate(s.name)) }}><Icon name="trash" size={15} /></button>}
+          </div>
+        ))}
+      {list?.can_edit && <>
+        <div className="menu-sep" />
+        <div className="menu-head"><span>Admin</span></div>
+        <button className="link" onClick={() => { const n = window.prompt('Save my current screen as the template:', 'ICT Template')?.trim(); if (n) void act(() => t.saveTemplate(n, window.confirm('Make it the default for new users?'))) }}>Save my screen as a template…</button>
+      </>}
+    </Popover>
+  )
 }
 
 function LayoutMenu({ anchor, onClose }: { anchor: React.RefObject<HTMLButtonElement | null>; onClose: () => void }) {

@@ -221,6 +221,11 @@ export const api = {
   layout: (name: string) => get<{ name: string; data: any }>(`/api/v1/layouts/${encodeURIComponent(name)}`),
   saveLayout: (name: string, data: unknown) => put(`/api/v1/layouts/${encodeURIComponent(name)}`, data),
   deleteLayout: (name: string) => del(`/api/v1/layouts/${encodeURIComponent(name)}`),
+  templates: () => get<{ templates: { name: string; updated_at: string; default: boolean }[]; default: string | null; can_edit: boolean }>('/api/v1/templates'),
+  template: (name: string) => get<{ name: string; data: any }>(`/api/v1/templates/${encodeURIComponent(name)}`),
+  saveTemplate: (name: string, data: unknown, makeDefault: boolean) => put(`/api/v1/templates/${encodeURIComponent(name)}${makeDefault ? '?default=true' : ''}`, data),
+  defaultTemplate: (name: string) => post(`/api/v1/templates/${encodeURIComponent(name)}/default`),
+  deleteTemplate: (name: string) => del(`/api/v1/templates/${encodeURIComponent(name)}`),
 
   plans: () => get<{ plans: Plan[]; support?: { whatsapp?: string; email?: string } }>('/api/v1/plans'),
   paymentMethods: () => get<{ methods: PaymentMethod[]; support?: { whatsapp?: string; email?: string } }>('/api/v1/payments/methods'),

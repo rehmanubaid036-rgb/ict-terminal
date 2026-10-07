@@ -22,7 +22,7 @@ NO_PLAN = {"user": "x@x.com", "status": "no_plan", "is_vip": False,
 class FakeAuth(AuthClient):
     def __init__(self):
         super().__init__(panel_url="http://panel.test", secret="s")
-        self.users = {"free": FREE, "pro": PRO, "noplan": NO_PLAN}
+        self.users = {"free": FREE, "pro": PRO, "noplan": NO_PLAN, "admin": {**PRO, "user": "admin@x.com", "staff": True}}
         self.forwarded, self.queries = [], []
         self.forgotten = []
 
@@ -173,6 +173,24 @@ def test_layouts_are_saved_per_user(api):
     assert api.put("/api/v1/layouts/big", json={"d": "x" * 300_000}, headers=H("pro")).status_code == 400
     assert api.delete("/api/v1/layouts/Gold%20London", headers=H("pro")).status_code == 200
     assert api.delete("/api/v1/layouts/Gold%20London", headers=H("pro")).status_code == 404
+
+
+def test_templates_shared_and_default(api, store):
+    ws = {"v": 2, "layout": "2v", "watchlist": ["XAUUSD"], "alerts": [{"ticker": "AXI:XAUUSD", "price": 1}],
+          "charts": [{"ticker": "AXI:XAUUSD", "tf": "5m", "ict": ["fvg"], "drawings": [{"name": "x", "points": []}]}]}
+    assert api.put("/api/v1/templates/ICT", json=ws, headers=H("pro")).status_code == 403      # staff only
+    r = api.put("/api/v1/templates/ICT", params={"default": True}, json=ws, headers=H("admin"))
+    assert r.status_code == 200 and r.json()["default"] == "ICT"
+    lst = api.get("/api/v1/templates", headers=H("free")).json()
+    assert lst["default"] == "ICT" and lst["templates"][0]["default"] and not lst["can_edit"]
+    data = api.get("/api/v1/templates/ICT", headers=H("free")).json()["data"]
+    assert "watchlist" not in data and "alerts" not in data and "drawings" not in data["charts"][0]   # personal parts dropped
+    assert data["charts"][0]["ict"] == ["fvg"]
+    assert api.post("/api/v1/templates/nope/default", headers=H("admin")).status_code == 404
+    assert api.delete("/api/v1/templates/ICT", headers=H("free")).status_code == 403
+    assert api.delete("/api/v1/templates/ICT", headers=H("admin")).status_code == 200
+    assert api.get("/api/v1/templates", headers=H("free")).json()["default"] is None
+    assert store.layouts("free@x.com") == []                    # templates are not anyone's layouts
 
 
 def test_mt5_down_does_not_block_accounts(store, fake):

@@ -11,6 +11,7 @@ const P: Record<string, ReactNode> = {
   curve: <path d="M4 18C8 4 16 4 20 18" />,
   calendar: <><rect x="3.5" y="5" width="17" height="15" rx="2" /><path d="M3.5 10h17M8 3v4M16 3v4" /></>,
   news: <><rect x="3.5" y="4.5" width="17" height="15" rx="2" /><path d="M7 9h10M7 12.5h10M7 16h6" /></>,
+  template: <><rect x="3.5" y="3.5" width="7" height="7" rx="1.5" /><rect x="13.5" y="3.5" width="7" height="7" rx="1.5" /><rect x="3.5" y="13.5" width="7" height="7" rx="1.5" /><path d="M17 13.5v7M13.5 17h7" /></>,
   screener: <><rect x="3.5" y="4.5" width="17" height="15" rx="2" /><path d="M3.5 9.5h17M3.5 14.5h17M9 4.5v15" /></>,
   dotCursor: <circle cx="12" cy="12" r="3.2" fill="currentColor" />,
   arrowCursor: <path d="M6 3v15l4-4 3 7 2.5-1-3-7h6Z" />,

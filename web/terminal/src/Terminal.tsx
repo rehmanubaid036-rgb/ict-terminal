@@ -94,6 +94,8 @@ export interface TerminalApi {
   logout: () => void
   saveNamed: (name: string) => Promise<void>
   loadNamed: (name: string) => Promise<void>
+  applyTemplate: (name: string) => Promise<void>
+  saveTemplate: (name: string, makeDefault: boolean) => Promise<void>
   maximized: boolean
   setMaximized: (v: boolean) => void
 }
@@ -176,6 +178,10 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
   const active = state.charts[Math.min(state.active, visible - 1)]
   const allowed = useCallback((m: string) => f.models === 'all' || (Array.isArray(f.models) && f.models.includes(m)), [f.models])
 
+  /** A template keeps only the ICT layers and models this plan has (so a new free user sees no lock errors). */
+  const fitPlan = (st: TerminalState): TerminalState => ({ ...st, charts: st.charts.map(c => ({ ...c,
+    ict: f.ict_indicators ? c.ict : [], models: c.models.filter(m => f.models === 'all' || (Array.isArray(f.models) && f.models.includes(m))) })) })
+
   // ---- load the saved screen ------------------------------------------------------------------
   useEffect(() => {
     let gone = false
@@ -187,7 +193,13 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
         const r = parse(saved.data, maxCharts)
         next = r.state; drawings = r.drawings
         if (POPOUT) { next.layout = '1'; next.active = 0 }      // the pop-out shows one chart
-      } catch { /* first visit */ }
+      } catch {
+        // first visit: start from the default template (the admin's chosen ICT setup), if there is one
+        try {
+          const list = await api.templates()
+          if (list.default) next = fitPlan(parse((await api.template(list.default)).data, maxCharts).state)
+        } catch { /* plain defaults */ }
+      }
       try {
         const def = (await api.config()).default_symbol
         if (def) {
@@ -436,6 +448,18 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
     toast(`Layout "${name}" opened.`)
   }
 
+  /** A template replaces the charts' setup; the watchlists, alerts and drawings stay the user's own. */
+  const applyTemplate = async (name: string) => {
+    const r = { state: fitPlan(parse((await api.template(name)).data, maxCharts).state) }
+    setState(s => ({ ...r.state, watchlist: s.watchlist, lists: s.lists, listName: s.listName, flags: s.flags, alerts: s.alerts, alertLog: s.alertLog,
+      scripts: [...s.scripts.filter(x => !r.state.scripts.some(y => y.id === x.id)), ...r.state.scripts].slice(-30) }))
+    toast(`Template "${name}" applied.`)
+  }
+  const saveTemplate = async (name: string, makeDefault: boolean) => {
+    await api.saveTemplate(name, serialize(stateRef.current, drawingsOf), makeDefault)
+    toast(makeDefault ? `Template "${name}" saved. New users start with it.` : `Template "${name}" saved.`)
+  }
+
   const t: TerminalApi = {
     access, state, models, active, theme, setTheme, cursor, setCursor, favBarOn, setFavBarOn,
     openCommunity: () => setCommunity('ideas'),
@@ -490,7 +514,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
     },
     crosshair, sideTab, setSideTab, bottomOpen, setBottomOpen, openAccount, screenshot,
     replay, startReplay, stopReplay, setReplay: r => setReplayState(x => ({ ...x, ...r })), stepReplay,
-    maxCharts, allowed, logout, saveNamed, loadNamed, maximized, setMaximized,
+    maxCharts, allowed, logout, saveNamed, loadNamed, applyTemplate, saveTemplate, maximized, setMaximized,
   }
 
   useHotkeys(t, {

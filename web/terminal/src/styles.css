@@ -868,3 +868,7 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 .ind-group .link { float: right; font-size: 12px; }
 .script-row { display: flex; align-items: center; gap: 8px; }
 .script-row span { flex: 1; }
+
+/* chart templates menu */
+.tpl-menu { min-width: 280px; max-width: 340px; }
+.tpl-star { color: #f5b301; margin-right: 6px; }

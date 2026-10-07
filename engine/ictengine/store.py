@@ -326,3 +326,48 @@ class Store:
     def delete_layout(self, user: str, name: str) -> bool:
         with self._conn() as c:
             return c.execute("DELETE FROM layouts WHERE user = ? AND name = ?", (user, name)).rowcount > 0
+
+    # ---- chart templates: shared setups every user can open; one of them is what new users see first ----
+    def templates(self) -> list[dict]:
+        default = self.default_template()
+        return [{**r, "default": r["name"] == default} for r in self.layouts(TEMPLATE_OWNER)]
+
+    def template(self, name: str) -> dict | None:
+        return self.layout(TEMPLATE_OWNER, name)
+
+    def save_template(self, name: str, data) -> str:
+        """Saves a layout as a template, without what belongs to one person (drawings, alerts, watchlists)."""
+        return self.save_layout(TEMPLATE_OWNER, name, template_data(data))
+
+    def delete_template(self, name: str) -> bool:
+        if self.default_template() == name.strip():
+            self.set_default_template(None)
+        return self.delete_layout(TEMPLATE_OWNER, name)
+
+    def default_template(self) -> str | None:
+        r = self.layout(TEMPLATE_META, "default")
+        name = (r or {}).get("data", {}).get("name") if r else None
+        return name if name and self.template(name) is not None else None
+
+    def set_default_template(self, name: str | None) -> None:
+        if name is None:
+            self.delete_layout(TEMPLATE_META, "default")
+            return
+        if self.template(name) is None:
+            raise LayoutError("No template with this name.")
+        self.save_layout(TEMPLATE_META, "default", {"name": name.strip()})
+
+
+TEMPLATE_OWNER = "__template__"       # rows in ``layouts`` that are shared templates
+TEMPLATE_META = "__template_meta__"   # which template is the default
+_PERSONAL = ("watchlist", "lists", "listName", "flags", "alerts", "alertLog")
+
+
+def template_data(data) -> dict:
+    """A layout without the personal parts: drawings (they belong to past prices), alerts and watchlists."""
+    if not isinstance(data, dict):
+        raise LayoutError("A template must be a saved layout.")
+    out = {k: v for k, v in data.items() if k not in _PERSONAL}
+    if isinstance(out.get("charts"), list):
+        out["charts"] = [{k: v for k, v in c.items() if k != "drawings"} if isinstance(c, dict) else c for c in out["charts"]]
+    return out

@@ -554,6 +554,53 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
             raise HTTPException(404, "No layout with this name.")
         return {"deleted": name}
 
+    # ---- chart templates: shared setups; staff publish them, the default one greets new users --------
+    def _staff(a: dict) -> None:
+        if not a.get("staff"):
+            raise HTTPException(403, "Only the admin can change templates.")
+
+    @app.get("/api/v1/templates")
+    def templates_list(a: dict = Depends(logged_in)):
+        return {"templates": store.templates(), "default": store.default_template(), "can_edit": bool(a.get("staff"))}
+
+    @app.get("/api/v1/templates/{name}")
+    def templates_get(name: str, a: dict = Depends(logged_in)):
+        row = store.template(name)
+        if row is None:
+            raise HTTPException(404, "No template with this name.")
+        return row
+
+    @app.put("/api/v1/templates/{name}")
+    async def templates_put(name: str, request: Request, default: bool = False, a: dict = Depends(logged_in)):
+        _staff(a)
+        try:
+            data = await request.json()
+        except ValueError:
+            raise HTTPException(400, "The template must be JSON.")
+        try:
+            updated = store.save_template(name, data)
+            if default:
+                store.set_default_template(name)
+        except LayoutError as e:
+            raise HTTPException(400, str(e))
+        return {"name": name.strip(), "updated_at": updated, "default": store.default_template()}
+
+    @app.post("/api/v1/templates/{name}/default")
+    def templates_default(name: str, a: dict = Depends(logged_in)):
+        _staff(a)
+        try:
+            store.set_default_template(name)
+        except LayoutError as e:
+            raise HTTPException(404, str(e))
+        return {"default": name}
+
+    @app.delete("/api/v1/templates/{name}")
+    def templates_delete(name: str, a: dict = Depends(logged_in)):
+        _staff(a)
+        if not store.delete_template(name):
+            raise HTTPException(404, "No template with this name.")
+        return {"deleted": name}
+
     scan_cache: dict[tuple, tuple[float, list]] = {}
 
     @app.get("/api/v1/signals")
