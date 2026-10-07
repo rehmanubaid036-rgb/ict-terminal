@@ -1,3 +1,4 @@
+import { MAON, registerMaOn } from './indicators2'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { init, dispose, type Chart, type Crosshair, type Overlay, type OverlayMode } from 'klinecharts'
@@ -313,6 +314,16 @@ export function ChartPanel(p: ChartPanelProps) {
     if (!chart) return
     for (const i of chart.getIndicators()) if (i.name !== EVENTS && i.name !== COMPARE && i.name !== CHART_STYLE) chart.removeIndicator({ id: i.id })
     for (const ind of conf.indicators) {
+      if (ind.name.startsWith(MAON)) {
+        const base = ind.name.slice(MAON.length), b = conf.indicators.find(x => x.name === base)
+        if (!b || !chart.getIndicators({ name: base }).length) continue
+        const bdef = indicatorDef(base)
+        const bMain = !!bdef?.overlay && (b.pane !== 'own' || PRICE_ONLY.has(base))
+        chart.createIndicator({ name: registerMaOn(base), ...(ind.params?.length ? { calcParams: ind.params } : {}), visible: !ind.hidden,
+          ...(ind.color ? { styles: { lines: [{ color: ind.color, size: 1, style: 'solid', smooth: false, dashedValue: [2, 2] }] } } : {}),
+          paneId: bMain ? 'candle_pane' : `pane_${base}` } as any, true)
+        continue
+      }
       let def = indicatorDef(ind.name)
       if (ind.name.startsWith('SCRIPT_')) {
         // the user's own script: (re)registered from its saved source; a deleted or broken one is skipped

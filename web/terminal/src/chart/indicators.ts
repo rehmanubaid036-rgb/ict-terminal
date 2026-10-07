@@ -3,7 +3,7 @@ import { registerIndicator, type KLineData } from 'klinecharts'
 
 const nyHour = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', hourCycle: 'h23', day: '2-digit' })
 
-function tradingDay(ts: number): string {
+export function tradingDay(ts: number): string {
   // the ICT trading day starts at 18:00 New York
   const parts = nyHour.formatToParts(ts)
   const h = Number(parts.find(p => p.type === 'hour')?.value ?? 0)

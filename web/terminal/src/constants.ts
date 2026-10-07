@@ -109,6 +109,31 @@ export const INDICATORS: IndicatorDef[] = [
   { name: 'CR', title: 'Energy Index (CR)', overlay: false, group: 'Momentum' },
   { name: 'PSY', title: 'Psychological Line', overlay: false, group: 'Momentum' },
   { name: 'DMA', title: 'Different of Moving Average', overlay: false, group: 'Trend' },
+  // moving averages
+  { name: 'WMA', title: 'Weighted Moving Average', overlay: true, group: 'Trend' },
+  { name: 'HMA', title: 'Hull Moving Average', overlay: true, group: 'Trend' },
+  { name: 'VWMA', title: 'Volume Weighted Moving Average', overlay: true, group: 'Trend' },
+  { name: 'DEMA', title: 'Double EMA', overlay: true, group: 'Trend' },
+  { name: 'TEMA', title: 'Triple EMA', overlay: true, group: 'Trend' },
+  { name: 'ALMA', title: 'Arnaud Legoux Moving Average (length, offset, sigma)', overlay: true, group: 'Trend' },
+  { name: 'MARIBBON', title: 'Moving Average Ribbon (8 EMAs: first length, step)', overlay: true, group: 'Trend' },
+  // trend / channels / levels
+  { name: 'ICHIMOKU', title: 'Ichimoku Cloud (9, 26, 52, 26)', overlay: true, group: 'Trend' },
+  { name: 'KELTNER', title: 'Keltner Channels (EMA, ATR multiplier, ATR length)', overlay: true, group: 'Volatility' },
+  { name: 'PIVOTS', title: 'Pivot Points (0 Classic, 1 Fibonacci, 2 Camarilla, 3 Woodie) from the previous NY day', overlay: true, group: 'Trend' },
+  { name: 'ZIGZAG', title: 'Zig Zag (deviation %, min bars between swings)', overlay: true, group: 'Trend' },
+  { name: 'ALLIGATOR', title: 'Williams Alligator', overlay: true, group: 'Trend' },
+  { name: 'FRACTALS', title: 'Williams Fractals (bars each side)', overlay: true, group: 'Trend' },
+  // oscillators
+  { name: 'STOCHRSI', title: 'Stochastic RSI (RSI, stoch, K, D)', overlay: false, group: 'Momentum' },
+  { name: 'MFI', title: 'Money Flow Index', overlay: false, group: 'Volume' },
+  { name: 'CMF', title: 'Chaikin Money Flow', overlay: false, group: 'Volume' },
+  { name: 'AD', title: 'Accumulation / Distribution', overlay: false, group: 'Volume' },
+  { name: 'AROON', title: 'Aroon (up / down)', overlay: false, group: 'Trend' },
+  { name: 'UO', title: 'Ultimate Oscillator', overlay: false, group: 'Momentum' },
+  { name: 'VORTEX', title: 'Vortex Indicator (VI+ / VI-)', overlay: false, group: 'Trend' },
+  { name: 'CHOP', title: 'Choppiness Index', overlay: false, group: 'Volatility' },
+  { name: 'HV', title: 'Historical Volatility (annual %)', overlay: false, group: 'Volatility' },
 ]
 export const indicatorDef = (name: string) => INDICATORS.find(i => i.name === name)
 

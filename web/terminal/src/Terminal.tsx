@@ -7,6 +7,7 @@ import { AUTOSAVE, defaultState, parse, serialize, type AlertLogEntry, type Char
 import { ChartPanel } from './chart/ChartPanel'
 import { registerOverlays } from './chart/overlays'
 import { registerIndicators } from './chart/indicators'
+import { registerIndicators2 } from './chart/indicators2'
 import { setDrawDefaults, drawingsOf, getChart, getEntry, notify, setDrawingHooks, setPending, snapshot, undo, redo, removeSelected } from './chart/registry'
 import { chartBackground, type Theme } from './chart/theme'
 import { registerEvents, loadCalendar } from './chart/events'
@@ -34,6 +35,7 @@ registerOverlays()
 // a chart opened in its own window (right-click > Open in a new window): one chart, never saved over the main layout
 export const POPOUT = new URLSearchParams(window.location.search).get('popout') === '1'
 registerIndicators()
+registerIndicators2()
 registerEvents()
 registerCompare()
 registerMoreTools()
