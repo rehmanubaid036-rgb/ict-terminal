@@ -1,0 +1,230 @@
+{
+  "ui": {
+    "page_title": "ICT Terminal — User Guide",
+    "guide": "Guide",
+    "eyebrow": "User guide",
+    "title_a": "ICT Terminal",
+    "title_b": "User Guide",
+    "lead": "Everything you need to use ICT Terminal: the ICT layers on the chart, the model scanner, drawing tools, alerts (also on WhatsApp), paper trading, the strategy tester, layouts with up to 8 charts and the phone app — step by step, with pictures.",
+    "chips": ["ICT concepts drawn for you", "17 rule-based models", "Web, Android & Windows", "14 languages"],
+    "uinote": "Buttons, tabs and menus are written in English inside the terminal. This guide shows them exactly as you see them, in **bold**.",
+    "toc": "Contents",
+    "home": "Website",
+    "open": "Open terminal",
+    "pdf": "Download PDF",
+    "footer": "ICT Terminal is a charting and analysis tool for education. It is not financial advice. Trading CFDs, forex, indices and crypto carries a high risk of losing money."
+  },
+  "caps": {
+    "overview": "The terminal with four charts: top bar, drawing tools on the left, the right menu and the watchlist.",
+    "eight": "Up to eight charts in one layout, each with its own symbol and interval.",
+    "templates": "**Templates**: ready chart setups in one click. The ★ one is what new members start with.",
+    "ict_layers": "ICT layers on gold 15m: FVGs, order blocks, liquidity, structure, sessions, key levels, premium / discount and the daily bias.",
+    "ict_menu": "The **ICT** menu: switch each layer and each model on or off with one click.",
+    "signals": "The **Signals** tab lists the setups of your models; click one to see entry, stop and targets on the chart.",
+    "indicators": "**Indicators**: search, add, change settings, colour and width, move between the price chart and its own pane.",
+    "volume": "Session Volume Profile: one profile for Asia, London and New York with the point of control.",
+    "alerts": "The **Alerts** tab: price alerts, a daily session alert and an ICT event alert (MSS on NAS100 5m).",
+    "phone_alerts": "Alerts on the phone.",
+    "trade": "Paper trading: the **Trade** tab and the one-click SELL / BUY buttons on the chart.",
+    "tester": "The **Strategy tester**: a model on the active symbol over 30, 60 or 90 days.",
+    "screener": "The **Screener**: bias, premium / discount, sweeps, FVGs and today's setups of every symbol.",
+    "calendar": "The economic **Calendar**: click an event to see its time on the chart.",
+    "assistant": "The **AI** assistant answers about the chart you are on, in English or Roman Urdu.",
+    "community": "**Community**: trade ideas with chart pictures, likes, comments and chat rooms.",
+    "phone": "The terminal on a phone: two charts stacked, tools on top, the menu at the bottom.",
+    "account": "Your account: plan, what it includes, payments and devices."
+  },
+  "sections": [
+    {"id": "intro", "t": "What is ICT Terminal?", "b": [
+      "ICT Terminal is a charting terminal built for traders who use the **ICT (Inner Circle Trader)** concepts. It draws the concepts on the chart for you and scans the markets for rule-based ICT setups.",
+      {"ul": [
+        "**ICT layers:** fair value gaps (FVG / IFVG), order and breaker blocks, buy-side and sell-side liquidity, market structure (MSS / BOS), sessions and killzones, key opens, premium / discount and OTE, opening gaps, IPDA ranges, SMT and the daily bias.",
+        "**Model scanner:** 17 ICT models (Silver Bullet, 2022 model, Judas swing, OTE, Unicorn, Power of 3, news aftermath and more), each written as fixed rules with entry, stop and targets.",
+        "**A full terminal:** 1–8 charts per layout, 40+ drawing tools, indicators, alerts, paper trading, a strategy tester, a screener, the economic calendar and a community."
+      ]},
+      {"info": "ICT Terminal does not trade for you unless you install the MT5 bridge yourself. Setups follow rules; many of them lose. Always test on a demo account first."}
+    ]},
+    {"id": "start", "t": "Getting started", "b": [
+      "Open [ict.iccterminal.trade/terminal](https://ict.iccterminal.trade/terminal/) in Chrome, Edge, Firefox or Safari. Nothing has to be installed.",
+      {"ol": [
+        "Choose **Create account**, enter your e-mail and a password, or press **Continue as guest** to look around first.",
+        "The free plan opens straight away. To unlock every model in real time, open your account (the button at the top right) and choose **Upgrade or renew**.",
+        "Your screen — charts, drawings, indicators, watchlists and alerts — is saved to your account automatically and opens the same on every device."
+      ]},
+      {"h": "Apps"},
+      {"ul": [
+        "**Android:** download the app from the website (**Apps**). If Android asks, allow installing apps from your browser.",
+        "**Windows:** the terminal in its own window; it installs itself on the first run.",
+        "Both apps load the same terminal, so every new feature reaches them without a new download."
+      ]}
+    ]},
+    {"id": "screen", "t": "The screen", "b": [
+      "The terminal has four areas:",
+      {"table": {"head": ["Area", "What is there"], "rows": [
+        ["Top bar", "Symbol search, intervals, chart type, **Indicators**, **Templates**, **Compare**, **ICT**, **Wolf Models**, **Screener**, alerts, replay, undo / redo, layout, screenshot, full screen, settings and your account. When the bar is wider than the screen, use the mouse wheel or the ‹ › arrows."],
+        ["Left toolbar", "Drawing tools in groups, the magnet, stay-in-drawing mode, lock / hide / remove all drawings."],
+        ["Right menu", "**Watchlist**, **Signals**, **Trade**, **AI**, **Alerts**, **Calendar**, **News**, **Object tree**, **Data window**, the journal and, below a line, **Community** and **ICC**."],
+        ["Charts", "One to eight charts. Click a chart to make it active: the top bar always works on the active chart."]
+      ]}},
+      {"tip": "Right-click a chart for the chart menu (go to date, chart type, price scale, new window, settings). Right-click the price scale on the right for the price-scale menu."}
+    ]},
+    {"id": "charts", "t": "Charts, layouts and templates", "b": [
+      {"ul": [
+        "**Symbol:** click the symbol at the top (or just start typing on the chart) and search. Click the symbol in a chart's title to change only that chart.",
+        "**Interval:** 1m to monthly, or type a number (for example `90` or `2h`) for a custom interval.",
+        "**Chart type:** candles, hollow candles, Heikin Ashi, bars, line, area, Renko, line break, range bars, baseline and columns.",
+        "**Layout:** the layout button at the top right offers 1, 2, 3, 4, 5, 6, 7 or 8 charts (as many as your plan allows). Sync symbol, interval and crosshair between charts there too.",
+        "**Close a chart:** the ✕ in its corner. **One chart big:** layout menu → **Show only the active chart**.",
+        "**Templates:** a ready chart setup — layout, intervals, indicators, ICT layers and models — in one click. Your watchlist, alerts and drawings stay.",
+        "**Saved layouts:** layout menu → **Save as…**; open them again from the same menu on any device.",
+        "**New window:** right-click → **Open this chart in a new window** (for a second monitor).",
+        "**Go to date:** right-click → **Go to date…** or Alt+G. **Bar replay:** the replay button in the top bar."
+      ]},
+      {"h": "Price scale"},
+      "Right-click the price scale: **Auto (fit)**, **Lock range** (the scale stays while you scroll), **Lock price / bar** (the same price per bar when you zoom), **Regular**, **Log**, **Percent**, **Invert** and the side of the scale."
+    ]},
+    {"id": "ict", "t": "ICT layers", "b": [
+      "Open the **ICT** menu in the top bar and switch on the layers you want. They are calculated by the engine for the symbol and interval of each chart.",
+      {"table": {"head": ["Layer", "What it shows"], "rows": [
+        ["FVG / IFVG", "Bullish (BISI) and bearish (SIBI) fair value gaps with the 50% line (CE). A gap that price closes through becomes an inversion FVG."],
+        ["Order blocks", "The last opposite candle before a displacement; failed ones become breaker blocks."],
+        ["Liquidity", "Buy-side (BSL) and sell-side (SSL) liquidity at swing highs / lows and equal highs / lows, marked when swept."],
+        ["Structure", "MSS (market structure shift, against the trend) and BOS (break of structure, with the trend)."],
+        ["Sessions & killzones", "Asia, London and New York, the killzones, the Silver Bullet windows and the 90-minute quarters, in New York time."],
+        ["Key levels", "Midnight and 08:30 opens, previous day / week highs and lows."],
+        ["Premium / Discount + OTE", "The dealing range, its 50% (equilibrium) and the 62–79% optimal trade entry zone."],
+        ["Projections, gaps, IPDA", "Standard deviations of the Asian range and CBDR, NWOG / NDOG opening gaps, the 20 / 40 / 60-day ranges."],
+        ["SMT, displacement, bias", "Divergence against the partner market (gold–silver, Nasdaq–S&P), big displacement candles, and the daily bias panel with the draw on liquidity."]
+      ]}},
+      {"tip": "Too much on the chart? Switch layers off per chart, or change the colours in **Settings**."}
+    ]},
+    {"id": "models", "t": "Model scanner and signals", "b": [
+      "The engine scans the markets with every model and stores each setup with its entry, stop, targets, grade and checklist.",
+      {"ol": [
+        "In the **ICT** menu, tick the models you want to see on a chart. Their setups are drawn as boxes with entry, stop and targets.",
+        "Open **Signals** on the right: pick the models, the time span (30 minutes to 7 days), the grade (all, A, A+) and whether only setups **with the daily bias** count.",
+        "Click a signal to jump to it on the chart. Turn on **notify** for a sound and a desktop notification on new A / A+ setups.",
+        "The journal (bottom panel) shows how each past setup ended: TP1–TP3, stop, breakeven or not filled, with the R result."
+      ]},
+      {"table": {"head": ["Grade", "Meaning"], "rows": [
+        ["A+", "Every point of the model's checklist is met, including the daily bias."],
+        ["A", "One point is missing."],
+        ["B", "A valid setup with more points missing: for study rather than for trading."]
+      ]}},
+      {"warn": "No model has a proven edge yet. M11 (IFVG reversal) is off by default because it tested weakest; you can still choose it. Results of the past do not promise future results."}
+    ]},
+    {"id": "drawing", "t": "Drawing tools", "b": [
+      {"ul": [
+        "Lines, Fibonacci (with the ICT levels 0.62 / 0.705 / 0.79 and the extensions), channels, pitchfork, Gann fan, XABCD / ABCD, head and shoulders, Elliott waves, shapes, text and notes.",
+        "ICT tools: FVG box with CE, order block with mean threshold, liquidity line (BSL / SSL), OTE tool, dealing range and killzone box.",
+        "Measure: long / short position with risk-reward, price & date range, date range, anchored VWAP and **Fixed range volume profile**. Shift + click on the chart measures quickly."
+      ]},
+      {"h": "Settings of a drawing"},
+      "Double-click a drawing (or press the gear on its small bar) for **Style**, **Text**, **Coordinates** and **Visibility**. In **Visibility** you can show a drawing only on chosen intervals — for example a 1H FVG only on 1m–15m charts.",
+      {"tip": "Select a line or a box and press ⏰ on its bar to create an alert from it."}
+    ]},
+    {"id": "indicators", "t": "Indicators, volume profiles and ICT Script", "b": [
+      {"ul": [
+        "**Indicators** in the top bar: about 30 indicators (moving averages, VWAP, SuperTrend, Bollinger, RSI, MACD, ATR, volume and more). Search, add, and in **On this chart** change settings, colour, width, hide or remove.",
+        "Price indicators (moving averages, VWAP …) can move into their own pane with **↓ Own pane** and back with **↑ On price**; pane indicators (RSI, MACD, volume) move up and down with ▲ ▼.",
+        "**Volume profiles:** VPVR (visible range), SVP (one profile per session or per day) and the fixed range drawing, each with the point of control (POC) and the value area.",
+        "**Apply to all charts** copies the indicators of the active chart to every chart."
+      ]},
+      {"h": "ICT Script: your own indicator"},
+      "In **Indicators → My scripts → + New script** write a few lines, for example:",
+      "`fast = ema(close, 9)` · `plot(fast, \"EMA 9\")`",
+      {"ul": [
+        "Values: `open high low close volume hl2 hlc3 ohlc4`; `close[1]` is the previous bar.",
+        "Functions: `sma ema rma wma rsi atr highest lowest stdev change abs max min`; up to 6 `plot()` lines; `@pane` on the first line draws it in its own pane.",
+        "The check below the editor shows errors with the line number. **Save and add to chart** keeps it in your account."
+      ]}
+    ]},
+    {"id": "alerts", "t": "Alerts and WhatsApp", "b": [
+      "Open **Alerts** on the right. Alerts work while the terminal is open on any of your devices; WhatsApp alerts are sent by the server.",
+      {"table": {"head": ["Alert", "How to create it"], "rows": [
+        ["Price", "Enter a price and choose **Crossing**, **Above** or **Below**. Alt+A sets one at the last price."],
+        ["Trend line / zone", "Select a trend line, a box, an FVG or an order block on the chart and press ⏰."],
+        ["Session", "Pick a session (killzones, Silver Bullet windows, New York open) → **Daily session alert**. It fires every day."],
+        ["ICT event", "Under **ICT event**: MSS, BOS, new FVG or liquidity sweep, an interval (1m–4H) and a direction. It fires on every new event."]
+      ]}},
+      {"h": "Setups on WhatsApp"},
+      {"ol": [
+        "In **Alerts → WhatsApp alerts** enter your number in international format, digits only (for example `923001234567`).",
+        "Choose the lowest grade, and if you like only some models or symbols, and whether only setups with the bias count.",
+        "Turn on **Auto notify**, save, and press **Test**. Each new setup is sent once; plans with a delay send it after the delay."
+      ]},
+      {"tip": "Turn on desktop notifications (the button in the Alerts tab) so you hear alerts even in another window."}
+    ]},
+    {"id": "trade", "t": "Paper trading", "b": [
+      "Practise without real money. The paper account starts with 10,000 USD (you can reset it with any balance).",
+      {"ol": [
+        "Open **Trade** on the right, or use the **SELL** / **BUY** buttons on the active chart with the quantity between them.",
+        "Choose **Market**, **Limit** or **Stop**, the quantity, and an optional **Stop loss** and **Take profit**. Risk, reward and R are shown before you place it.",
+        "Positions and orders are drawn on the chart. Drag the SL, TP or order line to move it.",
+        "Close with ✕ in **Positions**; finished trades are in **History** with the P&L and the win rate."
+      ]},
+      {"info": "Orders are filled by the server on 1-minute bars: limit and stop orders fill at their price, a gap fills at the open, and when one bar touches both the stop and the target, the stop counts first."}
+    ]},
+    {"id": "tester", "t": "Strategy tester and screener", "b": [
+      {"h": "Strategy tester"},
+      {"ol": [
+        "Open the bottom panel (the journal button on the right menu, or settings → **Journal & stats panel**) and choose **Strategy tester**.",
+        "Pick a model, 30, 60 or 90 days and whether the daily bias is required, then **Run test**.",
+        "You see the setups, fills, win rate, average R, total R, profit factor, the largest drawdown, an equity curve and every trade (click one to see it on the chart)."
+      ]},
+      {"h": "Screener"},
+      "**Screener** in the top bar shows every symbol in one table: daily bias, premium or discount, sweeps of the previous day's high / low, the nearest 15m and 1H FVGs, the killzone now and today's setups. Click a row to open that chart."
+    ]},
+    {"id": "market", "t": "Calendar, news and the AI assistant", "b": [
+      {"ul": [
+        "**Calendar:** the economic events of the week with impact and currency filters; click one to see its time on the chart. High-impact news also shows as a mark on the chart and a countdown tag.",
+        "**News:** the latest market headlines.",
+        "**AI:** ask about the active chart — bias, key levels, liquidity, open gaps, the latest setups and their time. It answers in English or Roman Urdu from the engine's own data."
+      ]},
+      {"warn": "Models do not open new trades around high-impact news (15 minutes before and after), and on FOMC days positions are closed before 14:00 New York."}
+    ]},
+    {"id": "community", "t": "Community and ICC Terminal", "b": [
+      {"ul": [
+        "**Community** (right menu): share a trade idea with a picture of your chart, like and comment on ideas, and chat in the rooms. The same ideas are on the website.",
+        "Choose a nickname and accept the rules the first time. Reports go to the moderators.",
+        "**ICC** (right menu): opens ICC Terminal next to your charts with its own login — docked, full screen or in a new tab."
+      ]}
+    ]},
+    {"id": "mobile", "t": "Phone and tablet", "b": [
+      {"ul": [
+        "On a phone the tools are on top, the charts in the middle and the menu (Watchlist, Signals, Trade, AI, Alerts …) at the bottom; slide the bottom menu sideways for Community and ICC.",
+        "With 2–8 charts, **▦ All** shows every chart on the screen, **▢ One** shows one at a time with chips to switch.",
+        "Tablets in portrait show up to 8 charts in two columns.",
+        "Pinch to zoom, drag to scroll, long-press for the crosshair; drawing works with the finger."
+      ]}
+    ]},
+    {"id": "account", "t": "Plans and your account", "b": [
+      {"ul": [
+        "The account button at the top right shows your plan, its expiry and what it includes (charts per layout, ICT indicators, models, signal delay, alerts, backtests).",
+        "**Upgrade or renew:** choose a plan and pay with one of the methods shown (bank / wallet transfer with the transaction ID, or crypto). The plan starts when the payment is confirmed.",
+        "**Devices:** your account lists the devices you use; a plan allows a set number of them at the same time.",
+        "**Security:** change your password there; use **Forgot password?** on the login page if you lose it."
+      ]}
+    ]},
+    {"id": "shortcuts", "t": "Keyboard shortcuts", "b": [
+      {"table": {"head": ["Keys", "Action"], "rows": [
+        ["A–Z", "Symbol search"], ["0–9", "Interval (type a number)"], ["Alt+T / Alt+H / Alt+F / Alt+R", "Trend line / horizontal line / ICT Fibonacci / rectangle"],
+        ["Alt+A", "Alert at the last price"], ["Alt+G", "Go to date"], ["Alt+S", "Screenshot"], ["Ctrl+Z / Ctrl+Y", "Undo / redo"],
+        ["Del", "Delete the selected drawing"], ["Esc", "Cancel the tool or close a window"], ["Shift + click", "Quick measure"]
+      ]}}
+    ]},
+    {"id": "faq", "t": "Questions", "b": [
+      {"h": "The chart is empty or stops updating."},
+      "Check your internet, then reload the page. If one symbol has no data, the broker feed may be closed (weekend) or busy for a moment.",
+      {"h": "I see a lock on a model or layer."},
+      "Your plan does not include it. Open the account button → **Upgrade or renew**.",
+      {"h": "My drawings are gone."},
+      "Drawings are saved with each chart a few seconds after you draw. Check that you are logged in to the same account and that the drawing is not hidden for this interval (**Visibility**).",
+      {"h": "Does it trade for me?"},
+      "Only through the MT5 bridge (ICT Bridge EA) on your own MetaTrader 5 account, for approved models and plans that include it. Start on a demo account."
+    ]},
+    {"id": "risk", "t": "Risk warning", "b": [
+      "Trading CFDs, forex, indices and crypto with leverage carries a high risk of losing money quickly. ICT Terminal is an analysis and learning tool, not financial advice. The models follow fixed rules and many setups lose; past results do not promise future results. Only trade with money you can afford to lose."
+    ]}
+  ]
+}

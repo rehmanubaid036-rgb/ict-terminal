@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ICT Terminal — User Guide</title>
+  <meta name="description" content="How to use ICT Terminal: ICT layers, the model scanner, drawing tools, alerts, paper trading, the strategy tester and the phone app. In 14 languages.">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" id="script-font" href="data:text/css,">
+  <link rel="stylesheet" href="/guide/guide.css?v=1">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-rocket" viewBox="0 0 24 24"><path d="M5 15c-1 1-1.5 3.5-1.5 5.5 2 0 4.5-.5 5.5-1.5"/><path d="M9 15l-3-3c1-4 4.5-8 11-9 0 6.5-5 10-9 11Z"/><circle cx="14.5" cy="9.5" r="1.5"/></symbol>
+    <symbol id="i-start" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></symbol>
+    <symbol id="i-screen" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
+    <symbol id="i-layout" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="m3 13 9 5 9-5"/></symbol>
+    <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></symbol>
+    <symbol id="i-pen" viewBox="0 0 24 24"><path d="M4 20l4-1 11-11-3-3L5 16Z"/><path d="m14 6 3 3"/></symbol>
+    <symbol id="i-wave" viewBox="0 0 24 24"><path d="M3 17c3-6 5-6 7-2s4 4 6-2 3-6 5-4"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4Z"/><path d="M10 20a2 2 0 0 0 4 0"/></symbol>
+    <symbol id="i-trade" viewBox="0 0 24 24"><path d="M4 17l5-5 4 4 7-8"/><path d="M15 8h5v5"/></symbol>
+    <symbol id="i-test" viewBox="0 0 24 24"><path d="M4 19h16"/><path d="M6 15l4-4 3 3 5-6"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
+    <symbol id="i-people" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 19c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17" cy="9" r="2.4"/><path d="M16 13.6c2.8-.3 5 1.6 5 4.4"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></symbol>
+    <symbol id="i-keys" viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6 10h1M10 10h1M14 10h1M18 10h0M7 14h10"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7"/><path d="M12 17h0"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 4.5 3.4 8 8 9 4.6-1 8-4.5 8-9V6Z"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h0"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4 2.5 20h19Z"/><path d="M12 10v4M12 17h0"/></symbol>
+    <symbol id="i-pdf" viewBox="0 0 24 24"><path d="M6 3h8l5 5v13H6Z"/><path d="M14 3v5h5"/><path d="M12 11v6M9.5 14.5 12 17l2.5-2.5"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  </defs>
+</svg>
+
+<header class="g-top">
+  <div class="g-top-in">
+    <button class="g-menu" id="menu-btn" aria-label="Contents"><svg><use href="#i-menu"/></svg></button>
+    <a class="g-logo" href="/"><svg class="g-mark" viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2dd4bf"/><stop offset="1" stop-color="#8b5cf6"/></linearGradient></defs><rect width="32" height="32" rx="8" fill="url(#lg)"/><g stroke="#061018" stroke-width="2.2" stroke-linecap="round"><line x1="10" y1="9" x2="10" y2="23"/><line x1="16" y1="6" x2="16" y2="20"/><line x1="22" y1="11" x2="22" y2="26"/></g></svg><span><b>ICT</b> Terminal</span> <em id="t-guide">Guide</em></a>
+    <div class="g-actions">
+      <label class="g-lang"><svg><use href="#i-globe"/></svg><select id="lang" aria-label="Language"></select></label>
+      <a class="g-btn ghost" id="t-pdf" href="#"><svg><use href="#i-pdf"/></svg><span>Download PDF</span></a>
+      <a class="g-btn" id="t-open" href="/terminal/"><span>Open terminal</span></a>
+    </div>
+  </div>
+</header>
+
+<div class="g-wrap">
+  <nav class="g-toc" id="toc-box" aria-label="Contents">
+    <div class="g-toc-title" id="t-toc">Contents</div>
+    <ol id="toc"></ol>
+    <a class="g-home" id="t-home" href="/"><span>Website</span></a>
+  </nav>
+  <main class="g-main">
+    <section class="g-hero">
+      <p class="g-eyebrow" id="t-eyebrow">User guide</p>
+      <h1 id="t-title">ICT Terminal <span class="hl">User Guide</span></h1>
+      <p class="g-lead" id="t-lead"></p>
+      <div class="g-chips" id="t-chips"></div>
+      <p class="g-uinote" id="t-uinote"></p>
+    </section>
+    <div id="content"><p class="g-loading">Loading…</p></div>
+    <footer class="g-foot" id="t-footer"></footer>
+  </main>
+</div>
+<div class="g-zoom" id="zoom" hidden><img alt=""></div>
+<script src="/guide/guide.js?v=1"></script>
+</body>
+</html>
