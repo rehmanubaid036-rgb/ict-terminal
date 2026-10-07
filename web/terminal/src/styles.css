@@ -713,3 +713,23 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 /* click targets over the chart title: symbol search / interval */
 .title-hit { position: absolute; z-index: 7; border: 0; padding: 0; background: transparent; border-radius: 5px; cursor: pointer; }
 .title-hit:hover { background: color-mix(in srgb, var(--accent) 16%, transparent); box-shadow: inset 0 -2px 0 var(--accent); }
+
+/* drawing settings window */
+.dd-modal { width: min(460px, 100%); }
+.dd-tabs { display: flex; gap: 2px; padding: 0 12px; border-bottom: 1px solid var(--line); }
+.dd-tabs button { padding: 9px 12px; border: 0; background: none; color: var(--muted); font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; }
+.dd-tabs button.on { color: var(--text); border-bottom-color: var(--accent); }
+.dd-body { padding: 12px 16px; display: flex; flex-direction: column; gap: 4px; min-height: 220px; max-height: 60dvh; overflow: auto; }
+.dd-colors { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; max-width: 250px; justify-content: flex-end; }
+.dd-colors .swatch { width: 20px; height: 20px; border-radius: 5px; border: 2px solid transparent; cursor: pointer; }
+.dd-colors .swatch.on { border-color: var(--text); }
+.dd-widths { display: flex; gap: 4px; }
+.dd-widths button { width: 34px; height: 28px; display: grid; place-items: center; border: 1px solid var(--line2); border-radius: 6px; background: var(--panel2); cursor: pointer; }
+.dd-widths button.on { border-color: var(--accent); }
+.dd-widths i { width: 20px; background: var(--text); border-radius: 2px; }
+.dd-levels { width: 230px !important; }
+.dd-price { width: 140px !important; }
+.dd-text { width: 100%; resize: vertical; }
+.dd-note { margin: 0 0 6px; font-size: 12px; }
+.dd-presets { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.dd-tfs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }

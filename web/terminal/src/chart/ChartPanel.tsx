@@ -12,7 +12,8 @@ import type { ChartSettings } from './settings'
 import { EVENTS, loadCalendar, relTime, eventAt } from './events'
 import { closeSignal, isClosed } from './closed'
 import type { CalendarEvent } from '../api'
-import { DRAWINGS, register, unregister, getEntry, snapshot, notify, drawingHooks, removeSelected, onRegistryChange } from './registry'
+import { DRAWINGS, register, unregister, getEntry, snapshot, notify, drawingHooks, removeSelected, onRegistryChange, applyTfVisibility } from './registry'
+import { DrawingDialog } from '../ui/DrawingDialog'
 
 const ICT = 'ict'
 const SIGNAL = 'signal'
@@ -61,6 +62,12 @@ export function ChartPanel(p: ChartPanelProps) {
   const [tip, setTip] = useState<{ x: number; e: CalendarEvent } | null>(null)
   const [, setClock] = useState(0)
   const [pop, setPop] = useState<{ s: Signal; x: number; y: number } | null>(null)
+  const [props_, setProps] = useState<string | null>(null)     // overlay id whose settings window is open
+  useEffect(() => {
+    const open = (e: Event) => { const d = (e as CustomEvent).detail; if (d?.chartId === conf.id) setProps(d.overlayId) }
+    window.addEventListener('ict:drawing-props', open)
+    return () => window.removeEventListener('ict:drawing-props', open)
+  }, [conf.id])
   const st = p.settings
   const tf = timeframeByLabel(conf.tf)
   const digits = Math.max(0, Math.round(Math.log10(conf.pricescale || 100)))
@@ -113,6 +120,7 @@ export function ChartPanel(p: ChartPanelProps) {
     chart.setSymbol({ ticker: conf.ticker, pricePrecision: st.precision >= 0 ? st.precision : digits, volumePrecision: 0 })
     chart.setPeriod(tf.period)
     if (onlyHeikin) chart.resetData()
+    applyTfVisibility(conf.id, tf.label)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conf.ticker, tf.label, conf.chartType, digits, st.precision])
 
@@ -374,6 +382,7 @@ export function ChartPanel(p: ChartPanelProps) {
       <div ref={box} className="chart-canvas" />
       {pop && <SignalPop {...pop} onClose={() => setPop(null)} onShow={() => { p.onSignal(pop.s); setPop(null) }}
         onRemove={() => { if (p.signal?.id === pop.s.id) p.onSignal(null); closeSignal(pop.s.id) }} />}
+      {props_ && <DrawingDialog chartId={conf.id} overlayId={props_} onClose={() => setProps(null)} />}
       {tip && <div className="event-tip" style={{ left: tip.x }}><b className={tip.e.impact.toLowerCase()}>{tip.e.currency} · {tip.e.impact}</b>{tip.e.title}<small>{new Date(tip.e.time * 1000).toLocaleString()} · {relTime(tip.e.time, now)}</small></div>}
       {bias && st.biasBadge && (
         <div className={`bias-box${biasOpen ? ' open' : ''}`} onClick={() => setBiasOpen(o => !o)} title={`as of ${new Date(bias.as_of * 1000).toLocaleString()}`}>
@@ -393,6 +402,7 @@ export function ChartPanel(p: ChartPanelProps) {
         {selected && TEXT_TOOLS.has(selected.name) && <button title="Edit text" onClick={() => { const t = window.prompt('Text:', selStyle.text ?? ''); if (t !== null) style({ text: t }) }}>T</button>}
         <span className="sep" />
         {isHorizontal && <button title="Add an alert at this price" onClick={() => { const v = selected?.points[0]?.value; if (v !== undefined) p.onAlert(v) }}>⏰</button>}
+        <button title="Settings (double-click the drawing)" onClick={() => { if (selected) setProps(selected.id) }}>⚙</button>
         <button title={selected?.lock ? 'Unlock' : 'Lock'} onClick={() => { if (selected) { chartRef.current?.overrideOverlay({ id: selected.id, lock: !selected.lock }); notify() } }}>{selected?.lock ? '🔒' : '🔓'}</button>
         <button title="Delete (Del)" className="danger" onClick={() => removeSelected(conf.id)}>🗑</button>
       </div>

@@ -27,7 +27,7 @@ function digits(chart: Chart): number {
   return chart.getSymbol()?.pricePrecision ?? 2
 }
 
-export interface DrawStyle { color?: string; width?: number; dashed?: boolean; text?: string }
+export interface DrawStyle { color?: string; width?: number; dashed?: boolean; text?: string; tfs?: string[]; tfHidden?: boolean; levels?: number[] }
 
 let done = false
 export function registerOverlays() {
@@ -112,7 +112,7 @@ export function registerOverlays() {
 
   // ---- drawing tools -------------------------------------------------------------------------
   const tool = { needDefaultPointFigure: true, needDefaultXAxisFigure: true, needDefaultYAxisFigure: true }
-  const st = (o: { extendData: unknown }, color: string): Required<Omit<DrawStyle, 'text'>> & { text: string } => {
+  const st = (o: { extendData: unknown }, color: string): { color: string; width: number; dashed: boolean; text: string } => {
     const e = (o.extendData ?? {}) as DrawStyle
     return { color: e.color ?? color, width: e.width ?? 1, dashed: !!e.dashed, text: e.text ?? '' }
   }
@@ -175,7 +175,8 @@ export function registerOverlays() {
       const v = (lv: number) => (p[1]?.value ?? 0) + ((p[0]?.value ?? 0) - (p[1]?.value ?? 0)) * lv
       const out: OverlayFigure[] = [rect(x1, Math.min(y(0.62), y(0.79)), x2 - x1, Math.abs(y(0.79) - y(0.62)), 'rgba(139,92,246,0.14)'),
         line(a, b, '#94a3b8', 1, true, false)]
-      for (const lv of ICT_FIB) {
+      const ext = (overlay.extendData ?? {}) as DrawStyle
+      for (const lv of Array.isArray(ext.levels) && ext.levels.length ? ext.levels : ICT_FIB) {
         const color = lv === 0.705 ? '#a78bfa' : lv === 0.5 ? '#cbd5e1' : lv < 0 ? '#2dd4bf' : lv === 0 || lv === 1 ? '#94a3b8' : '#8b5cf6'
         out.push(line({ x: x1, y: y(lv) }, { x: x2, y: y(lv) }, color, lv === 0.705 ? 2 : 1, lv < 0))
         out.push(text(x2 + 4, y(lv), `${lv} (${fmt(v(lv), d)})${lv === 0.705 ? ' OTE' : ''}`, color))

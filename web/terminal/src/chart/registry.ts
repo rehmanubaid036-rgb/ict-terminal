@@ -9,6 +9,7 @@ interface Entry {
   chart: Chart
   feed: Feed
   selected: string | null
+  tf?: string           // the chart's interval label: drawings limited to some intervals hide on the others
   undo: Drawing[][]     // snapshots before each change
   redo: Drawing[][]
 }
@@ -49,8 +50,23 @@ export function drawingsOf(id: number): Drawing[] {
     ...(o.extendData === undefined ? {} : { extendData: o.extendData }),
     ...(o.styles ? { styles: o.styles } : {}),
     ...(o.lock ? { lock: true } : {}),
-    ...(o.visible === false ? { visible: false } : {}),
+    // hidden only because of its interval list: saved as visible (it shows again on those intervals)
+    ...(o.visible === false && !(o.extendData as any)?.tfHidden ? { visible: false } : {}),
   })).filter(d => d.points.length > 0)
+}
+
+/** Shows / hides drawings that are limited to some intervals ("Visibility" in the drawing settings). */
+export function applyTfVisibility(id: number, tf?: string) {
+  const e = entries.get(id)
+  if (!e) return
+  if (tf) e.tf = tf
+  if (!e.tf) return
+  for (const o of e.chart.getOverlays({ groupId: DRAWINGS })) {
+    const ext = (o.extendData ?? {}) as { tfs?: string[]; tfHidden?: boolean }
+    const allowed = !Array.isArray(ext.tfs) || !ext.tfs.length || ext.tfs.includes(e.tf)
+    if (!allowed && o.visible !== false) e.chart.overrideOverlay({ id: o.id, visible: false, extendData: { ...ext, tfHidden: true } as any })
+    else if (allowed && ext.tfHidden) e.chart.overrideOverlay({ id: o.id, visible: true, extendData: { ...ext, tfHidden: false } as any })
+  }
 }
 
 let hooks: (id: number) => Partial<OverlayCreate> = () => ({})
@@ -68,6 +84,7 @@ export function restoreDrawings(id: number, list: Drawing[], record = true) {
     e.chart.createOverlay({ name: d.name, groupId: DRAWINGS, points: d.points, extendData: d.extendData as any, styles: (d.styles ?? null) as any,
       lock: !!d.lock, visible: d.visible !== false, ...hooks(id) })
   }
+  applyTfVisibility(id)
   notify()
 }
 

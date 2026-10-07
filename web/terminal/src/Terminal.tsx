@@ -213,6 +213,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
       onPressedMoveStart: () => snapshot(id),
       onPressedMoveEnd: () => notify(),
       onRightClick: e => { e.preventDefault?.(); const en = getEntry(id); if (en) { en.selected = e.overlay.id; notify() } },
+      onDoubleClick: e => { window.dispatchEvent(new CustomEvent('ict:drawing-props', { detail: { chartId: id, overlayId: e.overlay.id } })) },
       onClick: e => {
         if (toolRef.current === 'eraser') { snapshot(id); getChart(id)?.removeOverlay({ id: e.overlay.id }); notify() }
       },
