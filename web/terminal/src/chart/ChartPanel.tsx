@@ -324,7 +324,8 @@ export function ChartPanel(p: ChartPanelProps) {
 
   const feed = feedRef.current
   const now = Date.now()
-  const next = st.latestNews ? events.find(e => e.time * 1000 > now - 15 * 60_000) : undefined
+  // the news tag shows on one chart only: the active one (or the only one)
+  const next = st.latestNews && p.active ? events.find(e => e.time * 1000 > now - 15 * 60_000) : undefined
   const symName = conf.ticker.includes(':') ? conf.ticker.split(':')[1] : conf.ticker
   // click targets over the chart's title (drawn on the canvas): the symbol opens the search, the interval the interval box
   const titleSize = (p.compact ? 11 : st.textSize + 2)
