@@ -1,13 +1,13 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { scriptIndicatorName, type SavedScript } from './chart/script'
 import type { Crosshair, OverlayMode } from 'klinecharts'
-import { api, errorText, type Access, type ModelInfo, type OverlayObject, type Signal } from './api'
+import { type FiredAlert, api, errorText, type Access, type ModelInfo, type OverlayObject, type Signal } from './api'
 import { layoutCharts, LAYOUTS, PRICESCALE, timeframeByLabel, type LayoutId, DEFAULT_SYMBOLS, ONE_MINUTE_MODELS, SESSION_ALERTS, ICT_ALERT_EVENTS } from './constants'
 import { AUTOSAVE, defaultState, parse, serialize, type AlertLogEntry, type ChartConf, type PriceAlert, type SignalsPrefs, type Sync, type TerminalState, type WlCol } from './state'
 import { ChartPanel } from './chart/ChartPanel'
 import { registerOverlays } from './chart/overlays'
 import { registerIndicators } from './chart/indicators'
-import { drawingsOf, getChart, getEntry, notify, setDrawingHooks, setPending, snapshot, undo, redo, removeSelected } from './chart/registry'
+import { setDrawDefaults, drawingsOf, getChart, getEntry, notify, setDrawingHooks, setPending, snapshot, undo, redo, removeSelected } from './chart/registry'
 import { chartBackground, type Theme } from './chart/theme'
 import { registerEvents, loadCalendar } from './chart/events'
 import { registerCompare } from './chart/compare'
@@ -71,6 +71,8 @@ export interface TerminalApi {
   addAlert: (a: Omit<PriceAlert, 'id' | 'created' | 'active'>) => void
   clearAlertLog: () => void
   saveScript: (s: SavedScript) => void
+  /** Any change to the saved state (the user's templates etc.). */
+  setState: (fn: (s: TerminalState) => TerminalState) => void
   deleteScript: (id: string) => void
   updateAlert: (id: string, patch: Partial<PriceAlert>) => void
   removeAlert: (id: string) => void
@@ -162,6 +164,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
   const setTheme = (t: Theme) => { setThemeState(t); try { localStorage.setItem('ict.theme', t) } catch { /* ignore */ } }
   useEffect(() => { document.documentElement.dataset.theme = theme }, [theme])
   useEffect(() => setAlertToastSeconds(state.chart.alertToastSec), [state.chart.alertToastSec])
+  useEffect(() => setDrawDefaults(state.drawDefaults), [state.drawDefaults])
   // links from the website: /terminal/?symbol=XAUUSD&tf=5m opens that chart, ?community=ideas|chat|publish the community
   const linked = useRef(false)
   useEffect(() => {
@@ -407,6 +410,39 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
     return () => window.clearInterval(t)
   }, [ready])
 
+  // ---- alerts the server sent (terminal closed or open): show them, switch those alerts off ----
+  useEffect(() => {
+    if (!ready || POPOUT) return
+    const KEY = 'ict.alertsFiredSeen'
+    let since = 0
+    try { since = Number(localStorage.getItem(KEY)) || 0 } catch { /* private window */ }
+    if (!since) since = Date.now() - 86_400_000
+    const pull = async () => {
+      let fired: FiredAlert[] = []
+      try { fired = (await api.alerts.fired(since)).fired } catch { return }
+      if (!fired.length) return
+      since = Math.max(since, ...fired.map(x => x.at_ms))
+      try { localStorage.setItem(KEY, String(since)) } catch { /* ignore */ }
+      const sentTo = (x: FiredAlert) => x.sent.join(', ') || 'your phone'
+      for (const x of fired.slice(-3)) toast('📱 Sent to ' + sentTo(x) + ': ' + x.text, 'alert')
+      setState(s => ({
+        ...s,
+        alerts: s.alerts.map(a => {
+          const f = [...fired].reverse().find(x => x.alert_id === a.id)
+          if (!f) return a
+          if (a.kind === 'session') return f.extra.day ? { ...a, lastFired: f.extra.day, triggeredAt: f.at_ms } : a
+          if (a.kind === 'ict') return a.ict && f.extra.seen ? { ...a, ict: { ...a.ict, seen: Math.max(a.ict.seen ?? 0, f.extra.seen) }, triggeredAt: f.at_ms } : a
+          return a.active && f.at_ms >= (a.armedAt ?? a.created) ? { ...a, active: false, triggeredAt: f.at_ms } : a
+        }),
+        alertLog: [...[...fired].reverse().map(x => ({ at: x.at_ms, text: x.text + ' (sent to ' + sentTo(x) + ')' })), ...s.alertLog].slice(0, 100),
+      }))
+    }
+    void pull()
+    const t = window.setInterval(pull, 30_000)
+    return () => window.clearInterval(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready])
+
   // ---- ICT event alerts: new MSS / BOS / FVG / sweeps in the engine's overlays, checked every 30 s ----
   useEffect(() => {
     if (!ready) return
@@ -516,7 +552,8 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
   const loadNamed = async (name: string) => {
     const r = parse((await api.layout(name)).data, maxCharts)
     r.drawings.forEach((d, i) => setPending(i, d))
-    setState(s => ({ ...r.state, watchlist: s.watchlist, lists: s.lists, listName: s.listName, flags: s.flags, alerts: s.alerts }))
+    setState(s => ({ ...r.state, watchlist: s.watchlist, lists: s.lists, listName: s.listName, flags: s.flags, alerts: s.alerts,
+      indTemplates: s.indTemplates, drawTemplates: s.drawTemplates, drawDefaults: s.drawDefaults }))
     toast(`Layout "${name}" opened.`)
   }
 
@@ -524,6 +561,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
   const applyTemplate = async (name: string) => {
     const r = { state: fitPlan(parse((await api.template(name)).data, maxCharts).state) }
     setState(s => ({ ...r.state, watchlist: s.watchlist, lists: s.lists, listName: s.listName, flags: s.flags, alerts: s.alerts, alertLog: s.alertLog,
+      indTemplates: s.indTemplates, drawTemplates: s.drawTemplates, drawDefaults: s.drawDefaults,
       scripts: [...s.scripts.filter(x => !r.state.scripts.some(y => y.id === x.id)), ...r.state.scripts].slice(-30) }))
     toast(`Template "${name}" applied.`)
   }
@@ -567,11 +605,12 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
       if (limit > 0 && live >= limit) { toast(`Your plan allows ${limit} active alerts.`, 'info'); return }
       try { if (Notification.permission === 'default') void Notification.requestPermission() } catch { /* ignore */ }
       setState(s => ({ ...s, alerts: [{ ...a, id: Math.random().toString(36).slice(2), created: Date.now(), active: true }, ...s.alerts] }))
-      toast(a.kind === 'ict' ? 'ICT event alert set. It fires on every new event while the terminal is open.' : a.kind === 'session' ? 'Session alert set (every day).' : a.kind === 'line' ? 'Trend line alert set.' : a.kind === 'box' ? 'Zone alert set.' : `Alert set: ${a.ticker.split(':')[1]} ${a.condition} ${a.price}`)
+      toast(a.kind === 'ict' ? 'ICT event alert set. It fires on every new event (on your phone too when delivery is on).' : a.kind === 'session' ? 'Session alert set (every day).' : a.kind === 'line' ? 'Trend line alert set.' : a.kind === 'box' ? 'Zone alert set.' : `Alert set: ${a.ticker.split(':')[1]} ${a.condition} ${a.price}`)
     },
     updateAlert: (id, patch) => setState(s => ({ ...s, alerts: s.alerts.map(a => (a.id === id ? { ...a, ...patch } : a)) })),
     removeAlert: id => setState(s => ({ ...s, alerts: s.alerts.filter(a => a.id !== id) })),
     clearAlertLog: () => setState(s => ({ ...s, alertLog: [] })),
+    setState: fn => setState(fn),
     saveScript: sc => setState(s => ({ ...s, scripts: s.scripts.some(x => x.id === sc.id) ? s.scripts.map(x => (x.id === sc.id ? sc : x)) : [...s.scripts, sc].slice(-30) })),
     deleteScript: id => setState(s => ({ ...s, scripts: s.scripts.filter(x => x.id !== id),
       charts: s.charts.map(c => ({ ...c, indicators: c.indicators.filter(i => i.name !== scriptIndicatorName(id)) })) })),

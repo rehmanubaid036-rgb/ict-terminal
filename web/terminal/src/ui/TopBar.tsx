@@ -279,6 +279,7 @@ function SymbolSearch({ initial, onClose, onPick }: { initial: string; onClose: 
         ))}
         {!shown.length && <div className="empty">{busy ? 'Searching…' : 'No symbols match.'}</div>}
       </div>
+      <div className="note search-tip">Spread and ratio charts: type two symbols with / - + or *, e.g. <button className="link" onClick={() => setQ('XAUUSD/XAGUSD')}>XAUUSD/XAGUSD</button> (gold / silver ratio) or <button className="link" onClick={() => setQ('NAS100-US500')}>NAS100-US500</button>.</div>
     </Modal>
   )
 }
@@ -300,6 +301,7 @@ function IndicatorsDialog({ onClose }: { onClose: () => void }) {
   const [q, setQ] = useState('')
   const [edit, setEdit] = useState<string | null>(null)
   const [script, setScript] = useState<SavedScript | 'new' | null>(null)
+  const [tpl, setTpl] = useState(false)
   const a = t.active
   const scripts = t.state.scripts
   const titleOf = (name: string) => INDICATORS.find(x => x.name === name)?.title ?? scripts.find(s => scriptIndicatorName(s.id) === name)?.name
@@ -313,7 +315,25 @@ function IndicatorsDialog({ onClose }: { onClose: () => void }) {
   }
   return (
     <Modal title="Indicators" onClose={onClose} wide className="ind-modal">
-      <input autoFocus className="search-input" placeholder="Search indicators" value={q} onChange={e => setQ(e.target.value)} />
+      <div className="ind-tpl">
+        <input autoFocus className="search-input" placeholder="Search indicators" value={q} onChange={e => setQ(e.target.value)} />
+        <button className="btn ghost sm" onClick={() => setTpl(v => !v)}>Templates ▾</button>
+      </div>
+      {tpl && <div className="ind-tpl-list">
+        {t.state.indTemplates.map(x => <div key={x.name} className="saved-row">
+          <button className="grow-btn" title={x.indicators.map(i => i.name).join(', ')} onClick={() => { t.updateActive({ indicators: x.indicators }); toast('Template "' + x.name + '" applied.'); setTpl(false) }}>
+            {x.name} <small>{x.indicators.map(i => (i.name.startsWith('SCRIPT_') ? 'Script' : i.name)).join(', ')}</small></button>
+          <button className="link" title="Add these to the indicators already on the chart" onClick={() => { t.updateActive(c => ({ indicators: [...c.indicators, ...x.indicators.filter(i => !c.indicators.some(j => j.name === i.name))] })); setTpl(false) }}>Add</button>
+          <button className="icon-btn" title="Delete template" onClick={() => { if (window.confirm('Delete the template "' + x.name + '"?')) t.setState(s => ({ ...s, indTemplates: s.indTemplates.filter(y => y.name !== x.name) })) }}><Icon name="trash" size={14} /></button>
+        </div>)}
+        {!t.state.indTemplates.length && <div className="note">No indicator templates yet. Set up the indicators you like, then save them here.</div>}
+        <button className="link" disabled={!a.indicators.length} onClick={() => {
+          const n = window.prompt('Save the indicators on this chart (with their settings) as:', 'My indicators')?.trim().slice(0, 40)
+          if (!n) return
+          t.setState(s => ({ ...s, indTemplates: [...s.indTemplates.filter(y => y.name !== n), { name: n, indicators: a.indicators.map(i => ({ ...i })) }].slice(-40) }))
+          toast('Indicator template "' + n + '" saved.')
+        }}>Save these indicators as a template…</button>
+      </div>}
       {a.indicators.length > 0 && (
         <div className="ind-on">
           <div className="menu-head"><span>On this chart</span><button className="link" onClick={() => { t.updateActive({ indicators: a.indicators }, 'all'); toast('Indicators copied to every chart.') }}>Apply to all charts</button></div>

@@ -41,6 +41,7 @@ export interface PriceAlert {
   box?: { top: number; bottom: number }
   session?: string                                 // key of SESSION_ALERTS; fires every day
   lastFired?: string                               // NY date of the last session alert
+  armedAt?: number                                 // when it was restarted (the server watches it again from then)
   ict?: { event: IctEvent; tf: string; dir: 0 | 1 | -1; seen?: number }   // seen: unix seconds of the newest event already told
 }
 export type IctEvent = 'mss' | 'bos' | 'fvg' | 'sweep'
@@ -55,6 +56,14 @@ export interface SignalsPrefs {
   grade: 'all' | 'A' | 'A+'
   bias: boolean                  // only setups with the daily bias
   notify: boolean                // alert on new A / A+ setups
+}
+export function cleanLook(x: any): DrawLook {
+  const o: DrawLook = {}
+  if (typeof x?.color === 'string' && x.color.length <= 30) o.color = x.color
+  if ([1, 2, 3, 4].includes(Number(x?.width))) o.width = Number(x.width)
+  if (typeof x?.dashed === 'boolean') o.dashed = x.dashed
+  if (Array.isArray(x?.levels)) o.levels = x.levels.map(Number).filter(Number.isFinite).slice(0, 24)
+  return o
 }
 export const DEFAULT_SIGNALS: SignalsPrefs = { models: null, span: 604800, grade: 'all', bias: true, notify: false }
 const SPAN_VALUES = [1800, 3600, 14400, 43200, 86400, 259200, 604800]
@@ -85,7 +94,14 @@ export interface TerminalState {
   alertLog: AlertLogEntry[]
   scripts: SavedScript[]              // the user's own indicators (ICT Script)
   wlCols: WlCol[]                     // watchlist columns after Symbol / Last
+  indTemplates: IndTemplate[]         // saved indicator sets (Indicators → Templates)
+  drawTemplates: DrawTemplate[]       // saved drawing looks per tool (drawing settings → Template)
+  drawDefaults: Record<string, DrawLook>   // the look new drawings of a tool start with
 }
+/** A drawing's look without its text / interval visibility (what a style template keeps). */
+export interface DrawLook { color?: string; width?: number; dashed?: boolean; levels?: number[] }
+export interface IndTemplate { name: string; indicators: IndicatorConf[] }
+export interface DrawTemplate { tool: string; name: string; style: DrawLook }
 
 export const WL_COLS = ['chg', 'chgp', 'high', 'low', 'vol', 'range'] as const
 export type WlCol = (typeof WL_COLS)[number]
@@ -104,7 +120,7 @@ export function defaultState(): TerminalState {
   return {
     layout: '1', active: 0, charts: seeds.map(([t, tf], i) => newChart(i, t, tf)),
     sync: { symbol: false, interval: false, crosshair: true, drawings: false }, watchlist: [], lists: {}, listName: 'Watchlist', flags: {}, alerts: [],
-    signals: { ...DEFAULT_SIGNALS },
+    signals: { ...DEFAULT_SIGNALS }, indTemplates: [], drawTemplates: [], drawDefaults: {},
     chart: { ...DEFAULT_SETTINGS },
     alertLog: [],
     scripts: [],
@@ -116,6 +132,7 @@ export function defaultState(): TerminalState {
 export function serialize(s: TerminalState, drawingsOf: (id: number) => Drawing[]) {
   return {
     v: 2, layout: s.layout, active: s.active, sync: s.sync, watchlist: s.watchlist, lists: { ...s.lists, [s.listName]: s.watchlist }, listName: s.listName, flags: s.flags, alerts: s.alerts, signals: s.signals, chart: s.chart, alertLog: s.alertLog, scripts: s.scripts, wlCols: s.wlCols,
+    indTemplates: s.indTemplates, drawTemplates: s.drawTemplates, drawDefaults: s.drawDefaults,
     charts: s.charts.map(c => ({ ...c, drawings: drawingsOf(c.id) })),
   }
 }
@@ -181,6 +198,12 @@ export function parse(data: any, maxCharts: number): { state: TerminalState; dra
     scripts: Array.isArray(data?.scripts) ? data.scripts.filter((x: any) => typeof x?.id === 'string' && /^[a-z0-9]{1,12}$/.test(x.id) && typeof x?.name === 'string' && typeof x?.src === 'string' && x.src.length <= 8000)
       .slice(0, 30).map((x: any) => ({ id: x.id, name: String(x.name).slice(0, 30), src: x.src })) : [],
     chart: parseSettings(data?.chart),
+    indTemplates: Array.isArray(data?.indTemplates) ? data.indTemplates.filter((x: any) => typeof x?.name === 'string' && Array.isArray(x?.indicators)).slice(0, 40)
+      .map((x: any) => ({ name: String(x.name).slice(0, 40), indicators: x.indicators.filter((i: any) => typeof i?.name === 'string').slice(0, 30) })) : [],
+    drawTemplates: Array.isArray(data?.drawTemplates) ? data.drawTemplates.filter((x: any) => typeof x?.tool === 'string' && typeof x?.name === 'string')
+      .slice(0, 200).map((x: any) => ({ tool: x.tool, name: String(x.name).slice(0, 40), style: cleanLook(x.style) })) : [],
+    drawDefaults: data?.drawDefaults && typeof data.drawDefaults === 'object'
+      ? Object.fromEntries(Object.entries(data.drawDefaults as Record<string, unknown>).slice(0, 80).map(([k, v]) => [k, cleanLook(v)])) : {},
   }
   const drawings = base.charts.map((_, i) => (Array.isArray(data?.charts?.[i]?.drawings) ? data.charts[i].drawings.filter(validDrawing) : []))
   return { state, drawings }

@@ -29,9 +29,10 @@ from ictengine.news import calendar as news_calendar, ff_week
 from ictengine.store import LayoutError, Store
 from ictengine.time_overlays import LAYERS as TIME_LAYERS_ENGINE, time_layers
 
+from .alert_watch import AlertWatcher
 from .auth_client import GUEST_FEATURES, AuthClient
 from .llm import LLM
-from .market import Provider, default_provider, utc_range
+from .market import SYNTH_OPS, Provider, default_provider, utc_range
 
 FULL_ACCESS = {"user": "developer", "status": "active", "is_vip": True,
                "features": {**GUEST_FEATURES, "signals": True, "signal_delay_minutes": 0, "models": "all",
@@ -46,7 +47,7 @@ FORWARD = {
     # community: chat (accounts with a nickname) and ideas (open to read)
     ("GET", "community/status"), ("POST", "community/join"), ("GET", "community/messages"), ("POST", "community/messages"),
     ("GET", "community/ideas"), ("POST", "community/ideas"),
-    ("GET", "alerts/settings"), ("POST", "alerts/settings"), ("POST", "alerts/test"),
+    ("GET", "alerts/settings"), ("POST", "alerts/settings"), ("POST", "alerts/test"), ("POST", "alerts/telegram"),
     ("GET", "ai/settings"), ("POST", "ai/settings"),
     ("GET", "donations/info"), ("POST", "donations"),
 }
@@ -98,7 +99,7 @@ DEFAULT_INDICATORS = ("fvg", "liquidity", "structure", "order_blocks")
 
 
 def create_app(provider: Provider | None = None, store: Store | None = None, auth: AuthClient | None = None,
-               require_auth: bool | None = None, llm: LLM | None = None) -> FastAPI:
+               require_auth: bool | None = None, llm: LLM | None = None, watch_alerts: bool = False) -> FastAPI:
     provider = provider or default_provider()
     store = store or Store()
     auth = auth or AuthClient()
@@ -110,6 +111,10 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
     app = FastAPI(title="ICT Terminal API", version="0.1.0")
     # find the MT5 terminals / the Binance list in the background, so the first chart opens fast
     threading.Thread(target=provider.symbols, daemon=True, name="warm-feeds").start()
+
+    if watch_alerts:
+        # the users' chart alerts keep working when the terminal is closed (see alert_watch.py)
+        AlertWatcher(provider, store, auth).start()
 
     @app.exception_handler(MT5Error)
     async def mt5_unavailable(request: Request, exc: MT5Error):
@@ -186,7 +191,16 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
     @app.get("/udf/search")
     def udf_search(query: str = "", limit: int = 30, type: str = "", exchange: str = "", a: dict = Depends(logged_in)):
         q = query.upper()
-        out = [{"symbol": i.ticker, "full_name": i.ticker, "description": i.description, "exchange": i.feed,
+        synth = []
+        if any(c in q for c in SYNTH_OPS):
+            raw = q.split(":", 1)[-1].replace(" ", "")
+            feeds = sorted({i.feed for i in provider.symbols().values()})
+            for f in ([q.split(":", 1)[0]] if ":" in q else feeds):
+                i = provider.symbols().get(f"{f}:{raw}")
+                if i is not None:
+                    synth.append({"symbol": i.ticker, "full_name": i.ticker, "description": i.description, "exchange": i.feed,
+                                  "ticker": i.ticker, "type": i.type})
+        out = synth + [{"symbol": i.ticker, "full_name": i.ticker, "description": i.description, "exchange": i.feed,
                 "ticker": i.ticker, "type": i.type}
                for i in sorted(provider.symbols().values(), key=_rank)
                if (q in i.ticker or q in i.description.upper()) and (not type or i.type == type)
@@ -544,6 +558,11 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
         store.paper_reset(_owner(a), start)
         return _paper_state(_owner(a))
 
+    @app.get("/api/v1/alerts/fired")
+    def alerts_fired(since: int = 0, a: dict = Depends(logged_in)):
+        """Chart alerts the server sent (ms times), so the terminal can show them and switch them off."""
+        return {"fired": store.alerts_fired(_owner(a), max(since, int(time.time() * 1000) - 7 * 86_400_000))}
+
     @app.get("/api/v1/layouts")
     def layouts_list(a: dict = Depends(logged_in)):
         return {"layouts": store.layouts(_owner(a))}
@@ -814,4 +833,4 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
     return app
 
 
-app = create_app()
+app = create_app(watch_alerts=os.getenv("ICT_ALERT_WATCH", "true").strip().lower() not in ("0", "false", "no", "off"))

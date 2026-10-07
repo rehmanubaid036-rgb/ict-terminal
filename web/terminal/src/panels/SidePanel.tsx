@@ -332,6 +332,61 @@ function Signals() {
   )
 }
 
+/** Where the server sends chart alerts (also when the terminal is closed): WhatsApp, Telegram, email, webhook. */
+function AlertDelivery() {
+  const [s, setS] = useState<AlertSettings | null>(null)
+  const [open, setOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const load = () => api.alerts.get().then(r => setS(r.settings)).catch(e => toast(errorText(e), 'error'))
+  useEffect(() => { if (open && !s) void load() }, [open]) // eslint-disable-line
+  // after Connect Telegram, look again when the user comes back from Telegram
+  useEffect(() => {
+    if (!open) return
+    const back = () => { if (document.visibilityState === 'visible') void load() }
+    document.addEventListener('visibilitychange', back)
+    return () => document.removeEventListener('visibilitychange', back)
+  }, [open]) // eslint-disable-line
+  const save = async (patch: Partial<AlertSettings>) => {
+    if (!s) return
+    setBusy(true)
+    try { setS((await api.alerts.save(patch)).settings) } catch (e) { toast(errorText(e), 'error') } finally { setBusy(false) }
+  }
+  const ch = s?.channels ?? []
+  return (
+    <div className="wa-box">
+      <button className="wa-head" onClick={() => setOpen(o => !o)}><span className="wa-dot" />Send alerts to my phone{ch.length ? <em>{ch.length} on</em> : null}<span className="grow" />{open ? '▾' : '▸'}</button>
+      {open && (!s ? <div className="note">Loading…</div> : <>
+        {s.chart_alerts_on === false && <div className="note">The admin has switched server alerts off for now.</div>}
+        <div className="note">The server checks your alerts every 15 seconds (ICT events every minute), also when the terminal is closed, and sends them here.</div>
+        <Switch checked={!!s.chart_alerts} onChange={v => void save({ chart_alerts: v })} label="Send my chart alerts to the channels below" />
+        <div className="dl-row"><b>WhatsApp</b>
+          {s.available ? (s.whatsapp_number ? <Switch checked={!!s.whatsapp_chart} onChange={v => void save({ whatsapp_chart: v })} label={'+' + s.whatsapp_number} />
+            : <span className="note">Add your number under Signals → WhatsApp alerts.</span>) : <span className="note">Not available yet.</span>}
+        </div>
+        <div className="dl-row"><b>Telegram</b>
+          {!s.telegram_available ? <span className="note">Not available yet.</span>
+            : s.telegram_connected ? <>
+              <span className="ok-pill">Connected</span>
+              <Switch checked={!!s.telegram_signals} onChange={v => void save({ telegram_signals: v })} label="Model signals too (Signals tab settings)" />
+              <button className="link" onClick={() => void save({ telegram_disconnect: true })}>Disconnect</button>
+            </> : <button className="btn ghost sm" disabled={busy} onClick={async () => {
+              try { const r = await api.alerts.telegram(); window.open(r.url, '_blank', 'noopener'); toast('Press Start in Telegram, then come back here.') }
+              catch (e) { toast(errorText(e), 'error') }
+            }}>Connect Telegram</button>}
+        </div>
+        <div className="dl-row"><b>Email</b>
+          {s.email_available ? <Switch checked={!!s.email_alerts} onChange={v => void save({ email_alerts: v })} label="To my account email" /> : <span className="note">Not available.</span>}
+        </div>
+        <label className="wa-field">Webhook (https, gets every alert as JSON)
+          <input defaultValue={s.webhook_url} placeholder="https://example.com/hook" onBlur={e => { if (e.target.value.trim() !== (s.webhook_url ?? '')) void save({ webhook_url: e.target.value.trim() }) }} />
+        </label>
+        <button className="btn ghost sm" disabled={busy || !ch.length}
+          onClick={async () => { try { const r = await api.alerts.test('chart'); toast('Test alert sent (' + (Array.isArray(r.sent) ? r.sent.join(', ') : 'ok') + ').') } catch (e) { toast(errorText(e), 'error') } }}>Send a test alert</button>
+      </>)}
+    </div>
+  )
+}
+
 /** Auto notify: every new signal that matches these settings goes to the user's WhatsApp. */
 function WhatsAppAlerts() {
   const t = useTerminal()
@@ -550,6 +605,7 @@ function Alerts() {
         </> : <div className="note">ICT event alerts need a plan with ICT indicators.</div>}
         {perm !== 'granted' && <button className="btn ghost sm" onClick={async () => { try { setPerm(await Notification.requestPermission()) } catch { /* ignore */ } }}>Turn on desktop notifications</button>}
       </div>
+      <AlertDelivery />
       <div className="seg"><button className={tab === 'list' ? 'on' : ''} onClick={() => setTab('list')}>Alerts ({list.length})</button><button className={tab === 'log' ? 'on' : ''} onClick={() => setTab('log')}>History ({t.state.alertLog.length})</button></div>
       {tab === 'log' ? (
         <div className="alert-list">
@@ -559,7 +615,7 @@ function Alerts() {
           </>}
         </div>
       ) : <div className="alert-list">
-        {!list.length && <Empty>No alerts yet. Alerts stay on your account and work while the terminal is open.</Empty>}
+        {!list.length && <Empty>No alerts yet. Alerts stay on your account. With a delivery channel on (above) the server sends them to your phone even when the terminal is closed.</Empty>}
         {list.map(a => (
           <div key={a.id} className={`alert-row${a.active ? '' : ' done'}`}>
             <div>{a.kind === 'session' ? <><b>Session</b> {SESSION_ALERTS.find(w => w.key === a.session)?.label ?? a.session} <small>every day</small></>
@@ -568,7 +624,7 @@ function Alerts() {
               : a.kind === 'ict' && a.ict ? <><b>{a.ticker.split(':')[1]} {a.ict.tf}</b> {ICT_ALERT_EVENTS.find(x => x.key === a.ict!.event)?.label}{a.ict.dir ? (a.ict.dir > 0 ? ' · bullish' : ' · bearish') : ''} <small>every time</small></>
               : <><b>{a.ticker.split(':')[1]}</b> {a.condition} <b>{a.price}</b></>}{a.note && <small>{a.note}</small>}
               <small>{a.active ? ((a.kind === 'session' || a.kind === 'ict') && a.triggeredAt ? `Active · last ${new Date(a.triggeredAt).toLocaleString()}` : 'Active') : a.triggeredAt ? `Triggered ${new Date(a.triggeredAt).toLocaleString()}` : 'Paused'}</small></div>
-            <button className="icon-btn" title={a.active ? 'Pause' : 'Restart'} onClick={() => t.updateAlert(a.id, { active: !a.active, triggeredAt: undefined })}><Icon name={a.active ? 'pause' : 'play'} size={15} /></button>
+            <button className="icon-btn" title={a.active ? 'Pause' : 'Restart'} onClick={() => t.updateAlert(a.id, a.active ? { active: false } : { active: true, triggeredAt: undefined, armedAt: Date.now() })}><Icon name={a.active ? 'pause' : 'play'} size={15} /></button>
             <button className="icon-btn" title="Delete" onClick={() => t.removeAlert(a.id)}><Icon name="trash" size={15} /></button>
           </div>
         ))}

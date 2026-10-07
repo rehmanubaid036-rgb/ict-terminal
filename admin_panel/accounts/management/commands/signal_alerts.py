@@ -16,9 +16,11 @@ class Command(BaseCommand):
         self.stdout.write(f"Signal alerts running (checks {alerts.ict_db()} every {options['every']} s).")
         while True:
             try:
+                if alerts.poll_telegram(log=lambda m: self.stderr.write(m)):
+                    self.stdout.write("connected a Telegram chat")
                 n = alerts.run_once(log=lambda m: self.stderr.write(m))
                 if n:
-                    self.stdout.write(f"sent {n} WhatsApp alert(s)")
+                    self.stdout.write(f"sent {n} signal alert(s)")
             except Exception as e:  # noqa: BLE001 - keep watching
                 self.stderr.write(f"alerts: {e}")
             if options["once"]:

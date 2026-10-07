@@ -1652,3 +1652,104 @@ class BulkPlanAndDonationTests(TestCase):
         d.refresh_from_db()
         self.assertEqual(d.status, "received")
         self.assertIsNotNone(d.received_at)
+
+
+class FakeHttp:
+    """Records the HTTP calls the alert channels make."""
+
+    def __init__(self, updates=None):
+        self.calls = []
+        self.updates = updates or []
+
+    def post(self, url, json=None, **kw):
+        self.calls.append((url, json))
+        return type("R", (), {"status_code": 200, "content": b"1", "json": lambda s: {"ok": True, "messages": [{"id": "m"}]}})()
+
+    def get(self, url, params=None, **kw):
+        return type("R", (), {"status_code": 200, "json": lambda s: {"ok": True, "result": self.updates}})()
+
+
+@override_settings(INTERNAL_API_SECRET=SECRET, EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+class ServerChartAlertTests(TestCase):
+    """Chart alerts the API server finds: which users it watches, delivery once per channel, Telegram connect."""
+
+    def setUp(self):
+        from .models import AlertPrefs, Subscription
+        cache.clear()
+        s = SiteSettings.load()
+        s.whatsapp_alerts_enabled, s.whatsapp_phone_number_id, s.whatsapp_token = True, "123", "tok"
+        s.telegram_bot_token, s.telegram_bot_username = "bot:tok", "IctAlertsBot"
+        s.save()
+        self.user = User.objects.create_user("c@example.com", "c@example.com", PASSWORD)
+        plan = Plan.objects.create(name="Pro", slug="pro-c", duration_days=30, price=0, alerts_limit=5)
+        Subscription.objects.create(user=self.user, plan=plan, expires_at=timezone.now() + timedelta(days=30))
+        self.prefs = AlertPrefs.objects.create(user=self.user, whatsapp_number="923001234567", email_alerts=True)
+        User.objects.create_user("free@example.com", "free@example.com", PASSWORD)
+        AlertPrefs.objects.create(user=User.objects.get(email="free@example.com"), whatsapp_number="923000000000")
+
+    def post(self, path, data, key=SECRET):
+        return self.client.post(path, json.dumps(data), content_type="application/json", headers={"X-Service-Key": key})
+
+    def test_watched_users_need_a_plan_and_a_channel(self):
+        r = self.post("/api/v1/internal/alerts/users", {}).json()["users"]
+        self.assertEqual([u["email"] for u in r], ["c@example.com"])            # the free user has no plan
+        self.assertEqual(r[0]["channels"], ["whatsapp", "email"])
+        self.assertEqual(r[0]["features"]["alerts_limit"], 5)
+        self.assertEqual(self.post("/api/v1/internal/alerts/users", {}, key="bad").status_code, 403)
+        SiteSettings.objects.update(chart_alerts_enabled=False)
+        self.assertEqual(self.post("/api/v1/internal/alerts/users", {}).json()["users"], [])
+
+    def test_delivery_once_per_channel(self):
+        from . import alerts
+        from .models import AlertDelivery
+        http = FakeHttp()
+        sent = alerts.deliver_chart_alert("c@example.com", "chart|a1|1", "XAUUSD crossed 4000", http=http)
+        self.assertEqual(sent, ["whatsapp", "email"])
+        self.assertEqual(http.calls[0][1]["template"]["name"], "ict_alert")
+        self.assertEqual(http.calls[0][1]["template"]["components"][0]["parameters"][0]["text"], "XAUUSD crossed 4000")
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(alerts.deliver_chart_alert("c@example.com", "chart|a1|1", "again", http=http), [])
+        self.assertEqual(AlertDelivery.objects.filter(signal_key="chart|a1|1", ok=True).count(), 2)
+        bad = self.post("/api/v1/internal/alerts/send", {"email": "c@example.com", "key": "x", "text": "t"})
+        self.assertEqual(bad.status_code, 400)
+
+    def test_telegram_connect_and_signals(self):
+        from . import alerts
+        r = self.client.post("/api/v1/auth/login", json.dumps({"email": "c@example.com", "password": PASSWORD,
+                                                               "device_id": "d1", "platform": "web"}), content_type="application/json")
+        h = {"Authorization": "Bearer " + r.json()["token"], "X-Device-Id": "d1", "X-Device-Platform": "web"}
+        link = self.client.post("/api/v1/alerts/telegram", headers=h).json()
+        self.assertTrue(link["url"].startswith("https://t.me/IctAlertsBot?start="))
+        alerts._tg_offset["v"] = 0
+        http = FakeHttp([{"update_id": 5, "message": {"text": "/start " + link["code"], "chat": {"id": 777}}},
+                         {"update_id": 6, "message": {"text": "/start 000000000000", "chat": {"id": 8}}}])
+        self.assertEqual(alerts.poll_telegram(http=http), 1)
+        self.prefs.refresh_from_db()
+        self.assertEqual((self.prefs.telegram_chat_id, self.prefs.telegram_code), ("777", ""))
+        g = self.client.get("/api/v1/alerts/settings", headers=h).json()["settings"]
+        self.assertEqual((g["telegram_connected"], g["channels"]), (True, ["whatsapp", "telegram", "email"]))
+        bad = self.client.post("/api/v1/alerts/settings", json.dumps({"webhook_url": "https://127.0.0.1/x"}),
+                               content_type="application/json", headers=h)
+        self.assertEqual(bad.status_code, 400)                                  # never a local address
+        off = self.client.post("/api/v1/alerts/settings", json.dumps({"telegram_disconnect": True, "email_alerts": False}),
+                               content_type="application/json", headers=h).json()["settings"]
+        self.assertEqual(off["channels"], ["whatsapp"])
+
+    def test_signals_also_go_to_telegram(self):
+        import sqlite3
+        import tempfile
+        from pathlib import Path
+        from . import alerts
+        self.prefs.auto_notify, self.prefs.telegram_chat_id, self.prefs.min_grade = True, "777", "all"
+        self.prefs.save()
+        db = Path(tempfile.mkdtemp()) / "ict.db"
+        con = sqlite3.connect(db)
+        con.execute("CREATE TABLE signals (symbol, model_id, direction, created_time, entry, stop, targets, grade, bias_filter)")
+        con.execute("INSERT INTO signals VALUES (?,?,?,?,?,?,?,?,?)", ("XAUUSD", "M1", 1, (timezone.now() - timedelta(minutes=1)).isoformat(),
+                                                                      4000.0, 3990.0, "[[4020, 1.0]]", "A", 1))
+        con.commit()
+        con.close()
+        wa, tg = [], []
+        n = alerts.run_once(path=db, sender=lambda *a: wa.append(a), tg_sender=lambda chat, text, site: tg.append((chat, text)))
+        self.assertEqual((n, len(wa), tg[0][0]), (2, 1, "777"))
+        self.assertIn("XAUUSD M1 BUY", tg[0][1])

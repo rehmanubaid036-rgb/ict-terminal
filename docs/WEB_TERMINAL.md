@@ -75,6 +75,10 @@ It covers what was built, how to build and test it, and what is still open.
 | Trading tools | Paper trading (Trade tab, one-click buy / sell on the chart, draggable SL / TP lines; server `/api/v1/paper*`), strategy tester (`/api/v1/backtest`, one model, 30 / 60 / 90 days, equity curve), screener, economic calendar and news tabs, pop-out chart window (`?popout=1`) |
 | ICT Script | Your own indicators in a small formula language (`src/chart/script.ts`): series variables, `x[n]` history, sma / ema / rma / wma / rsi / atr / highest / lowest / stdev / change / abs / max / min, up to 6 `plot()` lines, `@pane`. Parsed and evaluated by the terminal (no JavaScript eval); saved in the layout as `scripts`; Indicators dialog > My scripts |
 | ICT event alerts | Alerts tab > ICT event: MSS, BOS, new FVG or liquidity sweep on a symbol + interval (1m-4H), either or one direction. Checked every 30 s from `/api/v1/ict/overlays`; fires on every new event (the alert keeps `ict.seen`), plan with ICT indicators only |
+| Server-side alerts | `api/ictapi/alert_watch.py` (thread in the API, `ICT_ALERT_WATCH=off` stops it). Every 15 s it reads the autosave layout of each user the admin panel lists (`internal/alerts/users`: active plan + a channel), checks price / line / zone alerts on 1m candles (last 10 min), session starts, and ICT events every 60 s; delivery through `internal/alerts/send` to WhatsApp (template `ict_alert`, 1 variable), Telegram (bot, Connect Telegram link), email, webhook (public https only). Fired alerts go to `alert_fired`; the terminal pulls `/api/v1/alerts/fired` every 30 s, switches those alerts off and logs them. Restart sets `armedAt` so the server watches it again |
+| Indicator templates | Indicators > Templates: save the indicators on a chart (with settings / pane) under a name, apply (replace) or Add to any chart. Saved in the layout (`indTemplates`) so every device has them |
+| Drawing style templates | Drawing settings > Template: save a tool's look (colour, width, dashed, Fib levels) under a name, apply it to another drawing of that tool, or Use as default for new drawings (`drawTemplates`, `drawDefaults`; new drawings read `drawDefault(tool)` in registry.ts) |
+| Spread / ratio symbols | `FEED:A/B`, `FEED:A-B`, `FEED:A+B`, `FEED:A*B` (e.g. AXI:XAUUSD/XAGUSD). `SyntheticProvider` in market.py combines two symbols of one feed bar by bar (shared minutes only); symbol search offers them when the query has an operator. ICT layers work on them; paper trade buttons are hidden |
 | Volume profiles | Visible range (VPVR), Session Volume Profile `SVP` (Asia / London / New York or per day, POC + value area) and the Fixed range volume profile drawing (POC, VAH, VAL) - `src/chart/volprofile.ts` |
 | Price scale | Right-click the price scale: Auto (fit), Lock range, Lock price / bar, Regular / Log / Percent, Invert, scale left / right. The lock is saved with the chart (`scaleLock`, a KLineChart `createRange`) |
 | Layouts | 1-8 charts (1, 2 side / stacked, 3, 4, 5, 6, 7, 8); the plan's "Charts per layout" (admin, 1-8) limits them; tablets in portrait show 5-8 charts in two columns, phones 2 x 4; indicator panes size to the chart |
@@ -85,9 +89,8 @@ It covers what was built, how to build and test it, and what is still open.
 | Other | Dark / light theme, keyboard shortcuts (letters = symbol search, digits = interval, Alt+T/H/J/V/F/R tools, Alt+A alert, Alt+S screenshot, Ctrl+Z/Y, Del, Esc), screenshot, full screen, phone layout (tool sheets, bottom tab bar, bottom sheets, one chart at a time with chips) |
 
 Not built yet (plan items): MT5 positions/orders panel and trade panel (no read API for EA data),
-indicator templates, Urdu UI language,
-WebSocket streaming (the API has no `/ws`; the terminal polls),
-server-side alerts (alerts only fire while the terminal is open).
+Urdu UI language,
+WebSocket streaming (the API has no `/ws`; the terminal polls).
 
 ## Build
 

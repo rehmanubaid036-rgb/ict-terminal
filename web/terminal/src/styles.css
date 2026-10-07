@@ -963,3 +963,22 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 .donate-account .mono { font-family: ui-monospace, monospace; word-break: break-all; }
 .donate-modal input:not([type=checkbox]) { width: 100%; }
 .donate-done { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+
+/* alert delivery (server-side alerts) */
+.dl-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; }
+.dl-row > b { min-width: 74px; }
+.dl-row .note { margin: 0; }
+.ok-pill { font-size: 11px; color: #fff; background: #26a69a; border-radius: 999px; padding: 1px 8px; }
+
+/* indicator templates / drawing style templates */
+.ind-tpl { display: flex; gap: 8px; align-items: center; }
+.ind-tpl .search-input { flex: 1; }
+.ind-tpl-list { border: 1px solid var(--line2); border-radius: 10px; padding: 8px; margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+.ind-tpl-list small { color: var(--muted); margin-left: 6px; }
+.dd-tpl { position: relative; }
+.dd-tpl-menu { position: absolute; bottom: calc(100% + 6px); left: 0; min-width: 240px; background: var(--panel); border: 1px solid var(--line2); border-radius: 10px;
+  padding: 8px; display: flex; flex-direction: column; gap: 4px; box-shadow: 0 10px 30px rgba(0,0,0,.35); z-index: 5; }
+.dd-tpl-row { display: flex; align-items: center; gap: 6px; }
+.dd-tpl-row .grow-btn { display: flex; align-items: center; gap: 8px; }
+.dd-tpl-row .grow-btn i { display: inline-block; width: 22px; border-radius: 2px; }
+.dd-tpl-menu .link { text-align: left; }

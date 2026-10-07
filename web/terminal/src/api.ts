@@ -110,7 +110,14 @@ export interface IdeaCard { id: number; title: string; symbol: string; timeframe
 export interface IdeaFull extends IdeaCard { body: string; image: string; chart: { ticker?: string; tf?: string } | null; comment_list: IdeaComment[] }
 export interface NewIdea { title: string; body: string; symbol: string; timeframe: string; direction: string; image: string; thumb: string; chart: { ticker: string; tf: string } }
 
-export interface AlertSettings { available: boolean; whatsapp_number: string; auto_notify: boolean; min_grade: 'all' | 'A' | 'A+'; models: string; symbols: string; bias_only: boolean }
+export interface AlertSettings {
+  available: boolean; whatsapp_number: string; auto_notify: boolean; min_grade: 'all' | 'A' | 'A+'; models: string; symbols: string; bias_only: boolean
+  // chart alerts sent by the server (also when the terminal is closed)
+  chart_alerts_on?: boolean; chart_alerts?: boolean; whatsapp_chart?: boolean
+  telegram_available?: boolean; telegram_connected?: boolean; telegram_signals?: boolean; telegram_disconnect?: boolean
+  email_available?: boolean; email_alerts?: boolean; webhook_url?: string; channels?: string[]
+}
+export interface FiredAlert { alert_id: string; at_ms: number; kind: string; text: string; extra: { bar_ms?: number; day?: string; seen?: number }; sent: string[] }
 
 export interface ScreenerFvg { tf: string; dir: 'BISI' | 'SIBI'; bottom: number; top: number; ce: number; inside: boolean; dist_pct: number }
 export interface ScreenerRow { symbol: string; time: string; price: number; change_pct: number | null; bias: number; bias_score: number; draw: number | null; draw_source?: string
@@ -190,7 +197,9 @@ export const api = {
   alerts: {
     get: () => get<{ settings: AlertSettings }>('/api/v1/alerts/settings'),
     save: (s: Partial<AlertSettings>) => post<{ settings: AlertSettings }>('/api/v1/alerts/settings', s),
-    test: () => post<{ sent: boolean }>('/api/v1/alerts/test', {}),
+    test: (channel?: 'chart') => post<{ sent: boolean | string[] }>('/api/v1/alerts/test', channel ? { channel } : {}),
+    telegram: () => post<{ url: string; code: string }>('/api/v1/alerts/telegram', {}),
+    fired: (since: number) => get<{ fired: FiredAlert[] }>('/api/v1/alerts/fired', { since }),
   },
   community: {
     status: () => get<CommunityStatus>('/api/v1/community/status'),

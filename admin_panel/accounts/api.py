@@ -721,6 +721,29 @@ def internal_ai(request):
 
 
 @method("POST")
+def internal_alert_users(request):
+    """The users whose chart alerts the API server watches (active plan + a delivery channel)."""
+    if not is_internal(request):
+        return error("Forbidden.", 403)
+    from . import alerts
+    return ok(users=alerts.chart_alert_users())
+
+
+@method("POST")
+def internal_alert_send(request):
+    """Delivers one chart alert the API server found to the user's channels (once per key and channel)."""
+    if not is_internal(request):
+        return error("Forbidden.", 403)
+    from . import alerts
+    data = body(request)
+    email, key, text = str(data.get("email", "")), str(data.get("key", "")), str(data.get("text", ""))
+    if not (email and key.startswith("chart|") and text):
+        return error("email, key (chart|...) and text are needed.")
+    payload = data.get("payload") if isinstance(data.get("payload"), dict) else None
+    return ok(sent=alerts.deliver_chart_alert(email, key, text, payload))
+
+
+@method("POST")
 def internal_verify(request):
     """Checks a login token on api_server requests (api_server caches the answer)."""
     if not is_internal(request):
@@ -831,6 +854,17 @@ def ai_settings(request):
 
 @method("POST")
 @token_required
+def alert_telegram(request):
+    """A t.me link that connects the user's Telegram chat to the alerts bot."""
+    from . import alerts
+    try:
+        return ok(**alerts.telegram_link(request.api_token.user))
+    except ValueError as e:
+        return error(str(e))
+
+
+@method("POST")
+@token_required
 def alert_test(request):
     """Sends a sample alert to the user's number (at most one a minute)."""
     from django.core.cache import cache
@@ -838,6 +872,19 @@ def alert_test(request):
     from . import alerts
     from .models import AlertPrefs
     p = AlertPrefs.objects.filter(user=request.api_token.user).first()
+    if body(request).get("channel") == "chart":
+        # a test chart alert to every channel the user turned on
+        if p is None or not alerts.channels(p, SiteSettings.load()):
+            return error("Turn on at least one channel first (WhatsApp, Telegram, email or webhook).")
+        key = f"alert-test-chart-{p.user_id}"
+        if cache.get(key):
+            return error("Wait a minute before the next test message.", 429)
+        cache.set(key, 1, 60)
+        sent = alerts.deliver_chart_alert(p.user.email, f"chart|test|{int(timezone.now().timestamp())}",
+                                          "Test alert: XAUUSD crossed 4000.00. Your chart alerts arrive like this.")
+        if not sent:
+            return error("Nothing could be sent. Check the channel settings.", 502)
+        return ok(sent=sent)
     if p is None or not p.whatsapp_number:
         return error("Save your WhatsApp number first.")
     key = f"alert-test-{p.user_id}"

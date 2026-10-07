@@ -21,7 +21,7 @@ from zoneinfo import ZoneInfo
 
 import requests
 from django.conf import settings
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from .models import AlertDelivery, AlertPrefs, SiteSettings
@@ -126,21 +126,33 @@ def _wants(p: AlertPrefs, feats: dict, s: dict, now) -> bool:
     return not syms or s["symbol"].upper() in syms
 
 
-def run_once(now=None, path: Path | None = None, sender=send_template, log=print) -> int:
-    """Sends the alerts due now; returns how many were sent."""
+def signal_text(s: dict) -> str:
+    p = signal_params(s)
+    return f"ICT Terminal signal: {p[0]} {p[1]} {p[2]} (grade {p[3]}). Entry {p[4]}, SL {p[5]}, TP {p[6]}. {p[7]}. Not financial advice."
+
+
+def run_once(now=None, path: Path | None = None, sender=send_template, log=print, tg_sender=None) -> int:
+    """Sends the signals due now to WhatsApp (and Telegram when connected); returns how many messages were sent."""
     site = SiteSettings.load()
-    if not site.whatsapp_alerts_enabled:
+    wa_on = bool(site.whatsapp_alerts_enabled)
+    tg_on = bool(site.telegram_bot_token)
+    if not (wa_on or tg_on):
         return 0
+    tg_sender = tg_sender or (lambda chat, text, site: send_telegram(chat, text, site))
     now = now or timezone.now()
     sigs = new_signals(now - timedelta(minutes=FRESH_MINUTES + 120), path)   # + the longest plan delay
     sigs = [s for s in sigs if s["created_time"] >= now - timedelta(minutes=FRESH_MINUTES + 120)]
     if not sigs:
         return 0
     sent = 0
-    for p in AlertPrefs.objects.select_related("user").filter(auto_notify=True).exclude(whatsapp_number=""):
+    for p in AlertPrefs.objects.select_related("user").filter(auto_notify=True):
         if not p.user.is_active:
             continue
-        feats = plan_features(active_subscriptions(p.user)) if active_subscriptions(p.user) else {}
+        chans = ([("whatsapp", p.whatsapp_number)] if wa_on and p.whatsapp_number else []) +                 ([("telegram", p.telegram_chat_id)] if tg_on and p.telegram_signals and p.telegram_chat_id else [])
+        if not chans:
+            continue
+        subs = active_subscriptions(p.user)
+        feats = plan_features(subs) if subs else {}
         delay = timedelta(minutes=(feats.get("signal_delay_minutes") or 0))
         seen = set()
         for s in sigs:
@@ -149,21 +161,24 @@ def run_once(now=None, path: Path | None = None, sender=send_template, log=print
             if not _wants(p, feats, s, now):
                 continue
             seen.add(s["key"])
-            if AlertDelivery.objects.filter(user=p.user, signal_key=s["key"]).exists():
-                continue
             params = signal_params(s)
-            try:
-                d = AlertDelivery.objects.create(user=p.user, signal_key=s["key"], text=" ".join(params)[:400])
-            except IntegrityError:
-                continue
-            try:
-                sender(p.whatsapp_number, params, site)
-                d.ok = True
-                sent += 1
-            except WhatsAppError as e:
-                d.error = str(e)[:300]
-                log(f"WhatsApp to user {p.user_id}: {e}")
-            d.save(update_fields=["ok", "error"])
+            for ch, to in chans:
+                try:
+                    with transaction.atomic():   # a savepoint: a duplicate must not break the outer transaction
+                        d = AlertDelivery.objects.create(user=p.user, signal_key=s["key"], channel=ch, text=" ".join(params)[:400])
+                except IntegrityError:
+                    continue
+                try:
+                    if ch == "whatsapp":
+                        sender(to, params, site)
+                    else:
+                        tg_sender(to, signal_text(s), site)
+                    d.ok = True
+                    sent += 1
+                except (WhatsAppError, ChannelError) as e:
+                    d.error = str(e)[:300]
+                    log(f"{ch} to user {p.user_id}: {e}")
+                d.save(update_fields=["ok", "error"])
     return sent
 
 
@@ -172,7 +187,15 @@ def prefs_dict(p: AlertPrefs | None) -> dict:
     return {"available": bool(site.whatsapp_alerts_enabled and site.whatsapp_phone_number_id and site.whatsapp_token),
             "whatsapp_number": p.whatsapp_number if p else "", "auto_notify": bool(p and p.auto_notify),
             "min_grade": p.min_grade if p else "A", "models": p.models_csv if p else "", "symbols": p.symbols_csv if p else "",
-            "bias_only": p.bias_only if p else True}
+            "bias_only": p.bias_only if p else True,
+            # chart alerts from the server (terminal closed too)
+            "chart_alerts_on": bool(site.chart_alerts_enabled),
+            "chart_alerts": p.chart_alerts if p else True, "whatsapp_chart": p.whatsapp_chart if p else True,
+            "telegram_available": bool(site.telegram_bot_token and site.telegram_bot_username),
+            "telegram_connected": bool(p and p.telegram_chat_id), "telegram_signals": p.telegram_signals if p else True,
+            "email_available": bool(site.email_alerts_enabled), "email_alerts": bool(p and p.email_alerts),
+            "webhook_url": p.webhook_url if p else "",
+            "channels": channels(p, site) if p else []}
 
 
 def save_prefs(user, data: dict) -> AlertPrefs:
@@ -192,7 +215,215 @@ def save_prefs(user, data: dict) -> AlertPrefs:
         p.symbols_csv = ",".join(s for s in re.split(r"[\s,]+", str(data.get("symbols") or "").upper()) if re.fullmatch(r"[A-Z0-9._:]{2,20}", s))[:200]
     if "bias_only" in data:
         p.bias_only = bool(data.get("bias_only"))
+    for f in ("chart_alerts", "whatsapp_chart", "telegram_signals", "email_alerts"):
+        if f in data:
+            setattr(p, f, bool(data.get(f)))
+    if data.get("telegram_disconnect"):
+        p.telegram_chat_id = ""
+    if "webhook_url" in data:
+        url = str(data.get("webhook_url") or "").strip()[:300]
+        if url and not public_https(url):
+            raise ValueError("The webhook must be a public https:// address.")
+        p.webhook_url = url
     if p.auto_notify and not p.whatsapp_number:
         raise ValueError("Add your WhatsApp number first.")
     p.save()
     return p
+
+
+# ---- chart alerts (price, line, zone, session, ICT events) checked by the ICT API server -----------
+# The API watches every user's alerts even when the terminal is closed and asks this panel to deliver
+# them (internal/alerts/send). Channels: WhatsApp (template with 1 variable), Telegram bot, email, webhook.
+TELEGRAM = "https://api.telegram.org"
+MAX_CHART_ALERTS_PER_HOUR = 60
+
+
+class ChannelError(Exception):
+    pass
+
+
+def send_whatsapp_text(number: str, text: str, site: SiteSettings, http=requests) -> str:
+    """The chart alert template (1 variable = the alert text)."""
+    if not (site.whatsapp_phone_number_id and site.whatsapp_token):
+        raise WhatsAppError("WhatsApp is not set up in the admin panel yet.")
+    body = {"messaging_product": "whatsapp", "to": number, "type": "template",
+            "template": {"name": site.whatsapp_alert_template or "ict_alert", "language": {"code": site.whatsapp_template_lang or "en"},
+                         "components": [{"type": "body", "parameters": [{"type": "text", "text": text[:900]}]}]}}
+    try:
+        r = http.post(f"{GRAPH}/{site.whatsapp_phone_number_id}/messages", json=body, timeout=15,
+                      headers={"Authorization": f"Bearer {site.whatsapp_token}"})
+        data = r.json() if r.content else {}
+    except (requests.RequestException, ValueError) as e:
+        raise WhatsAppError(f"WhatsApp could not be reached: {e.__class__.__name__}") from None
+    if r.status_code >= 400:
+        raise WhatsAppError(str((data.get("error") or {}).get("message") or f"HTTP {r.status_code}")[:280])
+    return str(((data.get("messages") or [{}])[0]).get("id", ""))
+
+
+def send_telegram(chat_id: str, text: str, site: SiteSettings, http=requests) -> None:
+    if not site.telegram_bot_token:
+        raise ChannelError("Telegram is not set up in the admin panel yet.")
+    try:
+        r = http.post(f"{TELEGRAM}/bot{site.telegram_bot_token}/sendMessage", timeout=15,
+                      json={"chat_id": chat_id, "text": text[:4000], "disable_web_page_preview": True})
+        data = r.json() if r.content else {}
+    except (requests.RequestException, ValueError) as e:
+        raise ChannelError(f"Telegram could not be reached: {e.__class__.__name__}") from None
+    if r.status_code >= 400 or not data.get("ok", False):
+        raise ChannelError(str(data.get("description") or f"HTTP {r.status_code}")[:280])
+
+
+def send_email(to: str, text: str) -> None:
+    from django.core.mail import send_mail
+    try:
+        send_mail("ICT Terminal alert", text + "\n\nManage your alerts in the terminal: Alerts tab, Send alerts to my phone.",
+                  None, [to], fail_silently=False)
+    except Exception as e:  # noqa: BLE001 - SMTP errors of every kind
+        raise ChannelError(f"Email failed: {e.__class__.__name__}") from None
+
+
+def public_https(url: str) -> bool:
+    """Webhooks only go to https addresses on the public internet (never this server or a LAN)."""
+    import ipaddress
+    import socket
+    from urllib.parse import urlparse
+    u = urlparse(url or "")
+    if u.scheme != "https" or not u.hostname:
+        return False
+    try:
+        infos = socket.getaddrinfo(u.hostname, u.port or 443, proto=socket.IPPROTO_TCP)
+    except (OSError, ValueError):
+        return False
+    return bool(infos) and all(ipaddress.ip_address(i[4][0]).is_global for i in infos)
+
+
+def send_webhook(url: str, payload: dict, http=requests) -> None:
+    if not public_https(url):
+        raise ChannelError("The webhook must be a public https:// address.")
+    try:
+        r = http.post(url, json=payload, timeout=10, allow_redirects=False)
+    except requests.RequestException as e:
+        raise ChannelError(f"Webhook could not be reached: {e.__class__.__name__}") from None
+    if r.status_code >= 400:
+        raise ChannelError(f"Webhook answered HTTP {r.status_code}")
+
+
+def channels(p: AlertPrefs | None, site: SiteSettings) -> list[str]:
+    """The channels a user's chart alerts go to right now."""
+    if p is None or not p.chart_alerts:
+        return []
+    out = []
+    if p.whatsapp_chart and p.whatsapp_number and site.whatsapp_alerts_enabled and site.whatsapp_token:
+        out.append("whatsapp")
+    if p.telegram_chat_id and site.telegram_bot_token:
+        out.append("telegram")
+    if p.email_alerts and site.email_alerts_enabled and p.user.email:
+        out.append("email")
+    if p.webhook_url:
+        out.append("webhook")
+    return out
+
+
+def chart_alert_users() -> list[dict]:
+    """Users whose chart alerts the API server should watch: an active plan and at least one channel."""
+    from .services import access_payload
+    site = SiteSettings.load()
+    if not site.chart_alerts_enabled:
+        return []
+    out = []
+    for p in AlertPrefs.objects.select_related("user").filter(chart_alerts=True, user__is_active=True):
+        ch = channels(p, site)
+        if not ch:
+            continue
+        acc = access_payload(p.user)
+        if not acc.get("is_vip"):
+            continue
+        out.append({"email": p.user.email, "features": acc.get("features") or {}, "channels": ch})
+    return out
+
+
+def deliver_chart_alert(email: str, key: str, text: str, payload: dict | None = None, http=requests, log=print) -> list[str]:
+    """Sends one chart alert to every channel of the user, once per (key, channel). Returns the channels sent."""
+    from django.contrib.auth import get_user_model
+    site = SiteSettings.load()
+    user = get_user_model().objects.filter(email__iexact=email, is_active=True).first()
+    p = AlertPrefs.objects.select_related("user").filter(user=user).first() if user else None
+    if p is None or not site.chart_alerts_enabled:
+        return []
+    hour_ago = timezone.now() - timedelta(hours=1)
+    recent = AlertDelivery.objects.filter(user=user, signal_key__startswith="chart|", created_at__gte=hour_ago)
+    if recent.values("signal_key").distinct().count() >= MAX_CHART_ALERTS_PER_HOUR:
+        return []                                  # a runaway alert must never flood a phone
+    text = text.strip()[:900]
+    sent = []
+    for ch in channels(p, site):
+        try:
+            with transaction.atomic():
+                d = AlertDelivery.objects.create(user=user, signal_key=key[:160], channel=ch, text=text[:400])
+        except IntegrityError:
+            continue                               # already sent on this channel
+        try:
+            if ch == "whatsapp":
+                send_whatsapp_text(p.whatsapp_number, text, site, http=http)
+            elif ch == "telegram":
+                send_telegram(p.telegram_chat_id, "⏰ " + text, site, http=http)
+            elif ch == "email":
+                send_email(user.email, text)
+            elif ch == "webhook":
+                send_webhook(p.webhook_url, {"source": "ICT Terminal", "text": text, **(payload or {})}, http=http)
+            d.ok = True
+            sent.append(ch)
+        except (WhatsAppError, ChannelError) as e:
+            d.error = str(e)[:300]
+            log(f"{ch} to user {user.pk}: {e}")
+        d.save(update_fields=["ok", "error"])
+    return sent
+
+
+# ---- Telegram: connect a user's chat to the bot -------------------------------------------------
+def telegram_link(user) -> dict:
+    """A t.me link with a one-time code; the user presses Start and poll_telegram() saves the chat id."""
+    import secrets
+    site = SiteSettings.load()
+    if not (site.telegram_bot_token and site.telegram_bot_username):
+        raise ValueError("Telegram alerts are not switched on by the admin yet.")
+    p, _ = AlertPrefs.objects.get_or_create(user=user)
+    p.telegram_code = secrets.token_hex(6)
+    p.save(update_fields=["telegram_code", "updated_at"])
+    return {"url": f"https://t.me/{site.telegram_bot_username.lstrip('@')}?start={p.telegram_code}", "code": p.telegram_code}
+
+
+_tg_offset = {"v": 0}
+
+
+def poll_telegram(http=requests, log=print) -> int:
+    """Reads the bot's new messages; '/start <code>' connects that chat to the user with the code."""
+    site = SiteSettings.load()
+    if not site.telegram_bot_token:
+        return 0
+    try:
+        r = http.get(f"{TELEGRAM}/bot{site.telegram_bot_token}/getUpdates", timeout=20,
+                     params={"offset": _tg_offset["v"], "timeout": 0, "allowed_updates": json.dumps(["message"])})
+        data = r.json()
+    except (requests.RequestException, ValueError) as e:
+        log(f"telegram: {e.__class__.__name__}")
+        return 0
+    linked = 0
+    for u in data.get("result") or []:
+        _tg_offset["v"] = max(_tg_offset["v"], int(u.get("update_id", 0)) + 1)
+        msg = u.get("message") or {}
+        text, chat = str(msg.get("text") or ""), (msg.get("chat") or {}).get("id")
+        m = re.fullmatch(r"/start\s+([0-9a-f]{12})", text.strip())
+        if not (m and chat):
+            continue
+        p = AlertPrefs.objects.filter(telegram_code=m.group(1)).first()
+        if p is None:
+            continue
+        p.telegram_chat_id, p.telegram_code = str(chat), ""
+        p.save(update_fields=["telegram_chat_id", "telegram_code", "updated_at"])
+        linked += 1
+        try:
+            send_telegram(str(chat), "✅ ICT Terminal is connected. Your alerts will arrive here.", site, http=http)
+        except ChannelError:
+            pass
+    return linked

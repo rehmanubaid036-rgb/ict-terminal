@@ -7,6 +7,9 @@ import { DRAWINGS, applyTfVisibility, drawingHooks, drawingsOf, getChart, getEnt
 import type { DrawStyle } from '../chart/overlays'
 import { DRAW_COLORS, TIMEFRAMES, toolDef } from '../constants'
 import { Icon } from './icons'
+import { useTerminal } from '../Terminal'
+import { cleanLook } from '../state'
+import { toast } from './common'
 
 type Tab = 'style' | 'text' | 'coords' | 'visibility'
 // built-in KLineChart line tools: their look is set through ``styles``
@@ -23,6 +26,8 @@ export function DrawingDialog({ chartId, overlayId, onClose }: { chartId: number
   const [id, setId] = useState(overlayId)
   const [tab, setTab] = useState<Tab>('style')
   const [, force] = useState(0)
+  const t = useTerminal()
+  const [tplOpen, setTplOpen] = useState(false)
   const o: Overlay | undefined = chart?.getOverlays({ id })[0]
   const ext = ((o?.extendData ?? {}) as DrawStyle)
   const tf = getEntry(chartId)?.tf ?? ''
@@ -114,7 +119,33 @@ export function DrawingDialog({ chartId, overlayId, onClose }: { chartId: number
             </div>
           </>}
         </div>
-        <div className="cs-foot"><span className="grow" /><button className="btn ghost" onClick={cancel}>Cancel</button><button className="btn primary" onClick={onClose}>Ok</button></div>
+        <div className="cs-foot">
+          <div className="dd-tpl">
+            <button className="btn ghost sm" onClick={() => setTplOpen(v => !v)}>Template ▾</button>
+            {tplOpen && (() => {
+              const look = cleanLook(ext)
+              const mine = t.state.drawTemplates.filter(x => x.tool === o.name)
+              const isDef = JSON.stringify(t.state.drawDefaults[o.name] ?? null) === JSON.stringify(look)
+              return <div className="dd-tpl-menu">
+                {mine.map(x => <div key={x.name} className="dd-tpl-row">
+                  <button className="grow-btn" onClick={() => { change({ ...x.style, levels: x.style.levels }); setTplOpen(false) }}>
+                    <i style={{ background: x.style.color ?? '#2962ff', height: x.style.width ?? 1 }} />{x.name}</button>
+                  <button className="icon-btn" title="Delete template" onClick={() => t.setState(s => ({ ...s, drawTemplates: s.drawTemplates.filter(y => !(y.tool === o.name && y.name === x.name)) }))}><Icon name="trash" size={14} /></button>
+                </div>)}
+                {!mine.length && <div className="note">No templates for this tool yet.</div>}
+                <div className="menu-sep" />
+                <button className="link" onClick={() => {
+                  const n = window.prompt('Save this look as a template:', (toolDef(o.name)?.label ?? 'Style') + ' ' + (mine.length + 1))?.trim().slice(0, 40)
+                  if (!n) return
+                  t.setState(s => ({ ...s, drawTemplates: [...s.drawTemplates.filter(y => !(y.tool === o.name && y.name === n)), { tool: o.name, name: n, style: look }] }))
+                  toast('Template "' + n + '" saved.')
+                }}>Save as template…</button>
+                <button className="link" disabled={isDef} onClick={() => { t.setState(s => ({ ...s, drawDefaults: { ...s.drawDefaults, [o.name]: look } })); toast('New ' + (toolDef(o.name)?.label ?? 'drawings') + ' will look like this.') }}>{isDef ? '✓ Default for new drawings' : 'Use as default for new drawings'}</button>
+                {t.state.drawDefaults[o.name] && <button className="link" onClick={() => t.setState(s => { const d = { ...s.drawDefaults }; delete d[o.name]; return { ...s, drawDefaults: d } })}>Reset the default</button>}
+              </div>
+            })()}
+          </div>
+          <span className="grow" /><button className="btn ghost" onClick={cancel}>Cancel</button><button className="btn primary" onClick={onClose}>Ok</button></div>
       </div>
     </div>,
     document.body,

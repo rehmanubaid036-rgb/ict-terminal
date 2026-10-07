@@ -85,6 +85,25 @@ CREATE TABLE IF NOT EXISTS screener (      -- one row per symbol, written by the
     data       TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS alert_state (   -- server-side chart alerts: what the API's alert watcher already did
+    user       TEXT NOT NULL,
+    alert_id   TEXT NOT NULL,
+    fired_ms   INTEGER,                    -- a price / line / zone alert fired (once, until the user restarts it)
+    last_day   TEXT,                       -- a session alert: NY date it last fired
+    seen       INTEGER,                    -- an ICT event alert: unix seconds of the newest event told
+    PRIMARY KEY (user, alert_id)
+);
+CREATE TABLE IF NOT EXISTS alert_fired (   -- what the server sent, so the terminal shows it when it opens
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    user       TEXT NOT NULL,
+    alert_id   TEXT NOT NULL,
+    at_ms      INTEGER NOT NULL,
+    kind       TEXT NOT NULL,
+    text       TEXT NOT NULL,
+    extra      TEXT NOT NULL DEFAULT '{}',
+    sent       TEXT NOT NULL DEFAULT ''    -- the channels it went to
+);
+CREATE INDEX IF NOT EXISTS alert_fired_user ON alert_fired (user, at_ms);
 CREATE TABLE IF NOT EXISTS layouts (       -- terminal workspaces, synced between web / app / desktop
     user       TEXT NOT NULL,
     name       TEXT NOT NULL,
@@ -326,6 +345,34 @@ class Store:
     def delete_layout(self, user: str, name: str) -> bool:
         with self._conn() as c:
             return c.execute("DELETE FROM layouts WHERE user = ? AND name = ?", (user, name)).rowcount > 0
+
+    # ---- server-side chart alerts ---------------------------------------------------------------
+    def alert_states(self, user: str) -> dict[str, dict]:
+        with self._conn() as c:
+            rows = c.execute("SELECT alert_id, fired_ms, last_day, seen FROM alert_state WHERE user = ?", (user,)).fetchall()
+        return {r["alert_id"]: dict(r) for r in rows}
+
+    def set_alert_state(self, user: str, alert_id: str, **fields) -> None:
+        cols = [k for k in ("fired_ms", "last_day", "seen") if k in fields]
+        with self._conn() as c:
+            c.execute("INSERT OR IGNORE INTO alert_state (user, alert_id) VALUES (?, ?)", (user, alert_id))
+            if cols:
+                c.execute(f"UPDATE alert_state SET {', '.join(k + ' = ?' for k in cols)} WHERE user = ? AND alert_id = ?",
+                          (*[fields[k] for k in cols], user, alert_id))
+
+    def add_alert_fired(self, user: str, alert_id: str, at_ms: int, kind: str, text: str, extra: dict | None = None,
+                        sent: list[str] | None = None) -> None:
+        with self._conn() as c:
+            c.execute("INSERT INTO alert_fired (user, alert_id, at_ms, kind, text, extra, sent) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                      (user, alert_id, int(at_ms), kind, text, json.dumps(extra or {}), ",".join(sent or [])))
+            # keep a week
+            c.execute("DELETE FROM alert_fired WHERE at_ms < ?", (int(at_ms) - 7 * 86_400_000,))
+
+    def alerts_fired(self, user: str, since_ms: int, limit: int = 100) -> list[dict]:
+        with self._conn() as c:
+            rows = c.execute("SELECT alert_id, at_ms, kind, text, extra, sent FROM alert_fired WHERE user = ? AND at_ms > ? "
+                             "ORDER BY at_ms LIMIT ?", (user, int(since_ms), limit)).fetchall()
+        return [{**dict(r), "extra": json.loads(r["extra"] or "{}"), "sent": [x for x in r["sent"].split(",") if x]} for r in rows]
 
     # ---- chart templates: shared setups every user can open; one of them is what new users see first ----
     def templates(self) -> list[dict]:

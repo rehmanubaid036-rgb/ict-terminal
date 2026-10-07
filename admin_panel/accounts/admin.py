@@ -37,7 +37,7 @@ class SiteSettingsAdmin(admin.ModelAdmin):
     filter_horizontal = ("signup_plans",)
 
     def formfield_for_dbfield(self, db_field, request, **kwargs):
-        if db_field.name in ("whatsapp_token", "ai_api_key"):
+        if db_field.name in ("whatsapp_token", "ai_api_key", "telegram_bot_token"):
             from django import forms
             kwargs["widget"] = forms.PasswordInput(render_value=True)
         return super().formfield_for_dbfield(db_field, request, **kwargs)
@@ -91,6 +91,14 @@ class SiteSettingsAdmin(admin.ModelAdmin):
                            "variables: {{1}} symbol, {{2}} model, {{3}} BUY/SELL, {{4}} grade, {{5}} entry, {{6}} stop, "
                            "{{7}} targets, {{8}} time. Example body: \"ICT Terminal signal: {{1}} {{2}} {{3}} (grade {{4}}). "
                            "Entry {{5}}, SL {{6}}, TP {{7}}. {{8}}. Not financial advice.\""}),
+        ("Chart alerts from the server (terminal closed too)", {
+            "fields": ("chart_alerts_enabled", "whatsapp_alert_template", ("telegram_bot_token", "telegram_bot_username"),
+                       "email_alerts_enabled"),
+            "description": "Users' price / trend line / zone / session / ICT event alerts are checked on the server every "
+                           "15-60 s and sent to the channels each user turns on in the terminal (Alerts tab, Delivery). "
+                           "WhatsApp: create a second approved template named as above with 1 body variable, e.g. "
+                           "\"ICT Terminal alert: {{1}}\". Telegram: create a bot with @BotFather, paste its token and "
+                           "username; users press Connect Telegram. Signals also go to Telegram when a user connected it."}),
         ("Ads", {"fields": (("ads_enabled", "ads_for_free"),),
                  "description": "Ads themselves are under Ads. Plans with “Show ads” ticked (free / trial) and "
                                 "users without a plan see them; paying VIP plans never do."}),
@@ -941,8 +949,8 @@ class IdeaCommentAdmin(admin.ModelAdmin):
 
 @admin.register(AlertPrefs)
 class AlertPrefsAdmin(admin.ModelAdmin):
-    list_display = ("user", "whatsapp_number", "auto_notify", "min_grade", "models_csv", "symbols_csv", "bias_only", "updated_at")
-    list_filter = ("auto_notify", "min_grade")
+    list_display = ("user", "whatsapp_number", "auto_notify", "min_grade", "chart_alerts", "telegram_chat_id", "email_alerts", "updated_at")
+    list_filter = ("auto_notify", "min_grade", "chart_alerts", "email_alerts")
     search_fields = ("user__email", "whatsapp_number")
 
 

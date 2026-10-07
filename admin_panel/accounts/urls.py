@@ -27,6 +27,7 @@ urlpatterns = [
     path("community/messages/<int:message_id>/report", api.community_report),
     path("alerts/settings", api.alert_settings),
     path("alerts/test", api.alert_test),
+    path("alerts/telegram", api.alert_telegram),
     path("ai/settings", api.ai_settings),
     path("community/ideas", api.community_ideas),
     path("community/ideas/<int:idea_id>", api.community_idea),
@@ -49,6 +50,8 @@ urlpatterns = [
     path("oauth/poll", oauth.poll),
     path("internal/verify", api.internal_verify),
     path("internal/ai", api.internal_ai),
+    path("internal/alerts/users", api.internal_alert_users),
+    path("internal/alerts/send", api.internal_alert_send),
     path("internal/ea", api.internal_ea),
     path("internal/site", api.internal_site),
 ]

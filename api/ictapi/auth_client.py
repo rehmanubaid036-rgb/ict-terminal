@@ -66,6 +66,26 @@ class AuthClient:
             self._cache[key] = (now, out)
         return dict(out)
 
+    def alert_users(self) -> list[dict] | None:
+        """Users whose chart alerts the server watches [{email, features, channels}]; None = panel unreachable."""
+        try:
+            r = self.http.post(f"{self.panel_url}/api/v1/internal/alerts/users", timeout=self.TIMEOUT,
+                               headers=self._service_headers(), json={})
+            r.raise_for_status()
+            return list(r.json().get("users") or [])
+        except (requests.RequestException, ValueError, AttributeError):
+            return None
+
+    def send_alert(self, email: str, key: str, text: str, payload: dict | None = None) -> list[str] | None:
+        """Asks the panel to deliver one chart alert; the channels it went to, or None when unreachable."""
+        try:
+            r = self.http.post(f"{self.panel_url}/api/v1/internal/alerts/send", timeout=30,
+                               headers=self._service_headers(), json={"email": email, "key": key, "text": text, "payload": payload or {}})
+            r.raise_for_status()
+            return list(r.json().get("sent") or [])
+        except (requests.RequestException, ValueError, AttributeError):
+            return None
+
     def verify(self, token: str = "", device_id: str = "", device_name: str = "", platform: str = "",
                client_ip: str = "") -> dict:
         """Access dict (user, plan, expiry, is_vip, features, ...) for a login token."""

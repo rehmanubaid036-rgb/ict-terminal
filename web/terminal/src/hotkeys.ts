@@ -14,7 +14,7 @@ export function useHotkeys(t: TerminalApi, fn: { undo: () => void; redo: () => v
     const down = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement
       if (e.key === 'Escape') window.dispatchEvent(new Event('ict:escape'))
-      if (el.closest('input, textarea, select, [contenteditable], .modal')) return
+      if (typeof el?.closest === 'function' && el.closest('input, textarea, select, [contenteditable], .modal')) return
       const { t, fn } = ref.current
       const k = e.key
       const mod = e.ctrlKey || e.metaKey

@@ -13,7 +13,7 @@ import { EVENTS, loadCalendar, relTime, eventAt } from './events'
 import { COMPARE, COMPARE_COLORS, loadCompare } from './compare'
 import { closeSignal, isClosed } from './closed'
 import type { CalendarEvent } from '../api'
-import { DRAWINGS, register, unregister, getEntry, snapshot, notify, drawingHooks, removeSelected, onRegistryChange, applyTfVisibility, copyDrawing, chartList } from './registry'
+import { drawDefault, DRAWINGS, register, unregister, getEntry, snapshot, notify, drawingHooks, removeSelected, onRegistryChange, applyTfVisibility, copyDrawing, chartList } from './registry'
 import { DrawingDialog } from '../ui/DrawingDialog'
 import { toast } from '../ui/common'
 import { paperModify, paperOrder, usePaper } from '../panels/Paper'
@@ -23,7 +23,12 @@ import { CHART_STYLE } from './charttypes'
 const ICT = 'ict'
 const LINE_DEFAULTS = ['#FF9600', '#935EBD', '#2196F3', '#E11D74', '#01C5C4']   // klinecharts' indicator line colours
 const SIGNAL = 'signal'
-const LINE_TOOLS = new Set(['segment', 'rayLine', 'straightLine', 'horizontalStraightLine', 'horizontalRayLine', 'horizontalSegment', 'verticalStraightLine',
+/** KLineChart styles of a built-in line tool from our look (colour, width, dashed). */
+export function lineStyles(ext: DrawStyle) {
+  return { line: { color: ext.color, size: ext.width ?? 1, style: ext.dashed ? 'dashed' : 'solid', dashedValue: [4, 3] },
+    text: { color: ext.color }, rectText: { backgroundColor: ext.color }, polygon: { borderColor: ext.color, color: ext.color } }
+}
+export const LINE_TOOLS = new Set(['segment', 'rayLine', 'straightLine', 'horizontalStraightLine', 'horizontalRayLine', 'horizontalSegment', 'verticalStraightLine',
   'verticalRayLine', 'verticalSegment', 'priceLine', 'parallelStraightLine', 'priceChannelLine', 'fibonacciLine', 'simpleAnnotation', 'simpleTag', 'brush'])
 const TEXT_TOOLS = new Set(['textLabel', 'note', 'ictKillzone', 'ictFvgBox', 'ictObBox', 'ictLiquidity'])
 
@@ -451,7 +456,8 @@ export function ChartPanel(p: ChartPanelProps) {
     if (!chart || !p.active || !p.tool || p.tool === 'cursor' || p.tool === 'eraser') return
     const name = p.tool
     snapshot(conf.id)
-    const extendData: DrawStyle = {}
+    const look = drawDefault(name)
+    const extendData: DrawStyle = { ...(look ?? {}) }
     if (name === 'textLabel' || name === 'note') {
       const t = window.prompt('Text:', '')
       if (!t) { props.current.onToolDone(); return }
@@ -464,6 +470,7 @@ export function ChartPanel(p: ChartPanelProps) {
     }
     const id = chart.createOverlay({
       name, groupId: DRAWINGS, mode: p.magnet, extendData: extendData as any, ...drawingHooks(conf.id),
+      ...(look && LINE_TOOLS.has(name) ? { styles: lineStyles(extendData) as any } : {}),
       onDrawEnd: () => { notify(); props.current.onToolDone() },
     })
     return () => {
@@ -491,11 +498,7 @@ export function ChartPanel(p: ChartPanelProps) {
     snapshot(conf.id)
     const ext = { ...((selected.extendData as DrawStyle) ?? {}), ...patch }
     const builtin = LINE_TOOLS.has(selected.name)
-    chart.overrideOverlay({
-      id: selected.id, extendData: ext as any,
-      ...(builtin ? { styles: { line: { color: ext.color, size: ext.width ?? 1, style: ext.dashed ? 'dashed' : 'solid', dashedValue: [4, 3] },
-        text: { color: ext.color }, rectText: { backgroundColor: ext.color }, polygon: { borderColor: ext.color, color: ext.color } } as any } : {}),
-    })
+    chart.overrideOverlay({ id: selected.id, extendData: ext as any, ...(builtin ? { styles: lineStyles(ext) as any } : {}) })
     notify()
   }
   const selStyle = (selected?.extendData ?? {}) as DrawStyle
@@ -575,7 +578,7 @@ export function ChartPanel(p: ChartPanelProps) {
         {st.titleMode !== 'ticker' && <button className="title-hit" title="Change interval" style={{ left: 10 + tfX - 3, top: 4, width: tfW + 6, height: titleSize + 6 }}
           onMouseDown={e => e.stopPropagation()} onClick={pick(() => openIntervalBox(''))} aria-label={`Change interval (${tf.label})`} />}
       </>}
-      {st.tradeButtons && p.active && !p.compact && (
+      {st.tradeButtons && p.active && !p.compact && !/[/*+-]/.test(conf.ticker.split(':')[1] ?? '') && (
         <div className="pp-quick" onMouseDown={e => e.stopPropagation()}>
           <button className="sell" title="Sell at market (paper)" onClick={() => void paperOrder({ ticker: conf.ticker, side: -1, type: 'market', qty: Number(ppQty) || 1 })}>
             SELL<small>{feed?.lastClose()?.toFixed(digits) ?? ''}</small></button>

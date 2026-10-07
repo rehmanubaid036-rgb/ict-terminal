@@ -201,6 +201,19 @@ class SiteSettings(models.Model):
     whatsapp_template = models.CharField("Message template name", max_length=60, default="ict_signal",
                                          help_text="An approved template with 8 variables, see the help text below.")
     whatsapp_template_lang = models.CharField("Template language", max_length=10, default="en")
+    whatsapp_alert_template = models.CharField(
+        "Chart alert template name", max_length=60, default="ict_alert",
+        help_text="An approved template with 1 variable: {{1}} the alert text (chart alerts: price, line, zone, session, ICT events).")
+    chart_alerts_enabled = models.BooleanField(
+        "Chart alerts from the server on", default=True,
+        help_text="The server checks every user's chart alerts even when the terminal is closed and sends them to the "
+                  "channels the user turned on (WhatsApp, Telegram, email, webhook).")
+    telegram_bot_token = models.CharField("Telegram bot token", max_length=100, blank=True,
+                                          help_text="From @BotFather (/newbot). Empty = no Telegram alerts.")
+    telegram_bot_username = models.CharField("Telegram bot username", max_length=60, blank=True,
+                                             help_text="Without @, e.g. ICTTerminalAlertsBot. Users open t.me/<this> to connect.")
+    email_alerts_enabled = models.BooleanField("Alerts by email on", default=True,
+                                               help_text="Needs EMAIL_HOST in admin_panel/.env (otherwise emails are only printed).")
     ai_provider = models.CharField("AI provider", max_length=20, default="none", choices=AI_PROVIDERS,
                                    help_text="The model that words the chart assistant's answers (it only rewrites the engine's facts).")
     ai_model = models.CharField("AI model", max_length=80, blank=True,
@@ -932,6 +945,14 @@ class AlertPrefs(models.Model):
     models_csv = models.CharField("Models", max_length=200, blank=True, help_text="Empty = every model of the plan")
     symbols_csv = models.CharField("Symbols", max_length=200, blank=True, help_text="Empty = every symbol")
     bias_only = models.BooleanField(default=True, help_text="Only setups with the daily bias")
+    chart_alerts = models.BooleanField(default=True, help_text="Send my chart alerts (price, line, zone, session, ICT events) "
+                                                               "to my channels, even when the terminal is closed")
+    whatsapp_chart = models.BooleanField("Chart alerts on WhatsApp", default=True)
+    telegram_chat_id = models.CharField(max_length=30, blank=True, help_text="Filled in when the user connects the bot")
+    telegram_code = models.CharField(max_length=16, blank=True, help_text="One-time code of the Connect Telegram link")
+    telegram_signals = models.BooleanField("Signals on Telegram too", default=True)
+    email_alerts = models.BooleanField("Chart alerts by email", default=False)
+    webhook_url = models.URLField(max_length=300, blank=True, help_text="https:// address that gets every alert as JSON (POST)")
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -944,7 +965,7 @@ class AlertPrefs(models.Model):
 class AlertDelivery(models.Model):
     """One signal sent (or tried) to one user, so nobody gets the same signal twice."""
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="alert_deliveries")
-    signal_key = models.CharField(max_length=120)
+    signal_key = models.CharField(max_length=160)
     channel = models.CharField(max_length=12, default="whatsapp")
     ok = models.BooleanField(default=False)
     error = models.CharField(max_length=300, blank=True)

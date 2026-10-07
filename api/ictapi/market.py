@@ -227,8 +227,113 @@ class MultiProvider(Provider):
         return p.bars(ticker, tf, start, end) if p else _empty()
 
 
+# ---- spread / ratio symbols ---------------------------------------------------------------------
+# ``FEED:A/B`` (ratio), ``FEED:A-B`` (spread), ``FEED:A+B``, ``FEED:A*B``: two symbols of the same feed,
+# bar by bar (only the minutes both have). E.g. AXI:XAUUSD/XAGUSD (gold / silver ratio), AXI:NAS100-US500.
+SYNTH_OPS = "/-+*"
+SYNTH_NAMES = {"/": "ratio", "-": "spread", "+": "sum", "*": "product"}
+
+
+def split_synthetic(ticker: str) -> tuple[str, str, str, str] | None:
+    """(feed, a, op, b) of a spread / ratio ticker, None for a plain one."""
+    feed, _, rest = (ticker or "").upper().partition(":")
+    if not rest:
+        return None
+    for i, ch in enumerate(rest):
+        if ch in SYNTH_OPS and 0 < i < len(rest) - 1:
+            a, b = rest[:i].strip(), rest[i + 1:].strip()
+            if a and b and not any(c in SYNTH_OPS for c in b):
+                return feed, a, ch, b
+    return None
+
+
+def _combine(x: pd.DataFrame, y: pd.DataFrame, op: str) -> pd.DataFrame:
+    j = x.join(y, how="inner", lsuffix="_a", rsuffix="_b")
+    if j.empty:
+        return _empty()
+    f = {"/": lambda p, q: p / q, "-": lambda p, q: p - q, "+": lambda p, q: p + q, "*": lambda p, q: p * q}[op]
+    out = pd.DataFrame(index=j.index)
+    for k in ("open", "high", "low", "close"):
+        out[k] = f(j[k + "_a"], j[k + "_b"])
+    if op in "/-":                        # the high of A against the low of B is the widest the bar went
+        out["high"], out["low"] = f(j["high_a"], j["low_b"]), f(j["low_a"], j["high_b"])
+    hi = out[["open", "high", "low", "close"]].max(axis=1)
+    lo = out[["open", "high", "low", "close"]].min(axis=1)
+    out["high"], out["low"] = hi, lo
+    out["volume"] = j["volume_a"] if "volume_a" in j else 0.0
+    return out.replace([float("inf"), float("-inf")], float("nan")).dropna()
+
+
+class _Symbols(dict):
+    """The feeds' symbols; ``get`` / ``in`` also answer spread and ratio tickers."""
+
+    def __init__(self, base: dict, make):
+        super().__init__(base)
+        self._make = make
+
+    def get(self, key, default=None):
+        v = super().get(key)
+        return v if v is not None else (self._make(key) or default)
+
+    def __contains__(self, key):
+        return super().__contains__(key) or self._make(key) is not None
+
+    def __getitem__(self, key):
+        v = super().get(key) or self._make(key)
+        if v is None:
+            raise KeyError(key)
+        return v
+
+
+class SyntheticProvider(Provider):
+    """Wraps a provider; adds spread / ratio tickers built from two of its symbols."""
+
+    def __init__(self, base: Provider):
+        self.base = base
+
+    def info(self, ticker: str) -> SymbolInfo | None:
+        parts = split_synthetic(ticker)
+        if parts is None:
+            return None
+        feed, a, op, b = parts
+        syms = self.base.symbols()
+        ia, ib = syms.get(f"{feed}:{a}"), syms.get(f"{feed}:{b}")
+        if ia is None or ib is None or ia.ticker == ib.ticker:
+            return None
+        scale = 10_000 if op == "/" else max(ia.pricescale, ib.pricescale) if op in "-+" else min(ia.pricescale, ib.pricescale)
+        return SymbolInfo(f"{feed}:{a}{op}{b}", feed, f"{a}{op}{b}", f"{ia.description} {op} {ib.description} ({SYNTH_NAMES[op]})",
+                          "spread", scale, ia.session, "")
+
+    def symbols(self):
+        return _Symbols(self.base.symbols(), self.info)
+
+    def _legs(self, ticker):
+        parts = split_synthetic(ticker)
+        if parts is None or self.info(ticker) is None:
+            return None
+        feed, a, op, b = parts
+        return f"{feed}:{a}", op, f"{feed}:{b}"
+
+    def candles(self, ticker, start, end):
+        legs = self._legs(ticker)
+        if legs is None:
+            return self.base.candles(ticker, start, end)
+        a, op, b = legs
+        return _combine(self.base.candles(a, start, end), self.base.candles(b, start, end), op)
+
+    def bars(self, ticker, tf, start, end):
+        legs = self._legs(ticker)
+        if legs is None:
+            return self.base.bars(ticker, tf, start, end)
+        a, op, b = legs
+        return _combine(self.base.bars(a, tf, start, end), self.base.bars(b, tf, start, end), op)
+
+    def __getattr__(self, name):          # errors, refresh ... of the wrapped feeds
+        return getattr(self.base, name)
+
+
 def default_provider() -> Provider:
-    return MultiProvider([MT5Provider(), BinanceProvider()])
+    return SyntheticProvider(MultiProvider([MT5Provider(), BinanceProvider()]))
 
 
 def utc_range(frm: int, to: int) -> tuple[pd.Timestamp, pd.Timestamp]:
