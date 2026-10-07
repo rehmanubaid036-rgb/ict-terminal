@@ -56,6 +56,10 @@ export interface TerminalApi {
   setLayout: (id: LayoutId) => void
   setSync: (patch: Partial<Sync>) => void
   setWatchlist: (w: string[]) => void
+  openList: (name: string) => void
+  deleteList: (name: string) => void
+  renameList: (from: string, to: string) => void
+  setFlag: (symbol: string, color: string | null) => void
   addAlert: (a: Omit<PriceAlert, 'id' | 'created' | 'active'>) => void
   clearAlertLog: () => void
   updateAlert: (id: string, patch: Partial<PriceAlert>) => void
@@ -421,7 +425,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
   const loadNamed = async (name: string) => {
     const r = parse((await api.layout(name)).data, maxCharts)
     r.drawings.forEach((d, i) => setPending(i, d))
-    setState(s => ({ ...r.state, watchlist: s.watchlist, alerts: s.alerts }))
+    setState(s => ({ ...r.state, watchlist: s.watchlist, lists: s.lists, listName: s.listName, flags: s.flags, alerts: s.alerts }))
     toast(`Layout "${name}" opened.`)
   }
 
@@ -434,7 +438,25 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
     setActive: i => setState(s => (s.active === i ? s : { ...s, active: i })),
     updateActive, setTicker, setTf, setLayout,
     setSync: patch => setState(s => ({ ...s, sync: { ...s.sync, ...patch } })),
-    setWatchlist: w => setState(s => ({ ...s, watchlist: w })),
+    setWatchlist: w => setState(s => ({ ...s, watchlist: w, lists: { ...s.lists, [s.listName]: w } })),
+    openList: name => setState(s => {
+      const lists = { ...s.lists, [s.listName]: s.watchlist }
+      return { ...s, lists: { ...lists, [name]: lists[name] ?? [] }, listName: name, watchlist: lists[name] ?? [] }
+    }),
+    deleteList: name => setState(s => {
+      const lists = { ...s.lists, [s.listName]: s.watchlist }
+      delete lists[name]
+      const next = Object.keys(lists)[0] ?? 'Watchlist'
+      return { ...s, lists: { [next]: lists[next] ?? [], ...lists }, listName: next, watchlist: lists[next] ?? [] }
+    }),
+    renameList: (from, to) => setState(s => {
+      if (!to || s.lists[to]) return s
+      const lists = { ...s.lists, [s.listName]: s.watchlist }
+      lists[to] = lists[from] ?? []
+      delete lists[from]
+      return { ...s, lists, listName: s.listName === from ? to : s.listName }
+    }),
+    setFlag: (sym, color) => setState(s => { const flags = { ...s.flags }; if (color) flags[sym] = color; else delete flags[sym]; return { ...s, flags } }),
     addAlert: a => {
       const limit = f.alerts_limit ?? 0
       const live = stateRef.current.alerts.filter(x => x.active).length

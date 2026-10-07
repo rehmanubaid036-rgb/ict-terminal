@@ -774,3 +774,25 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 .news-row { display: flex; flex-direction: column; gap: 2px; padding: 8px 4px; border-bottom: 1px solid var(--line); color: var(--text); text-decoration: none; font-size: 13px; line-height: 1.35; }
 .news-row:hover { background: var(--hover); }
 .news-row small { color: var(--muted); font-size: 11px; }
+
+/* watchlist: lists, sections, flags, change column */
+.wl-top { display: flex; align-items: center; gap: 4px; padding: 6px 10px; border-bottom: 1px solid var(--line); }
+.wl-top .grow { flex: 1; }
+.wl-name { border: 0; background: none; color: var(--text); font-weight: 700; cursor: pointer; padding: 2px 4px; border-radius: 6px; }
+.wl-name:hover { background: var(--hover); }
+.wl-flagf { width: 11px; height: 11px; border-radius: 3px; border: 0; cursor: pointer; opacity: .55; }
+.wl-flagf.on { opacity: 1; box-shadow: 0 0 0 2px var(--text); }
+.wl-menu { display: flex; flex-direction: column; padding: 6px; border-bottom: 1px solid var(--line); background: var(--panel2); }
+.wl-menu button { text-align: left; padding: 6px 8px; border: 0; background: none; color: var(--text); border-radius: 6px; cursor: pointer; }
+.wl-menu button:hover { background: var(--hover); }
+.wl-menu button.on { color: var(--accent); }
+.wl-menu button.danger { color: var(--down); }
+.wl-head, .wl-row { grid-template-columns: 1fr 80px 62px 58px 30px !important; }
+.wl-section { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px 4px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+.wl-section:hover .wl-actions { opacity: 1; }
+.wl-sym { flex-direction: row !important; align-items: center; gap: 6px; position: relative; }
+.wl-sym > span { display: flex; flex-direction: column; }
+.wl-flag { width: 4px; height: 22px; border: 0; border-radius: 2px; background: var(--line2); cursor: pointer; padding: 0; flex: none; }
+.wl-flags { position: absolute; left: 8px; top: 100%; z-index: 5; display: flex; gap: 4px; padding: 5px; background: var(--panel); border: 1px solid var(--line2); border-radius: 8px; box-shadow: var(--shadow); flex-direction: row !important; }
+.wl-flags button { width: 16px; height: 16px; border-radius: 4px; border: 0; cursor: pointer; }
+.wl-flags button.none { background: var(--panel2); color: var(--muted); font-size: 10px; }

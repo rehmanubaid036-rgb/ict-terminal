@@ -69,7 +69,10 @@ export interface TerminalState {
   active: number
   charts: ChartConf[]
   sync: Sync
-  watchlist: string[]
+  watchlist: string[]                 // the open list: symbols, and '###Name' section headers
+  lists: Record<string, string[]>     // every saved watchlist by name (the open one included)
+  listName: string
+  flags: Record<string, string>       // symbol -> flag colour
   alerts: PriceAlert[]
   signals: SignalsPrefs
   alertLog: AlertLogEntry[]
@@ -88,7 +91,7 @@ export function defaultState(): TerminalState {
     ['AXI:US500', '5m'], ['AXI:BTCUSD', '15m'], ['AXI:EURUSD', '15m'], ['AXI:XAGUSD', '15m']]
   return {
     layout: '1', active: 0, charts: seeds.map(([t, tf], i) => newChart(i, t, tf)),
-    sync: { symbol: false, interval: false, crosshair: true, drawings: false }, watchlist: [], alerts: [],
+    sync: { symbol: false, interval: false, crosshair: true, drawings: false }, watchlist: [], lists: {}, listName: 'Watchlist', flags: {}, alerts: [],
     signals: { ...DEFAULT_SIGNALS },
     chart: { ...DEFAULT_SETTINGS },
     alertLog: [],
@@ -98,7 +101,7 @@ export function defaultState(): TerminalState {
 /** What goes to /api/v1/layouts. Drawings come from the live charts. */
 export function serialize(s: TerminalState, drawingsOf: (id: number) => Drawing[]) {
   return {
-    v: 2, layout: s.layout, active: s.active, sync: s.sync, watchlist: s.watchlist, alerts: s.alerts, signals: s.signals, chart: s.chart, alertLog: s.alertLog,
+    v: 2, layout: s.layout, active: s.active, sync: s.sync, watchlist: s.watchlist, lists: { ...s.lists, [s.listName]: s.watchlist }, listName: s.listName, flags: s.flags, alerts: s.alerts, signals: s.signals, chart: s.chart, alertLog: s.alertLog,
     charts: s.charts.map(c => ({ ...c, drawings: drawingsOf(c.id) })),
   }
 }
@@ -145,7 +148,11 @@ export function parse(data: any, maxCharts: number): { state: TerminalState; dra
   const state: TerminalState = {
     layout, charts, sync,
     active: Math.min(Math.max(0, Number(data?.active) | 0), 7),
-    watchlist: Array.isArray(data?.watchlist) ? data.watchlist.filter((x: unknown) => typeof x === 'string').slice(0, 50) : [],
+    watchlist: Array.isArray(data?.watchlist) ? data.watchlist.filter((x: unknown) => typeof x === 'string').slice(0, 120) : [],
+    lists: data?.lists && typeof data.lists === 'object' ? Object.fromEntries(Object.entries(data.lists as Record<string, unknown>).slice(0, 20)
+      .filter(([k, v]) => typeof k === 'string' && k.length <= 40 && Array.isArray(v)).map(([k, v]) => [k, (v as unknown[]).filter(x => typeof x === 'string').slice(0, 120)])) as Record<string, string[]> : {},
+    listName: typeof data?.listName === 'string' && data.listName ? String(data.listName).slice(0, 40) : 'Watchlist',
+    flags: data?.flags && typeof data.flags === 'object' ? Object.fromEntries(Object.entries(data.flags as Record<string, unknown>).filter(([, v]) => typeof v === 'string').slice(0, 300)) as Record<string, string> : {},
     alerts: Array.isArray(data?.alerts) ? data.alerts.filter((a: any) => typeof a?.ticker === 'string' && Number.isFinite(a?.price)).slice(0, 200) : [],
     alertLog: Array.isArray(data?.alertLog) ? data.alertLog.filter((x: any) => Number.isFinite(x?.at) && typeof x?.text === 'string').slice(0, 100) : [],
     signals: parseSignals(data?.signals),

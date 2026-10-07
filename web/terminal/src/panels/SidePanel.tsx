@@ -63,6 +63,9 @@ export function SidePanel() {
 }
 
 // ---- watchlist --------------------------------------------------------------------------------
+const FLAG_COLORS = ['#ef5350', '#f59e0b', '#26a69a', '#2962ff', '#8b5cf6', '#ec4899']
+const isSection = (x: string) => x.startsWith('###')
+
 function Watchlist() {
   const t = useTerminal()
   const [quotes, setQuotes] = useState<Record<string, Quote>>({})
@@ -70,12 +73,18 @@ function Watchlist() {
   const [q, setQ] = useState('')
   const [found, setFound] = useState<SearchItem[]>([])
   const [err, setErr] = useState('')
+  const [menu, setMenu] = useState(false)
+  const [flagFor, setFlagFor] = useState<string | null>(null)
+  const [onlyFlag, setOnlyFlag] = useState<string | null>(null)
+  const file = useRef<HTMLInputElement>(null)
   const prev = useRef<Record<string, number>>({})
   const list = t.state.watchlist
+  const symbols = list.filter(x => !isSection(x))
+  const names = [...new Set([t.state.listName, ...Object.keys(t.state.lists)])]
   useEffect(() => {
-    if (!list.length) return
+    if (!symbols.length) return
     let gone = false
-    const load = () => api.quotes(list).then(r => {
+    const load = () => api.quotes(symbols).then(r => {
       if (gone) return
       const fl: Record<string, 'up' | 'down'> = {}
       for (const x of r.quotes) {
@@ -90,9 +99,9 @@ function Watchlist() {
     load()
     const id = window.setInterval(load, 4000)
     return () => { gone = true; window.clearInterval(id) }
-  }, [list.join()])
+  }, [symbols.join()]) // eslint-disable-line
   useEffect(() => {
-    if (!q) { setFound([]); return }
+    if (!q || q.startsWith('#')) { setFound([]); return }
     const id = window.setTimeout(() => api.search(q).then(setFound).catch(() => setFound([])), 150)
     return () => window.clearTimeout(id)
   }, [q])
@@ -102,21 +111,69 @@ function Watchlist() {
     if (j < 0 || j >= list.length) return
     const n = [...list]; [n[i], n[j]] = [n[j], n[i]]; t.setWatchlist(n)
   }
+  const exportList = () => {
+    const blob = new Blob([list.join(',')], { type: 'text/plain' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `${t.state.listName.replace(/[^\w-]+/g, '_')}.txt`
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+  const importList = async (f: File) => {
+    // TradingView format: comma or new-line separated, "###Section" headers, EXCHANGE:SYMBOL
+    const text = (await f.text()).slice(0, 20000)
+    const feed = t.active.ticker.split(':')[0]
+    const items = text.split(/[,\n\r]+/).map(x => x.trim()).filter(Boolean)
+      .map(x => (isSection(x) ? x.slice(0, 43) : x.includes(':') ? `${feed}:${x.split(':')[1].toUpperCase()}` : `${feed}:${x.toUpperCase()}`))
+      .filter(x => isSection(x) || /^[A-Z0-9_]+:[A-Z0-9._]{2,20}$/.test(x)).slice(0, 120)
+    const name = f.name.replace(/\.[^.]+$/, '').slice(0, 40) || 'Imported'
+    t.openList(name)
+    window.setTimeout(() => t.setWatchlist(items), 0)
+    toast(`Imported ${items.filter(x => !isSection(x)).length} symbols into "${name}".`)
+  }
+  const shown = onlyFlag ? list.filter(x => !isSection(x) && t.state.flags[x] === onlyFlag) : list
   return (
     <div className="watchlist">
+      <div className="wl-top">
+        <button className="wl-name" onClick={() => setMenu(m => !m)} title="Your watchlists">{t.state.listName} ▾</button>
+        <span className="grow" />
+        {FLAG_COLORS.map(c => <button key={c} className={`wl-flagf${onlyFlag === c ? ' on' : ''}`} style={{ background: c }} title="Show only this flag" onClick={() => setOnlyFlag(f => (f === c ? null : c))} />)}
+      </div>
+      {menu && (
+        <div className="wl-menu">
+          {names.map(n => <button key={n} className={n === t.state.listName ? 'on' : ''} onClick={() => { t.openList(n); setMenu(false) }}>{n}</button>)}
+          <div className="menu-sep" />
+          <button onClick={() => { const n = window.prompt('New watchlist name:', '')?.trim().slice(0, 40); if (n) { t.openList(n); setMenu(false) } }}>+ New list</button>
+          <button onClick={() => { const n = window.prompt('Rename the list to:', t.state.listName)?.trim().slice(0, 40); if (n) t.renameList(t.state.listName, n); setMenu(false) }}>Rename</button>
+          <button onClick={() => { const n = window.prompt('Section name (shown as a header):', '')?.trim().slice(0, 40); if (n) t.setWatchlist([...list, `###${n}`]); setMenu(false) }}>+ Add a section</button>
+          <button onClick={() => { file.current?.click(); setMenu(false) }}>Import list (.txt)</button>
+          <button onClick={() => { exportList(); setMenu(false) }}>Export list (.txt)</button>
+          {names.length > 1 && <button className="danger" onClick={() => { if (window.confirm(`Delete the list "${t.state.listName}"?`)) t.deleteList(t.state.listName); setMenu(false) }}>Delete this list</button>}
+        </div>
+      )}
+      <input ref={file} type="file" accept=".txt,.csv" hidden onChange={e => { const f = e.target.files?.[0]; if (f) void importList(f); e.target.value = '' }} />
       <div className="wl-add">
         <Icon name="plus" size={15} />
-        <input value={q} placeholder="Add symbol" onChange={e => setQ(e.target.value)} />
+        <input value={q} placeholder="Add symbol (or ###Section)" onChange={e => setQ(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && q.startsWith('###') && q.length > 3) { t.setWatchlist([...list, q.slice(0, 43)]); setQ('') } }} />
         {found.length > 0 && <div className="wl-drop">{found.slice(0, 10).map(s => <button key={s.symbol} onClick={() => add(s.symbol)}><b>{s.symbol.split(':')[1]}</b><span>{s.description}</span></button>)}</div>}
       </div>
-      <div className="wl-head"><span>Symbol</span><span>Last</span><span>Chg%</span></div>
+      <div className="wl-head"><span>Symbol</span><span>Last</span><span>Chg</span><span>Chg%</span></div>
       <div className="wl-rows">
-        {list.map(s => {
-          const x = quotes[s], up = (x?.change ?? 0) >= 0
+        {shown.map(s => {
+          if (isSection(s)) return (
+            <div key={s} className="wl-section"><span>{s.slice(3)}</span>
+              <span className="wl-actions"><button title="Move up" onClick={() => move(s, -1)}>↑</button><button title="Remove the section" onClick={() => t.setWatchlist(list.filter(y => y !== s))}>✕</button></span></div>
+          )
+          const x = quotes[s], up = (x?.change ?? 0) >= 0, flag = t.state.flags[s]
           return (
             <div key={s} className={`wl-row${s === t.active.ticker ? ' on' : ''}`} onClick={() => { t.setTicker(s); if (window.innerWidth <= 760) t.setSideTab(null) }}>
-              <span className="wl-sym"><b>{s.split(':')[1]}</b><small>{s.split(':')[0]}</small></span>
+              <span className="wl-sym"><button className="wl-flag" style={flag ? { background: flag } : undefined} title="Flag" onClick={e => { e.stopPropagation(); setFlagFor(f => (f === s ? null : s)) }} />
+                <span><b>{s.split(':')[1]}</b><small>{s.split(':')[0]}</small></span>
+                {flagFor === s && <span className="wl-flags" onClick={e => e.stopPropagation()}>{FLAG_COLORS.map(c => <button key={c} style={{ background: c }} onClick={() => { t.setFlag(s, c); setFlagFor(null) }} />)}<button className="none" title="No flag" onClick={() => { t.setFlag(s, null); setFlagFor(null) }}>✕</button></span>}
+              </span>
               <span className={`wl-price ${flash[s] ?? ''}`}>{fmtPrice(x?.price)}</span>
+              <span className={`wl-chg ${x?.change == null ? '' : up ? 'up' : 'down'}`}>{x?.change == null ? '' : `${up ? '+' : ''}${x.change.toFixed(Math.abs(x.price ?? 0) >= 100 ? 2 : Math.abs(x.price ?? 0) >= 10 ? 3 : 5)}`}</span>
               <span className={`wl-chg ${x?.change_pct == null ? '' : up ? 'up' : 'down'}`}>{x?.change_pct == null ? '' : `${up ? '+' : ''}${x.change_pct.toFixed(2)}%`}</span>
               <span className="wl-actions">
                 <button title="Move up" onClick={e => { e.stopPropagation(); move(s, -1) }}>↑</button>
@@ -125,7 +182,7 @@ function Watchlist() {
             </div>
           )
         })}
-        {!list.length && <Empty>Add symbols to watch.</Empty>}
+        {!shown.length && <Empty>{onlyFlag ? 'No symbol has this flag.' : 'Add symbols to watch.'}</Empty>}
       </div>
       {err && <div className="err-line">{err}</div>}
     </div>
