@@ -126,3 +126,35 @@ def test_m8_buys_below_and_sells_above_the_midnight_open(gold_ctx):
         assert s.window in ("po3_london", "po3_ny_open")
     assert isinstance(sigs, list)
     assert np.all([s.stop != s.entry for s in sigs])
+
+
+def test_mt5_ticks_server_clock():
+    """Seconds charts: MT5 is asked in its server clock and the ticks come back in UTC."""
+    import numpy as np
+    from datetime import datetime
+    from ictengine.data import mt5 as m5
+    m5.register_broker("faketicks", "C:/fake/terminal64.exe", 7, {"XAUUSD": "XAUUSD"})
+    asked = {}
+
+    class Fake:
+        COPY_TICKS_ALL = 1
+
+        def symbol_select(self, *a):
+            return True
+
+        def copy_ticks_range(self, sym, frm, to, flags):
+            asked["frm"], asked["to"] = frm, to
+            # server clock = NY + 7 h; 14:00 UTC on 7 Oct 2026 is 10:00 NY (EDT) -> 17:00 server
+            base = pd.Timestamp("2026-10-07 17:00").value // 1_000_000
+            return np.array([(base + k * 500, 4000.0 + k, 4000.2 + k, 0.0, 0.0) for k in range(6)],
+                            dtype=[("time_msc", "i8"), ("bid", "f8"), ("ask", "f8"), ("last", "f8"), ("volume", "f8")])
+
+        def last_error(self):
+            return (0, "")
+
+    start = pd.Timestamp("2026-10-07 14:00", tz="UTC")
+    t = m5.ticks("faketicks", "XAUUSD", start, start + pd.Timedelta(minutes=5), mt5=Fake())
+    assert asked["frm"].replace(tzinfo=None) == datetime(2026, 10, 7, 17, 0)
+    assert t.index[0] == start and list(t["price"])[:2] == [4000.0, 4001.0] and t["volume"].sum() == 6
+    b = m5.ticks_to_bars(t, 1)
+    assert len(b) == 3 and b.iloc[0]["open"] == 4000.0 and b.iloc[0]["close"] == 4001.0

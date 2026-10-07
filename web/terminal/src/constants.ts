@@ -19,6 +19,11 @@ function tf(label: string, resolution: string, seconds: number, period: Period, 
 }
 
 export const TIMEFRAMES: Timeframe[] = [
+  // seconds bars are built from the broker's ticks (Binance: 1s klines), the last 6 hours
+  tf('1s', '1S', 1, { type: 'second', span: 1 }),
+  tf('5s', '5S', 5, { type: 'second', span: 5 }),
+  tf('15s', '15S', 15, { type: 'second', span: 15 }),
+  tf('30s', '30S', 30, { type: 'second', span: 30 }),
   tf('1m', '1', 60, { type: 'minute', span: 1 }),
   tf('3m', '3', 180, { type: 'minute', span: 3 }),
   tf('5m', '5', 300, { type: 'minute', span: 5 }),
@@ -38,6 +43,8 @@ export function parseTimeframe(text: string): Timeframe | null {
   const t = text.trim()
   const known = TIMEFRAMES.find(x => x.label.toLowerCase() === t.toLowerCase())
   if (known) return known
+  const sm = /^(\d{1,2})\s*s$/i.exec(t)
+  if (sm) { const n = parseInt(sm[1], 10); return n >= 1 && n <= 59 ? tf(`${n}s`, `${n}S`, n, { type: 'second', span: n }) : null }
   const m = /^(\d{1,4})\s*([mh]?)$/i.exec(t)
   if (!m) return null
   const minutes = parseInt(m[1], 10) * (m[2].toLowerCase() === 'h' ? 60 : 1)
@@ -53,7 +60,7 @@ export function parseTimeframe(text: string): Timeframe | null {
 }
 
 export function timeframeByLabel(label: string | undefined): Timeframe {
-  return (label && parseTimeframe(label)) || TIMEFRAMES[2]
+  return (label && parseTimeframe(label)) || TIMEFRAMES.find(x => x.label === '5m')!
 }
 
 // ---- chart types ----------------------------------------------------------------------------

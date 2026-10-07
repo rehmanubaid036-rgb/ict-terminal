@@ -284,6 +284,46 @@ def _load(broker_key: str, symbol: str, start: date, end: date, **kw) -> pd.Data
     return df[(df.index >= lo) & (df.index < hi)]
 
 
+MAX_TICKS = 300_000
+
+
+def ticks(broker_key: str, symbol: str, start: pd.Timestamp, end: pd.Timestamp, mt5=None) -> pd.DataFrame:
+    """Ticks [start, end) (UTC) with a ``price`` column (last trade, else bid) and ``volume`` (1 per tick
+    when the broker sends none). For seconds charts; never cached."""
+    broker = BROKERS[broker_key]
+    with _lock:
+        mt5 = mt5 or _connect(broker)
+        bsym = resolve_symbol(mt5, broker, symbol)
+        mt5.symbol_select(bsym, True)
+        # MT5 reads the times as the server's clock: NY wall time + the server offset
+        to_server = lambda t: (t.tz_convert(NY).tz_localize(None) + pd.Timedelta(hours=broker.server_minus_ny_hours)).to_pydatetime().replace(tzinfo=timezone.utc)  # noqa: E731
+        raw = mt5.copy_ticks_range(bsym, to_server(start), to_server(end), mt5.COPY_TICKS_ALL)
+    if raw is None:
+        raise MT5Error(f"copy_ticks_range {bsym}: {mt5.last_error()}")
+    if len(raw) == 0:
+        return pd.DataFrame({"price": pd.Series(dtype=float), "volume": pd.Series(dtype=float)}, index=pd.DatetimeIndex([], tz="UTC"))
+    t = pd.DataFrame(raw)[-MAX_TICKS:]
+    naive = pd.DatetimeIndex(pd.to_datetime(t["time_msc"], unit="ms"))
+    idx = server_to_utc(naive, broker.server_minus_ny_hours)
+    last = t["last"].to_numpy(float) if "last" in t else None
+    bid = t["bid"].to_numpy(float)
+    price = bid if last is None else pd.Series(last).where(pd.Series(last) > 0, pd.Series(bid)).to_numpy(float)
+    vol = t["volume"].to_numpy(float) if "volume" in t else None
+    out = pd.DataFrame({"price": price, "volume": vol if vol is not None and vol.sum() > 0 else 1.0}, index=idx)
+    out = out[out.index.notna() & (out["price"] > 0)]
+    return out[(out.index >= start) & (out.index < end)]
+
+
+def ticks_to_bars(t: pd.DataFrame, seconds: int) -> pd.DataFrame:
+    """OHLC bars of ``seconds`` from ticks (bars without a tick are left out, like the broker's)."""
+    if t.empty:
+        return _empty()
+    g = t.resample(f"{seconds}s", label="left", closed="left")
+    df = pd.DataFrame({"open": g["price"].first(), "high": g["price"].max(), "low": g["price"].min(),
+                       "close": g["price"].last(), "volume": g["volume"].sum()})
+    return df.dropna(subset=["open"])
+
+
 def _empty() -> pd.DataFrame:
     return pd.DataFrame({k: pd.Series(dtype=float) for k in ("open", "high", "low", "close", "volume")},
                         index=pd.DatetimeIndex([], tz="UTC"))

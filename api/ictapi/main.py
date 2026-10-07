@@ -151,6 +151,9 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
         return info
 
     def _tf(resolution: str) -> str:
+        m = re.fullmatch(r"(\d{1,2})S", resolution or "")
+        if m and 1 <= int(m.group(1)) <= 59:
+            return f"{int(m.group(1))}s"            # seconds charts (built from ticks)
         tf = RESOLUTIONS.get(resolution)
         if tf is None:
             raise HTTPException(400, f"unsupported resolution {resolution}")
@@ -167,7 +170,8 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
     @app.get("/udf/config")
     def udf_config():
         syms = provider.symbols()
-        return {"supported_resolutions": ["1", "3", "5", "15", "30", "60", "120", "240", "1D", "1W"],
+        return {"has_seconds": True, "seconds_multipliers": ["1", "5", "15", "30"],
+                "supported_resolutions": ["1S", "5S", "15S", "30S", "1", "3", "5", "15", "30", "60", "120", "240", "1D", "1W"],
                 "supports_search": True, "supports_group_request": False, "supports_marks": False,
                 "supports_timescale_marks": False, "supports_time": True,
                 "exchanges": [{"value": f, "name": f, "desc": f} for f in sorted({i.feed for i in syms.values()})],
@@ -185,7 +189,7 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
                 "exchange": i.feed, "listed_exchange": i.feed, "timezone": "America/New_York",
                 "session": i.session, "minmov": 1, "pricescale": i.pricescale, "has_intraday": True,
                 "has_daily": True, "has_weekly_and_monthly": True, "intraday_multipliers": ["1", "3", "5", "15", "30", "60", "120", "240"],
-                "supported_resolutions": ["1", "3", "5", "15", "30", "60", "120", "240", "1D", "1W"],
+                "supported_resolutions": ["1S", "5S", "15S", "30S", "1", "3", "5", "15", "30", "60", "120", "240", "1D", "1W"],
                 "volume_precision": 0, "data_status": "streaming"}
 
     @app.get("/udf/search")
@@ -235,16 +239,16 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
         if bad:
             raise HTTPException(400, f"unknown indicators {sorted(bad)}")
         start, end = utc_range(frm, to)
-        df = _bars(i.ticker, tf, start - WARMUP[tf], end)
+        df = _bars(i.ticker, tf, start - WARMUP.get(tf, pd.Timedelta(minutes=30)), end)
         if len(df) < 3:
             return {"symbol": i.ticker, "resolution": resolution, "objects": []}
-        a = analyze(df[["open", "high", "low", "close", "volume"]], Params.for_timeframe(tf))
+        a = analyze(df[["open", "high", "low", "close", "volume"]], Params.for_timeframe("1m" if tf.endswith("s") else tf))
         objs = overlays(a, lookback_bars=len(df), include=tuple(x for x in inc if x in CHART_LAYERS))
 
         if "smt" in inc and i.symbol in SMT_PARTNERS:
             partner = provider.symbols().get(f"{i.feed}:{SMT_PARTNERS[i.symbol]}")
             if partner is not None:
-                pdf = _bars(partner.ticker, tf, start - WARMUP[tf], end)
+                pdf = _bars(partner.ticker, tf, start - WARMUP.get(tf, pd.Timedelta(minutes=30)), end)
                 if len(pdf) >= 3:
                     objs += smt_overlays(a, pdf[["open", "high", "low", "close", "volume"]], lookback_bars=len(df))
 

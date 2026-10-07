@@ -39,6 +39,7 @@ class SymbolInfo:
     source: str = ""     # the feed's own name, e.g. 'XAUUSD.pro' or 'BTCUSDT'
 
 
+MAX_SECONDS_HOURS = 6        # one seconds-chart request reads at most this much tick history
 SESSIONS = {"forex": "1700-1700", "commodity": "1800-1700", "index": "1800-1700", "crypto": "24x7"}
 
 # the fixed list used by tests / replays (FrameProvider)
@@ -66,7 +67,13 @@ class Provider:
     def candles(self, ticker: str, start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
         raise NotImplementedError
 
+    def seconds(self, ticker: str, sec: int, start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
+        """Bars of ``sec`` seconds; empty when the feed has no tick data."""
+        return _empty()
+
     def bars(self, ticker: str, tf: str, start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
+        if tf.endswith("s"):
+            return self.seconds(ticker, int(tf[:-1]), start, end)
         df = self.candles(ticker, start, end)
         if df.empty or tf == "1m":
             return df
@@ -140,6 +147,13 @@ class MT5Provider(Provider):
         df = m5.load(self._broker_key[info.feed], info.symbol, start.date(), end.date())
         return df[(df.index >= start) & (df.index < end)]
 
+    def seconds(self, ticker, sec, start, end):
+        info = self.symbols().get(ticker)
+        if info is None:
+            return _empty()
+        start = max(start, end - pd.Timedelta(hours=MAX_SECONDS_HOURS))
+        return m5.ticks_to_bars(m5.ticks(self._broker_key[info.feed], info.symbol, start, end), sec)
+
 
 # ---- Binance ----------------------------------------------------------------------------------
 class BinanceProvider(Provider):
@@ -186,7 +200,22 @@ class BinanceProvider(Provider):
             self._cache[info.source] = df
         return df[(df.index >= start) & (df.index < end)]
 
+    def seconds(self, ticker, sec, start, end):
+        # Binance has 1s klines; longer seconds bars are grouped from them
+        info = self.symbols().get(ticker)
+        if info is None:
+            return _empty()
+        start = max(start, end - pd.Timedelta(hours=MAX_SECONDS_HOURS))
+        df = self.client.klines(info.source, "1s", start, end, max_bars=5000 if sec == 1 else min(5000, 5000 * sec))
+        if sec == 1 or df.empty:
+            return df
+        g = df.resample(f"{sec}s", label="left", closed="left")
+        return pd.DataFrame({"open": g["open"].first(), "high": g["high"].max(), "low": g["low"].min(),
+                             "close": g["close"].last(), "volume": g["volume"].sum()}).dropna(subset=["open"])
+
     def bars(self, ticker, tf, start, end):
+        if tf.endswith("s"):
+            return self.seconds(ticker, int(tf[:-1]), start, end)
         if tf == "1m":
             return self.candles(ticker, start, end)
         info = self.symbols().get(ticker)
@@ -225,6 +254,10 @@ class MultiProvider(Provider):
     def bars(self, ticker, tf, start, end):
         p = self._owner(ticker)
         return p.bars(ticker, tf, start, end) if p else _empty()
+
+    def seconds(self, ticker, sec, start, end):
+        p = self._owner(ticker)
+        return p.seconds(ticker, sec, start, end) if p else _empty()
 
 
 # ---- spread / ratio symbols ---------------------------------------------------------------------
@@ -320,6 +353,13 @@ class SyntheticProvider(Provider):
             return self.base.candles(ticker, start, end)
         a, op, b = legs
         return _combine(self.base.candles(a, start, end), self.base.candles(b, start, end), op)
+
+    def seconds(self, ticker, sec, start, end):
+        legs = self._legs(ticker)
+        if legs is None:
+            return self.base.seconds(ticker, sec, start, end)
+        a, op, b = legs
+        return _combine(self.base.seconds(a, sec, start, end), self.base.seconds(b, sec, start, end), op)
 
     def bars(self, ticker, tf, start, end):
         legs = self._legs(ticker)
