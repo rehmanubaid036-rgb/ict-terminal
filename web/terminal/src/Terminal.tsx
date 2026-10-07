@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { scriptIndicatorName, type SavedScript } from './chart/script'
 import type { Crosshair, OverlayMode } from 'klinecharts'
 import { api, errorText, type Access, type ModelInfo, type Signal } from './api'
 import { layoutCharts, LAYOUTS, PRICESCALE, timeframeByLabel, type LayoutId, DEFAULT_SYMBOLS, ONE_MINUTE_MODELS, SESSION_ALERTS } from './constants'
@@ -64,6 +65,8 @@ export interface TerminalApi {
   setFlag: (symbol: string, color: string | null) => void
   addAlert: (a: Omit<PriceAlert, 'id' | 'created' | 'active'>) => void
   clearAlertLog: () => void
+  saveScript: (s: SavedScript) => void
+  deleteScript: (id: string) => void
   updateAlert: (id: string, patch: Partial<PriceAlert>) => void
   removeAlert: (id: string) => void
   setSignalsPrefs: (p: Partial<SignalsPrefs>) => void
@@ -472,6 +475,9 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
     updateAlert: (id, patch) => setState(s => ({ ...s, alerts: s.alerts.map(a => (a.id === id ? { ...a, ...patch } : a)) })),
     removeAlert: id => setState(s => ({ ...s, alerts: s.alerts.filter(a => a.id !== id) })),
     clearAlertLog: () => setState(s => ({ ...s, alertLog: [] })),
+    saveScript: sc => setState(s => ({ ...s, scripts: s.scripts.some(x => x.id === sc.id) ? s.scripts.map(x => (x.id === sc.id ? sc : x)) : [...s.scripts, sc].slice(-30) })),
+    deleteScript: id => setState(s => ({ ...s, scripts: s.scripts.filter(x => x.id !== id),
+      charts: s.charts.map(c => ({ ...c, indicators: c.indicators.filter(i => i.name !== scriptIndicatorName(id)) })) })),
     setSignalsPrefs: p => setState(s => ({ ...s, signals: { ...s.signals, ...p } })),
     tool, setTool, magnet, setMagnet, stayInDrawing, setStayInDrawing,
     showSignal: sig => {
@@ -507,7 +513,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
           <div className="center">
             <div className={layoutClass}>
               {charts.map((c, i) => (
-                <ChartPanel key={c.id} conf={c} theme={theme} settings={state.chart} cursor={cursor} compact={phone && !single && visible > 2}
+                <ChartPanel key={c.id} conf={c} scripts={state.scripts} theme={theme} settings={state.chart} cursor={cursor} compact={phone && !single && visible > 2}
                   alerts={state.alerts.filter(a => a.active && a.ticker === c.ticker && (!a.kind || a.kind === 'price'))} active={i === Math.min(state.active, visible - 1)}
                   hidden={single && visible > 1 && i !== Math.min(state.active, visible - 1)}
                   tool={tool} magnet={magnet} signal={signals[c.id] ?? null} showClose={visible > 1 && !phone}

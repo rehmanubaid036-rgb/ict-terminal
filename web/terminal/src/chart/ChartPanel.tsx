@@ -16,6 +16,7 @@ import type { CalendarEvent } from '../api'
 import { DRAWINGS, register, unregister, getEntry, snapshot, notify, drawingHooks, removeSelected, onRegistryChange, applyTfVisibility } from './registry'
 import { DrawingDialog } from '../ui/DrawingDialog'
 import { paperModify, paperOrder, usePaper } from '../panels/Paper'
+import { registerScript, type SavedScript } from './script'
 
 const ICT = 'ict'
 const LINE_DEFAULTS = ['#FF9600', '#935EBD', '#2196F3', '#E11D74', '#01C5C4']   // klinecharts' indicator line colours
@@ -32,6 +33,7 @@ export interface ChartPanelProps {
   cursor: 'cross' | 'dot' | 'arrow'
   compact?: boolean            // a small chart in a phone grid: no OHLC legend, smaller axis text
   alerts: PriceAlert[]
+  scripts?: SavedScript[]
   tool: string | null
   magnet: OverlayMode
   drawSeq: number
@@ -276,13 +278,20 @@ export function ChartPanel(p: ChartPanelProps) {
   }, [setKey, events, alertKey, tf.seconds, digits])
 
   // ---- indicators ----------------------------------------------------------------------------
-  const indKey = JSON.stringify(conf.indicators)
+  const usedScripts = (p.scripts ?? []).filter(s => conf.indicators.some(i => i.name === `SCRIPT_${s.id}`))
+  const indKey = JSON.stringify(conf.indicators) + JSON.stringify(usedScripts)
   useEffect(() => {
     const chart = chartRef.current
     if (!chart) return
     for (const i of chart.getIndicators()) if (i.name !== EVENTS && i.name !== COMPARE) chart.removeIndicator({ id: i.id })
     for (const ind of conf.indicators) {
-      const def = indicatorDef(ind.name)
+      let def = indicatorDef(ind.name)
+      if (ind.name.startsWith('SCRIPT_')) {
+        // the user's own script: (re)registered from its saved source; a deleted or broken one is skipped
+        const sc = usedScripts.find(s => `SCRIPT_${s.id}` === ind.name)
+        if (!sc) continue
+        try { def = { overlay: !registerScript(sc).pane } as typeof def } catch { continue }
+      }
       const value = { name: ind.name, ...(ind.params?.length ? { calcParams: ind.params } : {}), visible: !ind.hidden,
         // the colour is the first line's (EMA 6, MACD DIF ...); the others keep the chart's default colours
         ...(ind.color || ind.width ? { styles: { lines: LINE_DEFAULTS.map((c, k) => ({ color: k === 0 ? (ind.color ?? c) : c, size: ind.width ?? 1, style: 'solid', smooth: false, dashedValue: [2, 2] })) } } : {}) } as any

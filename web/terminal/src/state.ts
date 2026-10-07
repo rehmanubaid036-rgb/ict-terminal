@@ -1,5 +1,6 @@
 import { DEFAULT_SETTINGS, parseSettings, type ChartSettings } from './chart/settings'
 // Terminal state and its saved form (the account's "__autosave__" layout, plus named layouts).
+import type { SavedScript } from './chart/script'
 import { CHART_TYPES, ICT_IDS, LAYOUTS, PRICESCALE, timeframeByLabel, type ChartTypeId, type LayoutId } from './constants'
 
 export interface IndicatorConf { name: string; params?: number[]; color?: string; width?: number; hidden?: boolean }
@@ -76,6 +77,7 @@ export interface TerminalState {
   alerts: PriceAlert[]
   signals: SignalsPrefs
   alertLog: AlertLogEntry[]
+  scripts: SavedScript[]              // the user's own indicators (ICT Script)
 }
 
 export const AUTOSAVE = '__autosave__'
@@ -95,13 +97,14 @@ export function defaultState(): TerminalState {
     signals: { ...DEFAULT_SIGNALS },
     chart: { ...DEFAULT_SETTINGS },
     alertLog: [],
+    scripts: [],
   }
 }
 
 /** What goes to /api/v1/layouts. Drawings come from the live charts. */
 export function serialize(s: TerminalState, drawingsOf: (id: number) => Drawing[]) {
   return {
-    v: 2, layout: s.layout, active: s.active, sync: s.sync, watchlist: s.watchlist, lists: { ...s.lists, [s.listName]: s.watchlist }, listName: s.listName, flags: s.flags, alerts: s.alerts, signals: s.signals, chart: s.chart, alertLog: s.alertLog,
+    v: 2, layout: s.layout, active: s.active, sync: s.sync, watchlist: s.watchlist, lists: { ...s.lists, [s.listName]: s.watchlist }, listName: s.listName, flags: s.flags, alerts: s.alerts, signals: s.signals, chart: s.chart, alertLog: s.alertLog, scripts: s.scripts,
     charts: s.charts.map(c => ({ ...c, drawings: drawingsOf(c.id) })),
   }
 }
@@ -156,6 +159,8 @@ export function parse(data: any, maxCharts: number): { state: TerminalState; dra
     alerts: Array.isArray(data?.alerts) ? data.alerts.filter((a: any) => typeof a?.ticker === 'string' && Number.isFinite(a?.price)).slice(0, 200) : [],
     alertLog: Array.isArray(data?.alertLog) ? data.alertLog.filter((x: any) => Number.isFinite(x?.at) && typeof x?.text === 'string').slice(0, 100) : [],
     signals: parseSignals(data?.signals),
+    scripts: Array.isArray(data?.scripts) ? data.scripts.filter((x: any) => typeof x?.id === 'string' && /^[a-z0-9]{1,12}$/.test(x.id) && typeof x?.name === 'string' && typeof x?.src === 'string' && x.src.length <= 8000)
+      .slice(0, 30).map((x: any) => ({ id: x.id, name: String(x.name).slice(0, 30), src: x.src })) : [],
     chart: parseSettings(data?.chart),
   }
   const drawings = base.charts.map((_, i) => (Array.isArray(data?.charts?.[i]?.drawings) ? data.charts[i].drawings.filter(validDrawing) : []))

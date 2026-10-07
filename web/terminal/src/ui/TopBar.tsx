@@ -5,6 +5,8 @@ import { api, type SearchItem } from '../api'
 import { CHART_TYPES, FAVORITE_TFS, INDICATORS, LAYOUTS, TIMEFRAMES, parseTimeframe, timeframeByLabel, type LayoutId, WOLF_MODELS } from '../constants'
 import { IctPanel, ModelSection } from '../panels/IctPanel'
 import { Screener } from './Screener'
+import { ScriptEditor } from './ScriptEditor'
+import { scriptIndicatorName, type SavedScript } from '../chart/script'
 import { COMPARE_COLORS, SMT_PARTNER } from '../chart/compare'
 import { Icon } from './icons'
 import { Modal, Popover, Switch, toast, useIsPhone } from './common'
@@ -230,7 +232,10 @@ function IndicatorsDialog({ onClose }: { onClose: () => void }) {
   const t = useTerminal()
   const [q, setQ] = useState('')
   const [edit, setEdit] = useState<string | null>(null)
+  const [script, setScript] = useState<SavedScript | 'new' | null>(null)
   const a = t.active
+  const scripts = t.state.scripts
+  const titleOf = (name: string) => INDICATORS.find(x => x.name === name)?.title ?? scripts.find(s => scriptIndicatorName(s.id) === name)?.name
   const on = new Set(a.indicators.map(i => i.name))
   const list = INDICATORS.filter(i => !q || (i.name + ' ' + i.title).toLowerCase().includes(q.toLowerCase()))
   const toggle = (name: string) => t.updateActive(c => ({ indicators: c.indicators.some(i => i.name === name) ? c.indicators.filter(i => i.name !== name) : [...c.indicators, { name }] }))
@@ -247,7 +252,7 @@ function IndicatorsDialog({ onClose }: { onClose: () => void }) {
           <div className="menu-head"><span>On this chart</span><button className="link" onClick={() => { t.updateActive({ indicators: a.indicators }, 'all'); toast('Indicators copied to every chart.') }}>Apply to all charts</button></div>
           {a.indicators.map(i => (
             <div key={i.name} className="ind-row on">
-              <b>{i.name}</b><span>{INDICATORS.find(x => x.name === i.name)?.title}</span>
+              <b>{i.name.startsWith('SCRIPT_') ? 'Script' : i.name}</b><span>{titleOf(i.name)}</span>
               {edit === i.name ? (
                 <input className="param-input" autoFocus defaultValue={params(i.name)} onKeyDown={e => {
                   if (e.key === 'Enter') {
@@ -282,7 +287,21 @@ function IndicatorsDialog({ onClose }: { onClose: () => void }) {
             </div>
           )
         })}
+        <div className="ind-group">My scripts <button className="link" onClick={() => setScript('new')}>+ New script</button></div>
+        {scripts.filter(s => !q || s.name.toLowerCase().includes(q.toLowerCase())).map(s => {
+          const n = scriptIndicatorName(s.id)
+          return (
+            <div key={s.id} className={`ind-row script-row${on.has(n) ? ' added' : ''}`}>
+              <b>Script</b><span>{s.name}</span>
+              <button className="link" onClick={() => setScript(s)}>Edit</button>
+              <button className="icon-btn" title="Delete script" onClick={() => { if (window.confirm(`Delete the script "${s.name}"?`)) t.deleteScript(s.id) }}><Icon name="trash" size={15} /></button>
+              <button className="link" onClick={() => toggle(n)}>{on.has(n) ? '✓ on chart' : '+ Add'}</button>
+            </div>
+          )
+        })}
+        {!scripts.length && <p className="note">Write your own indicator with a few lines (ema, rsi, atr, highest …). It is saved to your account.</p>}
       </div>
+      {script && <ScriptEditor script={script === 'new' ? undefined : script} onClose={() => setScript(null)} />}
       <p className="note">Tip: open the ICT menu for the engine's ICT concept indicators.</p>
     </Modal>
   )

@@ -72,11 +72,13 @@ It covers what was built, how to build and test it, and what is still open.
 | Replay | Bar replay on the active chart: play / pause / step / speed |
 | Account | Plan & features, subscriptions, devices; upgrade with bank/JazzCash (submit transaction ID → WhatsApp) or crypto order (exact amount + address, polls status); payments history; change password |
 | Auth | Log in, create account, password reset by code (same token keys as before, so users stay logged in) |
+| Trading tools | Paper trading (Trade tab, one-click buy / sell on the chart, draggable SL / TP lines; server `/api/v1/paper*`), strategy tester (`/api/v1/backtest`, one model, 30 / 60 / 90 days, equity curve), screener, economic calendar and news tabs, pop-out chart window (`?popout=1`) |
+| ICT Script | Your own indicators in a small formula language (`src/chart/script.ts`): series variables, `x[n]` history, sma / ema / rma / wma / rsi / atr / highest / lowest / stdev / change / abs / max / min, up to 6 `plot()` lines, `@pane`. Parsed and evaluated by the terminal (no JavaScript eval); saved in the layout as `scripts`; Indicators dialog > My scripts |
 | Other | Dark / light theme, keyboard shortcuts (letters = symbol search, digits = interval, Alt+T/H/J/V/F/R tools, Alt+A alert, Alt+S screenshot, Ctrl+Z/Y, Del, Esc), screenshot, full screen, phone layout (tool sheets, bottom tab bar, bottom sheets, one chart at a time with chips) |
 
 Not built yet (plan items): MT5 positions/orders panel and trade panel (no read API for EA data),
-economic calendar / news panel, indicator templates, popout windows, Urdu UI language,
-WebSocket streaming (the API has no `/ws`; the terminal polls), patterns/Gann/pitchfork tools,
+indicator templates, Urdu UI language,
+WebSocket streaming (the API has no `/ws`; the terminal polls),
 server-side alerts (alerts only fire while the terminal is open).
 
 ## Build
