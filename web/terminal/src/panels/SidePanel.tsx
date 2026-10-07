@@ -7,14 +7,17 @@ import { Icon } from '../ui/icons'
 import { Empty, Switch, fmtPrice, nyTime, toast, useIsPhone } from '../ui/common'
 import { DRAWINGS, getChart, getEntry, notify, onRegistryChange, snapshot } from '../chart/registry'
 import { JournalView, StatsView, EngineView } from './BottomPanel'
+import { CalendarPanel, NewsPanel } from './MarketPanels'
 
-export type SideTab = 'watchlist' | 'signals' | 'assistant' | 'alerts' | 'objects' | 'data' | 'journal'
+export type SideTab = 'calendar' | 'news' | 'watchlist' | 'signals' | 'assistant' | 'alerts' | 'objects' | 'data' | 'journal'
 
 const TABS: { id: SideTab; icon: string; label: string; phoneOnly?: boolean }[] = [
   { id: 'watchlist', icon: 'list', label: 'Watchlist' },
   { id: 'signals', icon: 'target', label: 'Signals' },
   { id: 'assistant', icon: 'spark', label: 'AI assistant' },
   { id: 'alerts', icon: 'bell', label: 'Alerts' },
+  { id: 'calendar', icon: 'calendar', label: 'Calendar' },
+  { id: 'news', icon: 'news', label: 'News' },
   { id: 'objects', icon: 'tree', label: 'Object tree' },
   { id: 'data', icon: 'data', label: 'Data window' },
   { id: 'journal', icon: 'journal', label: 'Journal', phoneOnly: true },
@@ -35,6 +38,8 @@ export function SidePanel() {
           </div>
           <div className="side-content">
             {tab === 'watchlist' && <Watchlist />}
+            {tab === 'calendar' && <CalendarPanel />}
+            {tab === 'news' && <NewsPanel />}
             {tab === 'signals' && <Signals />}
             {tab === 'assistant' && <Assistant />}
             {tab === 'alerts' && <Alerts />}

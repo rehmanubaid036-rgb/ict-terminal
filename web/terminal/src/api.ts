@@ -187,6 +187,7 @@ export const api = {
     remove: (id: number) => post<{ deleted: boolean }>(`/api/v1/community/ideas/${id}/delete`, {}),
     reportIdea: (id: number) => post<{ reported: boolean }>(`/api/v1/community/ideas/${id}/report`, {}),
   },
+  news: () => get<{ items: { title: string; link: string; at: number; source: string }[] }>('/api/v1/news'),
   calendar: (from: number, to: number, impact: string) => get<{ events: CalendarEvent[] }>('/api/v1/calendar', { from, to, impact }),
   engineStatus: () => get<{ symbols: any[] }>('/api/v1/engine/status'),
   ask: (symbol: string, question: string, lang: string) => post<{ text: string }>('/api/v1/agent/ask', { symbol, question, lang }),

@@ -172,3 +172,22 @@ def test_signals_tell_if_the_runner_covers_the_symbol(client):
     p = {"symbol": "AXI:XAUUSD", "from": frm, "to": to, "models": "M1", "source": "scan", "require_bias": "false"}
     a, b = client.get("/api/v1/signals", params=p).json(), client.get("/api/v1/signals", params=p).json()
     assert a["source"] == "scan" and a["signals"] == b["signals"]          # the second answer comes from the cache
+
+
+def test_news_headlines_are_parsed_merged_and_cached(client, monkeypatch):
+    from ictapi import news_feed
+    rss = b"""<?xml version="1.0"?><rss><channel>
+      <item><title>Gold jumps as <b>Fed</b> holds</title><link>https://example.com/a</link><pubDate>Tue, 06 Oct 2026 14:00:00 GMT</pubDate></item>
+      <item><title>Nasdaq slips</title><link>https://example.com/b</link><pubDate>Tue, 06 Oct 2026 15:00:00 GMT</pubDate></item>
+      <item><title>No link</title><pubDate>Tue, 06 Oct 2026 15:00:00 GMT</pubDate></item>
+    </channel></rss>"""
+    monkeypatch.setattr(news_feed, "_cache", {"at": 0.0, "items": []})
+    monkeypatch.setattr(news_feed, "feeds", lambda: ["https://www.example.com/rss"])
+    calls = []
+    real = news_feed.latest
+    monkeypatch.setattr(news_feed, "latest", lambda: real(fetch=lambda url: calls.append(url) or rss))
+    items = client.get("/api/v1/news").json()["items"]
+    assert [i["title"] for i in items] == ["Nasdaq slips", "Gold jumps as Fed holds"]       # newest first, tags removed
+    assert items[0]["source"] == "example.com"
+    client.get("/api/v1/news")
+    assert len(calls) == 1                                                                  # cached

@@ -274,6 +274,12 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
         return {"events": [{"time": int(e.time.timestamp()), "currency": e.currency, "impact": e.impact, "title": e.title}
                            for e in news_calendar(start, end, impacts, live)]}
 
+    @app.get("/api/v1/news")
+    async def news(a: dict = Depends(access)):
+        """Latest market headlines (public RSS feeds, cached 10 minutes)."""
+        from . import news_feed
+        return {"items": await run_in_threadpool(news_feed.latest)}
+
     @app.get("/api/v1/engine/status")
     def engine_status():
         return {"symbols": store.status()}
