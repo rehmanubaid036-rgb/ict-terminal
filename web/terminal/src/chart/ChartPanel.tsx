@@ -25,6 +25,7 @@ export interface ChartPanelProps {
   theme: Theme
   settings: ChartSettings
   cursor: 'cross' | 'dot' | 'arrow'
+  compact?: boolean            // a small chart in a phone grid: no OHLC legend, smaller axis text
   alerts: PriceAlert[]
   tool: string | null
   magnet: OverlayMode
@@ -124,10 +125,14 @@ export function ChartPanel(p: ChartPanelProps) {
     const title = st.titleMode === 'ticker' ? sym : st.titleMode === 'ticker_tf' ? `${sym} · ${tf.label}` : `${sym} · ${tf.label}${exch ? ' · ' + exch : ''}`
     chart.setStyles({ candle: { tooltip: { title: { template: title } } } } as any)
     chart.setTimezone(st.timezone)
+    if (p.compact) {
+      chart.setStyles({ candle: { tooltip: { legend: { template: [] }, title: { size: 11 } } }, indicator: { tooltip: { showRule: 'none' } },
+        xAxis: { tickText: { size: 9 } }, yAxis: { tickText: { size: 9 } } } as any)
+    }
     const lines = p.cursor === 'cross'
     chart.setStyles({ crosshair: { horizontal: { line: { show: lines } }, vertical: { line: { show: lines } } } } as any)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setKey, p.theme, conf.chartType, conf.ticker, tf.label, p.cursor])
+  }, [setKey, p.theme, conf.chartType, conf.ticker, tf.label, p.cursor, p.compact])
 
   useEffect(() => {
     chartRef.current?.overrideYAxis({ paneId: 'candle_pane', name: conf.axis, position: st.scale })

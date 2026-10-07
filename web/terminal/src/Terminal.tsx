@@ -116,6 +116,9 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
   const [settingsTab, setSettingsTab] = useState<SettingsTab | null>(null)
   const [cursor, setCursorState] = useState<CursorKind>(() => (['cross', 'dot', 'arrow'].includes(localStorage.getItem('ict.cursor') ?? '') ? localStorage.getItem('ict.cursor') as CursorKind : 'cross'))
   const [community, setCommunity] = useState(false)
+  // phones: all the layout's charts on screen (stacked / 2x2), or one at a time with chips
+  const [phoneAll, setPhoneAllState] = useState(() => localStorage.getItem('ict.phoneAll') !== '0')
+  const setPhoneAll = (v: boolean) => { setPhoneAllState(v); try { localStorage.setItem('ict.phoneAll', v ? '1' : '0') } catch { /* ignore */ } }
   const [favBarOn, setFavBarState] = useState(() => localStorage.getItem('ict.favBar') !== '0')
   const setCursor = (c: CursorKind) => { setCursorState(c); try { localStorage.setItem('ict.cursor', c) } catch { /* ignore */ } }
   const setFavBarOn = (v: boolean) => { setFavBarState(v); try { localStorage.setItem('ict.favBar', v ? '1' : '0') } catch { /* ignore */ } }
@@ -386,7 +389,8 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
     undo: () => undo(active.id), redo: () => redo(active.id), del: () => removeSelected(active.id),
   })
 
-  const layoutClass = `grid grid-${state.layout}${maximized ? ' maxed' : ''}`
+  const single = maximized || (phone && !phoneAll)
+  const layoutClass = `grid grid-${state.layout}${single ? ' maxed' : ''}${phone && !single ? ' phone-all' : ''}`
   const charts = useMemo(() => state.charts.slice(0, visible), [state.charts, visible])
   void LAYOUTS
 
@@ -401,9 +405,9 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
           <div className="center">
             <div className={layoutClass}>
               {charts.map((c, i) => (
-                <ChartPanel key={c.id} conf={c} theme={theme} settings={state.chart} cursor={cursor}
+                <ChartPanel key={c.id} conf={c} theme={theme} settings={state.chart} cursor={cursor} compact={phone && !single && visible > 2}
                   alerts={state.alerts.filter(a => a.active && a.ticker === c.ticker)} active={i === Math.min(state.active, visible - 1)}
-                  hidden={(phone || maximized) && visible > 1 && i !== Math.min(state.active, visible - 1)}
+                  hidden={single && visible > 1 && i !== Math.min(state.active, visible - 1)}
                   tool={tool} magnet={magnet} signal={signals[c.id] ?? null} showClose={visible > 1 && !phone}
                   onActivate={() => t.setActive(i)}
                   onToolDone={() => (stayInDrawing ? setDrawSeq(n => n + 1) : setTool(null))} drawSeq={drawSeq}
@@ -426,7 +430,8 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
               ))}
               {(phone || maximized) && visible > 1 && (
                 <div className="chart-chips">
-                  {charts.map((c, i) => (
+                  {phone && <button className="chips-mode" title={phoneAll ? 'Show one chart at a time' : 'Show all charts'} onClick={() => setPhoneAll(!phoneAll)}>{phoneAll ? '▢ One' : '▦ All'}</button>}
+                  {single && charts.map((c, i) => (
                     <button key={c.id} className={i === Math.min(state.active, visible - 1) ? 'on' : ''} onClick={() => t.setActive(i)}>
                       {c.ticker.split(':')[1]} {timeframeByLabel(c.tf).label}
                     </button>
