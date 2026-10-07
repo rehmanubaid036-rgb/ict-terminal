@@ -44,3 +44,12 @@ def test_ratio_and_spread_bars(tmp_path):
     assert found[0]["symbol"] == "AXI:XAUUSD/XAGUSD"
     q = c.get("/api/v1/quotes", params={"symbols": "AXI:XAUUSD/XAGUSD"}).json()["quotes"]
     assert q[0]["price"] == 4030 / 40
+
+
+def test_symbol_info(gold, tmp_path):
+    c = TestClient(create_app(SyntheticProvider(FrameProvider({"AXI:XAUUSD": gold})), Store(tmp_path / "i.db"), require_auth=False))
+    r = c.get("/api/v1/symbol-info", params={"symbol": "AXI:XAUUSD"}).json()
+    assert (r["symbol"], r["type"], r["smt_partner"], r["tick"]) == ("XAUUSD", "commodity", "XAGUSD", 0.01)
+    s = r["stats"]
+    assert s["day"]["high"] >= s["day"]["low"] and s["atr14"] > 0 and s["week"]["high"] >= s["last"] >= s["week"]["low"]
+    assert c.get("/api/v1/symbol-info", params={"symbol": "AXI:NOPE"}).status_code == 404

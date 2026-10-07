@@ -401,6 +401,38 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
                         "volume": float(today["volume"]) if "volume" in d.columns else None})
         return {"quotes": out}
 
+    # ---- symbol info panel ---------------------------------------------------------------------
+    @app.get("/api/v1/symbol-info")
+    def symbol_info(symbol: str, a: dict = Depends(logged_in)):
+        """What the symbol is and how it moves: feed, type, tick, session; ranges, ATR / ADR, volume, the SMT partner."""
+        i = _info(symbol)
+        now = pd.Timestamp.now(tz="UTC")
+        try:
+            d = provider.bars(i.ticker, "1d", now - pd.Timedelta(days=400), now + pd.Timedelta(minutes=1))
+        except Exception:      # a feed that is down: the static facts only
+            d = pd.DataFrame()
+        out = {"ticker": i.ticker, "symbol": i.symbol, "feed": i.feed, "description": i.description, "type": i.type,
+               "session": i.session, "pricescale": i.pricescale, "tick": 1 / i.pricescale if i.pricescale else None,
+               "source": i.source, "smt_partner": SMT_PARTNERS.get(i.symbol), "covered": any(s.get("symbol") == i.symbol for s in store.status()),
+               "stats": None}
+        if len(d) >= 2:
+            h, l, c = d["high"], d["low"], d["close"]
+            tr = pd.concat([h - l, (h - c.shift()).abs(), (l - c.shift()).abs()], axis=1).max(axis=1)
+            def span(days: int):
+                w = d[d.index >= d.index[-1] - pd.Timedelta(days=days)]
+                return {"high": float(w["high"].max()), "low": float(w["low"].min())} if len(w) else None
+            last, prev = float(c.iloc[-1]), float(c.iloc[-2])
+            out["stats"] = {
+                "last": last, "prev_close": prev, "change": last - prev, "change_pct": (last - prev) / prev * 100 if prev else None,
+                "day": {"open": float(d["open"].iloc[-1]), "high": float(h.iloc[-1]), "low": float(l.iloc[-1])},
+                "week": span(7), "month": span(31), "year": span(365), "days": len(d),
+                "atr14": float(tr.tail(14).mean()), "adr20": float((h - l).tail(20).mean()),
+                "today_vs_adr": float((h.iloc[-1] - l.iloc[-1]) / (h - l).tail(20).mean() * 100) if float((h - l).tail(20).mean()) else None,
+                "avg_volume20": float(d["volume"].tail(20).mean()) if "volume" in d.columns else None,
+                "first_day": d.index[0].date().isoformat(),
+            }
+        return out
+
     # ---- saved terminal layouts (charts, indicators, ICT layers, drawings) per user -----------
     def _partner_1m(i, start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame | None:
         """1m bars of the SMT partner on the same feed (M16 needs them); None when there is none."""

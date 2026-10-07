@@ -189,7 +189,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
     if (c === 'ideas' || c === 'chat' || c === 'publish') setCommunity(c)
     // deep links (guides, help pages): ?tab=alerts opens a side tab, ?open=screener a window or panel
     const tab = q.get('tab')
-    if (tab && ['watchlist', 'signals', 'trade', 'assistant', 'alerts', 'calendar', 'news', 'objects', 'data'].includes(tab)) setSideTab(tab as SideTab)
+    if (tab && ['watchlist', 'signals', 'trade', 'assistant', 'alerts', 'calendar', 'news', 'objects', 'data', 'info'].includes(tab)) setSideTab(tab as SideTab)
     const open = q.get('open') || ''
     if (open === 'journal' || open === 'stats' || open === 'tester') { setBottomOpen(true); window.setTimeout(() => window.dispatchEvent(new CustomEvent('ict:bottom', { detail: open })), 50) }
     else if (open === 'icc') setIccOpen(true)

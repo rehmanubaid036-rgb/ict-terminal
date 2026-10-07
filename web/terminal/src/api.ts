@@ -98,6 +98,13 @@ export interface SymbolInfoApi { ticker: string; name: string; description: stri
 export interface SearchItem { symbol: string; full_name: string; description: string; exchange: string; ticker: string; type: string }
 export interface Bars { s: string; t?: number[]; o?: number[]; h?: number[]; l?: number[]; c?: number[]; v?: number[] }
 export interface ModelInfo { id: string; name: string; source: string; allowed: boolean; default_on?: boolean }
+export interface SymbolInfoData {
+  ticker: string; symbol: string; feed: string; description: string; type: string; session: string; pricescale: number; tick: number | null
+  source: string; smt_partner: string | null; covered: boolean
+  stats: null | { last: number; prev_close: number; change: number; change_pct: number | null; day: { open: number; high: number; low: number }
+    week: { high: number; low: number } | null; month: { high: number; low: number } | null; year: { high: number; low: number } | null; days: number
+    atr14: number; adr20: number; today_vs_adr: number | null; avg_volume20: number | null; first_day: string }
+}
 export interface DonationInfo { enabled: boolean; title: string; text: string; amounts: number[]; currency: string; methods: PaymentMethod[] }
 export interface AskAnswer { text: string; intent: string; data: Record<string, any>; llm: boolean; llm_by?: string }
 export interface AiSettings { enabled: boolean; provider: string; model: string; has_key: boolean; providers: { id: string; name: string }[] }
@@ -242,6 +249,7 @@ export const api = {
   deleteTemplate: (name: string) => del(`/api/v1/templates/${encodeURIComponent(name)}`),
 
   shareSnapshot: (image: string, title: string) => post<{ id: string; url: string; image: string }>('/api/v1/snapshots', { image, title }),
+  symbolInfo: (symbol: string) => get<SymbolInfoData>('/api/v1/symbol-info', { symbol }),
   donationInfo: () => get<DonationInfo>('/api/v1/donations/info'),
   donate: (d: { amount: string; method: number | null; reference: string; name: string; message: string; public: boolean; source: string }) =>
     post<{ id: number; message: string }>('/api/v1/donations', d),

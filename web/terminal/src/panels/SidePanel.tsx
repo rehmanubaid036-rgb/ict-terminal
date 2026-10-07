@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Overlay } from 'klinecharts'
 import { useTerminal } from '../Terminal'
-import { api, errorText, type AiSettings, type AskAnswer, type AlertSettings, type Quote, type SearchItem, type Signal } from '../api'
+import { type SymbolInfoData, api, errorText, type AiSettings, type AskAnswer, type AlertSettings, type Quote, type SearchItem, type Signal } from '../api'
 import { ICT_LAYERS, toolDef, INDICATORS, modelTag, SESSION_ALERTS, ICT_ALERT_EVENTS, ICT_ALERT_TFS } from '../constants'
 import { WL_COLS, type IctEvent, type WlCol } from '../state'
 import { Icon } from '../ui/icons'
@@ -11,7 +11,7 @@ import { JournalView, StatsView, EngineView } from './BottomPanel'
 import { CalendarPanel, NewsPanel } from './MarketPanels'
 import { TradePanel } from './Paper'
 
-export type SideTab = 'trade' | 'calendar' | 'news' | 'watchlist' | 'signals' | 'assistant' | 'alerts' | 'objects' | 'data' | 'journal'
+export type SideTab = 'trade' | 'calendar' | 'news' | 'watchlist' | 'signals' | 'assistant' | 'alerts' | 'objects' | 'data' | 'info' | 'journal'
 
 const TABS: { id: SideTab; icon: string; label: string; phoneOnly?: boolean }[] = [
   { id: 'watchlist', icon: 'list', label: 'Watchlist' },
@@ -23,6 +23,7 @@ const TABS: { id: SideTab; icon: string; label: string; phoneOnly?: boolean }[] 
   { id: 'news', icon: 'news', label: 'News' },
   { id: 'objects', icon: 'tree', label: 'Object tree' },
   { id: 'data', icon: 'data', label: 'Data window' },
+  { id: 'info', icon: 'tag', label: 'Symbol info' },
   { id: 'journal', icon: 'journal', label: 'Journal', phoneOnly: true },
 ]
 
@@ -49,6 +50,7 @@ export function SidePanel() {
             {tab === 'alerts' && <Alerts />}
             {tab === 'objects' && <ObjectTree />}
             {tab === 'data' && <DataWindow />}
+            {tab === 'info' && <SymbolInfo />}
             {tab === 'journal' && <PhoneJournal />}
           </div>
         </div>
@@ -676,6 +678,51 @@ function ObjectTree() {
 }
 
 // ---- data window ------------------------------------------------------------------------------
+const SESSION_TEXT: Record<string, string> = { '24x7': 'Open all week (24 / 7)', '1700-1700': 'Sun 17:00 - Fri 17:00 New York', '1800-1700': 'Sun 18:00 - Fri 17:00 New York (daily break 17:00-18:00)' }
+function SymbolInfo() {
+  const t = useTerminal()
+  const [d, setD] = useState<SymbolInfoData | null>(null)
+  const [err, setErr] = useState('')
+  useEffect(() => {
+    let gone = false
+    setD(null); setErr('')
+    api.symbolInfo(t.active.ticker).then(x => { if (!gone) setD(x) }).catch(e => { if (!gone) setErr(errorText(e)) })
+    return () => { gone = true }
+  }, [t.active.ticker])
+  if (err) return <Empty>{err}</Empty>
+  if (!d) return <Empty>Loading…</Empty>
+  const dg = Math.round(Math.log10(d.pricescale || 100))
+  const f = (v: number | null | undefined) => (v === null || v === undefined || !Number.isFinite(v) ? '–' : v.toFixed(dg))
+  const s = d.stats
+  const row = (k: string, v: React.ReactNode) => <div className="dw-row"><span>{k}</span><b>{v}</b></div>
+  const range = (k: string, r: { high: number; low: number } | null) => r && s ? row(k, <>{f(r.low)} – {f(r.high)} <small className="muted">({(((s.last - r.low) / ((r.high - r.low) || 1)) * 100).toFixed(0)}% up the range)</small></>) : null
+  return (
+    <div className="data-window sym-info">
+      <div className="dw-title">{d.symbol} <small className="muted">{d.feed}</small></div>
+      <p className="note">{d.description}</p>
+      {row('Type', d.type)}
+      {row('Feed symbol', d.source || d.symbol)}
+      {row('Tick size', d.tick ? +d.tick.toFixed(10) : '–')}
+      {row('Trading hours', SESSION_TEXT[d.session] ?? d.session)}
+      {row('Engine watches it live', d.covered ? 'yes (signals, alerts)' : 'no (scan on demand)')}
+      {d.smt_partner && row('SMT partner', <button className="link" onClick={() => t.setTicker(`${d.feed}:${d.smt_partner}`)}>{d.smt_partner}</button>)}
+      {s && <>
+        <div className="dw-title">Today</div>
+        {row('Last', <>{f(s.last)} <small className={s.change >= 0 ? 'up' : 'down'}>{s.change >= 0 ? '+' : ''}{f(s.change)} ({s.change_pct?.toFixed(2)}%)</small></>)}
+        {row('Previous close', f(s.prev_close))}
+        {row('Open / high / low', `${f(s.day.open)} / ${f(s.day.high)} / ${f(s.day.low)}`)}
+        {row("Today's range vs ADR", s.today_vs_adr === null ? '–' : `${s.today_vs_adr.toFixed(0)}%`)}
+        <div className="dw-title">Volatility</div>
+        {row('ATR (14 days)', f(s.atr14))}
+        {row('Average daily range (20)', f(s.adr20))}
+        {s.avg_volume20 !== null && row('Average volume (20 days)', Math.round(s.avg_volume20).toLocaleString())}
+        <div className="dw-title">Ranges</div>
+        {range('Week', s.week)}{range('Month', s.month)}{range(s.days >= 250 ? '52 weeks' : `Since ${s.first_day}`, s.year)}
+      </>}
+    </div>
+  )
+}
+
 function DataWindow() {
   const t = useTerminal()
   const c = t.crosshair
