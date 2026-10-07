@@ -20,6 +20,7 @@ import pandas as pd
 
 from .context import Context
 from .models.registry import MODELS
+from .screener import screener_row
 from .news import blackouts, filter_signals, fomc_flat, us_high_impact_history
 from .store import Store
 
@@ -84,6 +85,10 @@ def run_once(store: Store, load: Loader, cfg: RunnerConfig = RunnerConfig(), now
                     sigs = fomc_flat(filter_signals(sigs, periods), events)
                     count += store.upsert_signals(symbol, mid, sigs, rb)
                     store.prune_signals(symbol, mid, sigs, rb, keep_from)   # rows the rules no longer produce
+            try:
+                store.set_screener(symbol, screener_row(ctx))
+            except Exception:  # noqa: BLE001 - the screener row is extra; signals were stored already
+                traceback.print_exc()
             store.set_status(symbol, str(df.index[-1]), count, time.time() - t0)
             summary[symbol] = count
         except Exception as e:  # one broken symbol must not stop the others

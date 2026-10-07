@@ -66,6 +66,11 @@ CREATE TABLE IF NOT EXISTS runner_status (
     seconds    REAL NOT NULL,
     error      TEXT
 );
+CREATE TABLE IF NOT EXISTS screener (      -- one row per symbol, written by the runner each pass
+    symbol     TEXT PRIMARY KEY,
+    data       TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS layouts (       -- terminal workspaces, synced between web / app / desktop
     user       TEXT NOT NULL,
     name       TEXT NOT NULL,
@@ -214,6 +219,18 @@ class Store:
     def status(self) -> list[dict]:
         with self._conn() as c:
             return [dict(r) for r in c.execute("SELECT * FROM runner_status ORDER BY symbol")]
+
+    # ---- screener ----------------------------------------------------------------------------
+    def set_screener(self, symbol: str, row: dict):
+        with self._conn() as c:
+            c.execute("INSERT INTO screener (symbol, data, updated_at) VALUES (?, ?, ?) ON CONFLICT (symbol) DO UPDATE SET "
+                      "data = excluded.data, updated_at = excluded.updated_at",
+                      (symbol, json.dumps(row, default=float), pd.Timestamp.now(tz="UTC").isoformat()))
+
+    def screener(self) -> list[dict]:
+        with self._conn() as c:
+            rows = c.execute("SELECT symbol, data, updated_at FROM screener ORDER BY symbol").fetchall()
+        return [{**json.loads(r["data"]), "updated_at": r["updated_at"]} for r in rows]
 
     # ---- terminal layouts ----------------------------------------------------------------
     def layouts(self, user: str) -> list[dict]:

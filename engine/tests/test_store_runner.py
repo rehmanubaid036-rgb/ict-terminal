@@ -102,3 +102,30 @@ def test_layout_limits(tmp_path):
     with pytest.raises(LayoutError):
         s.save_layout("a@x.com", "one too many", {})
     s.save_layout("a@x.com", "L0", {"i": "updated"})                       # replacing is fine at the limit
+
+
+def test_screener_row_on_the_journal_day(tmp_path):
+    from datetime import date
+    from pathlib import Path
+
+    import pandas as pd
+
+    from ictengine.context import Context
+    from ictengine.data.dukascopy import parse_bi5
+    from ictengine.screener import screener_row
+    from ictengine.store import Store
+
+    data = Path(__file__).parent / "data"
+    days = [date(2026, 9, 2), date(2026, 9, 3)]
+    df = pd.concat([parse_bi5((data / f"XAUUSD_{d}_BID.bi5").read_bytes(), d, 1000) for d in days])
+    ctx = Context("XAUUSD", df.loc[:"2026-09-03 14:30"])
+    row = screener_row(ctx)
+    assert row["symbol"] == "XAUUSD" and row["bias"] in (-1, 0, 1)
+    assert row["midnight_open"] == pytest.approx(4431.12, abs=0.01)
+    assert row["above_mo"] == (row["price"] > row["midnight_open"])
+    assert isinstance(row["windows"], list) and isinstance(row["swept_pdh"], bool)
+    for k in ("fvg_15m", "fvg_1h"):
+        assert row[k] is None or row[k]["bottom"] < row[k]["top"]
+    st = Store(tmp_path / "s.db")
+    st.set_screener("XAUUSD", row)
+    assert st.screener()[0]["symbol"] == "XAUUSD"

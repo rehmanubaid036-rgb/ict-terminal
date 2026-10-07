@@ -4,6 +4,7 @@ import type { IndicatorConf } from '../state'
 import { api, type SearchItem } from '../api'
 import { CHART_TYPES, FAVORITE_TFS, INDICATORS, LAYOUTS, TIMEFRAMES, parseTimeframe, timeframeByLabel, type LayoutId, WOLF_MODELS } from '../constants'
 import { IctPanel, ModelSection } from '../panels/IctPanel'
+import { Screener } from './Screener'
 import { COMPARE_COLORS, SMT_PARTNER } from '../chart/compare'
 import { Icon } from './icons'
 import { Modal, Popover, Switch, toast, useIsPhone } from './common'
@@ -18,6 +19,7 @@ export function TopBar() {
   const [search, setSearch] = useState<string | null>(null)
   const [interval, setInterval] = useState<string | null>(null)
   const [indicators, setIndicators] = useState(false)
+  const [screener, setScreener] = useState(false)
   const refs = { tf: useRef<HTMLButtonElement>(null), type: useRef<HTMLButtonElement>(null), ict: useRef<HTMLButtonElement>(null),
     wolf: useRef<HTMLButtonElement>(null), compare: useRef<HTMLButtonElement>(null), layout: useRef<HTMLButtonElement>(null), more: useRef<HTMLButtonElement>(null) }
   const a = t.active
@@ -55,6 +57,7 @@ export function TopBar() {
       <button ref={refs.compare} className={`tb-btn text${a.compare?.length ? ' lit' : ''}`} title="Compare symbols (SMT)" onClick={() => toggle('compare')}><Icon name="plus" /><span>Compare</span>{a.compare?.length ? <em>{a.compare.length}</em> : null}</button>
       <button ref={refs.ict} className={`tb-btn text${a.ict.length + ictModels.length ? ' lit' : ''}${menu === 'ict' ? ' on' : ''}`} title="ICT: indicators and models, one click on / off" onClick={() => toggle('ict')}><Icon name="ict" /><span>ICT</span>{a.ict.length + ictModels.length > 0 && <em>{a.ict.length + ictModels.length}</em>}</button>
       <button ref={refs.wolf} className={`tb-btn text wolf-btn${wolfModels.length ? ' lit' : ''}`} title="Wolf Models: your custom models" onClick={() => toggle('wolf')}><Icon name="target" /><span>Wolf Models</span>{wolfModels.length > 0 && <em>{wolfModels.length}</em>}</button>
+      <button className="tb-btn text" title="ICT Screener: bias, sweeps, FVGs and setups of every symbol" onClick={() => setScreener(true)}><Icon name="screener" /><span>Screener</span></button>
       <button className="tb-btn text" title="Community: ideas and chat" onClick={t.openCommunity}><Icon name="community" /><span>Community</span></button>
       <button className={`tb-btn icc-btn${t.iccOpen ? ' on' : ''}`} title="ICC Terminal: open it beside the charts" onClick={() => t.setIccOpen(!t.iccOpen)}><b>ICC</b></button>
       <span className="divider" />
@@ -123,6 +126,7 @@ export function TopBar() {
       {search !== null && <SymbolSearch initial={search} onClose={() => setSearch(null)} onPick={s => { t.setTicker(s); setSearch(null) }} />}
       {interval !== null && <IntervalBox initial={interval} onClose={() => setInterval(null)} onPick={l => { t.setTf(l); setInterval(null) }} />}
       {indicators && <IndicatorsDialog onClose={() => setIndicators(false)} />}
+      {screener && <Screener onClose={() => setScreener(false)} />}
     </header>
   )
 }

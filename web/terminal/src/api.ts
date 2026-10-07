@@ -109,6 +109,12 @@ export interface NewIdea { title: string; body: string; symbol: string; timefram
 
 export interface AlertSettings { available: boolean; whatsapp_number: string; auto_notify: boolean; min_grade: 'all' | 'A' | 'A+'; models: string; symbols: string; bias_only: boolean }
 
+export interface ScreenerFvg { tf: string; dir: 'BISI' | 'SIBI'; bottom: number; top: number; ce: number; inside: boolean; dist_pct: number }
+export interface ScreenerRow { symbol: string; time: string; price: number; change_pct: number | null; bias: number; bias_score: number; draw: number | null; draw_source?: string
+  ipda_position: number | null; zone: string | null; pdh: number | null; pdl: number | null; midnight_open: number | null; above_mo: boolean
+  swept_pdh: boolean; swept_pdl: boolean; windows: string[]; fvg_15m: ScreenerFvg | null; fvg_1h: ScreenerFvg | null
+  setups: { model_id: string; direction: number; grade: string; created_time: string; entry: number }[]; a_setups: number; updated_at?: string }
+
 export interface CalendarEvent { time: number; currency: string; impact: string; title: string }
 
 export interface Signal {
@@ -187,6 +193,7 @@ export const api = {
     remove: (id: number) => post<{ deleted: boolean }>(`/api/v1/community/ideas/${id}/delete`, {}),
     reportIdea: (id: number) => post<{ reported: boolean }>(`/api/v1/community/ideas/${id}/report`, {}),
   },
+  screener: () => get<{ rows: ScreenerRow[] }>('/api/v1/screener'),
   news: () => get<{ items: { title: string; link: string; at: number; source: string }[] }>('/api/v1/news'),
   calendar: (from: number, to: number, impact: string) => get<{ events: CalendarEvent[] }>('/api/v1/calendar', { from, to, impact }),
   engineStatus: () => get<{ symbols: any[] }>('/api/v1/engine/status'),

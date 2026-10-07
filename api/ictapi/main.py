@@ -280,6 +280,26 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
         from . import news_feed
         return {"items": await run_in_threadpool(news_feed.latest)}
 
+    @app.get("/api/v1/screener")
+    def screener(a: dict = Depends(logged_in)):
+        """ICT screener: one row per symbol the engine watches (bias, premium / discount, PDH / PDL
+        sweeps, nearest FVGs, killzone) plus the day's model setups the plan may see."""
+        f = a.get("features", {})
+        allowed = f.get("models") or []
+        delay = f.get("signal_delay_minutes") or 0
+        now = pd.Timestamp.now(tz="UTC")
+        end = now - pd.Timedelta(minutes=delay)
+        rows = store.screener()
+        for r in rows:
+            sigs = []
+            if f.get("signals"):
+                ids = [m for m in MODELS if allowed == "all" or m in allowed]
+                sigs = store.signals(r["symbol"], now - pd.Timedelta(hours=24), end, ids, bias_filter=True) if ids else []
+            r["setups"] = [{"model_id": s.get("model_id"), "direction": s.get("direction"), "grade": s.get("grade"),
+                            "created_time": str(s.get("created_time")), "entry": s.get("entry")} for s in sigs[-5:]][::-1]
+            r["a_setups"] = sum(1 for s in sigs if str(s.get("grade", "")).startswith("A"))
+        return {"rows": rows}
+
     @app.get("/api/v1/engine/status")
     def engine_status():
         return {"symbols": store.status()}

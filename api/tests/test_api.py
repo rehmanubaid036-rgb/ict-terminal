@@ -191,3 +191,11 @@ def test_news_headlines_are_parsed_merged_and_cached(client, monkeypatch):
     assert items[0]["source"] == "example.com"
     client.get("/api/v1/news")
     assert len(calls) == 1                                                                  # cached
+
+
+def test_screener_rows_come_from_the_store(client, store):
+    store.set_screener("XAUUSD", {"symbol": "XAUUSD", "price": 4000.0, "bias": 1, "zone": "discount", "swept_pdl": True})
+    rows = client.get("/api/v1/screener").json()["rows"]
+    r = next(x for x in rows if x["symbol"] == "XAUUSD")
+    assert (r["bias"], r["zone"], r["swept_pdl"]) == (1, "discount", True)
+    assert "setups" in r and "a_setups" in r
