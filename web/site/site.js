@@ -153,6 +153,38 @@
     if (note) note.textContent = 'Version ' + (version || '?') + (info.size_mb ? ', ' + info.size_mb + ' MB' : '');
   }
 
+  // ---- donations (shown only when the admin turns them on) --------------------------------
+  function showDonations(d) {
+    if (!d || !d.enabled || !$('donate')) return;
+    $('donate').hidden = false;
+    $('donate-title').textContent = d.title || 'Support ICT Terminal';
+    $('donate-text').textContent = d.text || '';
+    $('donate-cur').textContent = d.currency ? '(' + d.currency + ')' : '';
+    $('donate-methods').innerHTML = (d.methods || []).map(function (m) {
+      return '<article class="card"><h3>' + esc(m.name) + '</h3>' + (m.account_title ? '<p>' + esc(m.account_title) + '</p>' : '') +
+        '<p><code>' + esc(m.account_number) + '</code></p>' + (m.details ? '<p class="muted small">' + esc(m.details) + '</p>' : '') +
+        (m.instructions ? '<p class="muted small">' + esc(m.instructions) + '</p>' : '') + '</article>';
+    }).join('');
+    $('donate-method').innerHTML = (d.methods || []).map(function (m) { return '<option value="' + m.id + '">' + esc(m.name) + '</option>'; }).join('');
+    var form = $('donate-form');
+    if (d.amounts && d.amounts.length) form.amount.value = d.amounts[Math.min(1, d.amounts.length - 1)];
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var body = { amount: form.amount.value, method: Number(form.method.value), reference: form.reference.value,
+        name: form.name.value, message: form.message.value, public: form.public.checked, source: 'website' };
+      fetch('/api/v1/donations', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (x) {
+          $('donate-msg').textContent = x.ok ? (x.j.message || 'Thank you!') : (x.j.detail || x.j.error || x.j.message || 'Please check the form.');
+          if (x.ok) form.reset();
+        })
+        .catch(function () { $('donate-msg').textContent = 'Could not send. Please try again.'; });
+    });
+    var link = document.querySelector('.foot-grid a[href="/guide/"]');
+    if (link && !document.querySelector('.foot-grid a[href="#donate"]')) link.insertAdjacentHTML('afterend', '<a href="#donate">Donate</a>');
+  }
+
+  getJSON('/api/v1/donations/info').then(showDonations).catch(function () { /* donations off or server down */ });
   getJSON('/api/v1/models').then(showModels).catch(function () { showModels([]); });
   getJSON('/api/v1/plans').then(showPlans).catch(function () { showPlans(null); });
   getJSON('/downloads/release.json').then(function (r) {

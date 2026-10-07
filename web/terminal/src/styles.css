@@ -947,3 +947,19 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 .copy-to .link { text-align: left; font-size: 13px; }
 .copy-list { display: flex; flex-direction: column; gap: 3px; max-height: 180px; overflow: auto; padding: 4px 0; border-top: 1px solid var(--line); }
 @media (max-width: 760px) { .copy-to { top: auto; bottom: 80px; } }
+
+/* donations */
+.donate-btn { color: #ec4899; gap: 4px; font-weight: 600; }
+.donate-btn span { font-size: 12px; }
+@media (max-width: 760px) { .donate-btn span { display: none; } }
+.donate-modal .modal-body > * + * { margin-top: 8px; }
+.donate-amounts, .donate-methods { display: flex; flex-wrap: wrap; gap: 6px; }
+.donate-amounts button, .donate-methods button { padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line2); background: var(--panel2); color: var(--text); }
+.donate-amounts button.on, .donate-methods button.on { border-color: #ec4899; color: #ec4899; background: rgba(236,72,153,.1); }
+.donate-amounts input { width: 90px; }
+.donate-account { display: flex; flex-direction: column; gap: 4px; padding: 10px; border: 1px dashed var(--line2); border-radius: 10px; }
+.donate-account > div { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.donate-account small { color: var(--muted); min-width: 60px; }
+.donate-account .mono { font-family: ui-monospace, monospace; word-break: break-all; }
+.donate-modal input:not([type=checkbox]) { width: 100%; }
+.donate-done { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }

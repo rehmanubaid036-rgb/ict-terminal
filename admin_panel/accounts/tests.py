@@ -1581,3 +1581,74 @@ class AIAssistantSettingsTests(TestCase):
         self.assertEqual(self.internal().json()["site"], {"provider": "gemini", "model": "", "api_key": "site-key-1234567"})
         self.assertEqual(self.internal(key="wrong").status_code, 403)
         self.assertEqual(self.client.get("/api/v1/ai/settings").status_code, 401)
+
+
+@override_settings(INTERNAL_API_SECRET=SECRET)
+class BulkPlanAndDonationTests(TestCase):
+    """Giving a plan to many users from the admin panel, and the separate donation window."""
+
+    def setUp(self):
+        cache.clear()
+        self.plan = Plan.objects.create(name="Gift", slug="gift", duration_days=30, price=0)
+        self.users = [User.objects.create_user(f"u{i}@example.com", f"u{i}@example.com", PASSWORD) for i in range(3)]
+        self.boss = User.objects.create_superuser("bulkboss", "bulkboss@example.com", PASSWORD)
+        self.client.force_login(self.boss)
+
+    def test_grant_plan_creates_and_extends(self):
+        from . import services
+        from .models import Subscription
+        old = Subscription.objects.create(user=self.users[0], plan=self.plan)
+        before = old.expires_at
+        created, extended = services.grant_plan(self.users, self.plan, days=10, note="gift")
+        self.assertEqual((created, extended), (2, 1))
+        old.refresh_from_db()
+        self.assertGreater(old.expires_at, before)
+        new = Subscription.objects.get(user=self.users[1], plan=self.plan)
+        self.assertAlmostEqual((new.expires_at - timezone.now()).days, 9, delta=1)
+        self.assertIn("gift", new.notes)
+
+    def test_admin_action_selected_users_and_everyone(self):
+        from .models import Subscription
+        url = "/admin/auth/user/"
+        ids = [str(u.pk) for u in self.users[:2]]
+        page = self.client.post(url, {"action": "give_plan", "_selected_action": ids})
+        self.assertContains(page, "Give the plan")
+        self.assertContains(page, "u0@example.com")
+        done = self.client.post(url, {"action": "give_plan", "_selected_action": ids, "apply": "1",
+                                      "plan": self.plan.pk, "days": "", "note": "promo"}, follow=True)
+        self.assertEqual(done.status_code, 200)
+        self.assertEqual(Subscription.objects.filter(plan=self.plan).count(), 2)
+        # the plan list: this plan to every (active) user
+        self.client.post("/admin/accounts/plan/", {"action": "give_to_everyone", "_selected_action": [str(self.plan.pk)],
+                                                   "apply": "1", "plan": self.plan.pk, "days": "7", "note": ""}, follow=True)
+        self.assertEqual(Subscription.objects.filter(plan=self.plan).values("user").distinct().count(), User.objects.filter(is_active=True).count())
+
+    def test_donations_are_off_until_turned_on_and_separate_from_plans(self):
+        from .models import Donation
+        bank = PaymentMethod.objects.create(name="Bank", account_number="123", for_plans=True)
+        jazz = PaymentMethod.objects.create(name="Jazz", account_number="0300", for_plans=False, for_donations=True)
+        info = self.client.get("/api/v1/donations/info").json()
+        self.assertFalse(info["enabled"])
+        self.assertEqual(info["methods"], [])
+        bad = self.client.post("/api/v1/donations", json.dumps({"amount": 5, "method": jazz.pk, "reference": "TX123"}),
+                               content_type="application/json")
+        self.assertEqual(bad.status_code, 400)
+        s = SiteSettings.load()
+        s.donations_enabled = True
+        s.save()
+        info = self.client.get("/api/v1/donations/info").json()
+        self.assertEqual([m["name"] for m in info["methods"]], ["Jazz"])          # only the donation methods
+        self.assertEqual(info["amounts"], [5.0, 10.0, 25.0, 50.0])
+        plans_methods = [m["name"] for m in self.client.get("/api/v1/payments/methods").json()["methods"]]
+        self.assertEqual(plans_methods, ["Bank"])                                   # and plans keep theirs
+        r = self.client.post("/api/v1/donations", json.dumps({"amount": "12.5", "method": jazz.pk, "reference": "TX-998877",
+                                                              "name": "Ali", "public": True}), content_type="application/json")
+        self.assertEqual(r.status_code, 200)
+        d = Donation.objects.get()
+        self.assertEqual((float(d.amount), d.status, d.name, d.public), (12.5, "pending", "Ali", True))
+        self.assertEqual(self.client.post("/api/v1/donations", json.dumps({"amount": 5, "method": bank.pk, "reference": "TX1234"}),
+                                          content_type="application/json").status_code, 400)   # a plan-only method
+        self.client.post("/admin/accounts/donation/", {"action": "mark_received", "_selected_action": [str(d.pk)]}, follow=True)
+        d.refresh_from_db()
+        self.assertEqual(d.status, "received")
+        self.assertIsNotNone(d.received_at)

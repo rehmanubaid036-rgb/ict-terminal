@@ -6,6 +6,7 @@ import { CHART_TYPES, FAVORITE_TFS, INDICATORS, PRICE_ONLY, indicatorDef, LAYOUT
 import { IctPanel, ModelSection } from '../panels/IctPanel'
 import { Screener } from './Screener'
 import { ScriptEditor } from './ScriptEditor'
+import { DonateDialog, useDonations } from './Donate'
 import { scriptIndicatorName, type SavedScript } from '../chart/script'
 import { COMPARE_COLORS, SMT_PARTNER } from '../chart/compare'
 import { Icon } from './icons'
@@ -22,6 +23,8 @@ export function TopBar() {
   const [interval, setInterval] = useState<string | null>(null)
   const [indicators, setIndicators] = useState(false)
   const [screener, setScreener] = useState(false)
+  const donations = useDonations()
+  const [donate, setDonate] = useState(false)
   const refs = { tf: useRef<HTMLButtonElement>(null), type: useRef<HTMLButtonElement>(null), ict: useRef<HTMLButtonElement>(null),
     wolf: useRef<HTMLButtonElement>(null), compare: useRef<HTMLButtonElement>(null), templates: useRef<HTMLButtonElement>(null), layout: useRef<HTMLButtonElement>(null), more: useRef<HTMLButtonElement>(null) }
   const a = t.active
@@ -108,6 +111,7 @@ export function TopBar() {
       </>}
       <button ref={refs.more} className="tb-btn" title="Settings" onClick={() => toggle('more')}><Icon name="gear" /></button>
       <div className="tb-end">
+        {donations?.enabled && <button className="tb-btn donate-btn" title={donations.title} onClick={() => setDonate(true)}>❤<span>Donate</span></button>}
         {edge.right && <button className="tb-arrow" aria-label="Scroll the menu right" onClick={() => nudge(1)}>›</button>}
         <button className="account-pill" onClick={() => t.openAccount('plan')} title={`${t.access.email ?? ''} · expires ${t.access.expiry ?? '-'}`}>
           <Icon name="user" size={15} />{!phone && <span>{t.access.plan ?? 'Account'}</span>}
@@ -164,6 +168,7 @@ export function TopBar() {
       {interval !== null && <IntervalBox initial={interval} onClose={() => setInterval(null)} onPick={l => { t.setTf(l); setInterval(null) }} />}
       {indicators && <IndicatorsDialog onClose={() => setIndicators(false)} />}
       {screener && <Screener onClose={() => setScreener(false)} />}
+      {donate && donations && <DonateDialog info={donations} onClose={() => setDonate(false)} />}
     </header>
   )
 }

@@ -10,7 +10,7 @@ from django.utils import timezone
 from django.utils.html import format_html, format_html_join
 
 from .models import (Ad, ApiToken, ChatMessage, ChatProfile, ChatReport, CryptoOrder, CryptoTransfer, CryptoWallet, CryptoWalletChange, CustomerProfile, Device, DeviceClaim, EaConnection, LoginEvent, Payment, PaymentMethod,
-                     AIPrefs, AlertDelivery, AlertPrefs, Idea, IdeaComment, Plan, SiteSettings, SocialAccount, Subscription, TrialGrant)
+                     AIPrefs, AlertDelivery, AlertPrefs, Donation, Idea, IdeaComment, Plan, SiteSettings, SocialAccount, Subscription, TrialGrant)
 from . import services
 from .services import active_subscriptions
 
@@ -75,6 +75,10 @@ class SiteSettingsAdmin(admin.ModelAdmin):
                                       "phone numbers or emails are blocked by themselves; 3 blocked messages mute "
                                       "the account for 30 minutes; 3 reports hide a message. Moderate under "
                                       "Community messages / members."}),
+        ("Donations", {
+            "fields": ("donations_enabled", "donation_title", "donation_text", ("donation_amounts", "donation_currency")),
+            "description": "Separate from plans. Choose which payment methods are shown for donations under "
+                           "Payment methods ('Show for donations'). Reported donations are listed under Donations."}),
         ("AI chart assistant", {
             "fields": (("ai_provider", "ai_model"), "ai_api_key"),
             "description": "Optional. The assistant always answers from the engine's data; with a provider and key the "
@@ -124,6 +128,14 @@ class PlanAdmin(admin.ModelAdmin):
     list_filter = ("is_active", "is_public", "is_vip")
     search_fields = ("name", "slug")
     prepopulated_fields = {"slug": ("name",)}
+    actions = ["give_to_everyone"]
+
+    @admin.action(description="Give this plan to EVERY user…")
+    def give_to_everyone(self, request, queryset):
+        if queryset.count() != 1:
+            self.message_user(request, "Select exactly one plan.", messages.WARNING)
+            return None
+        return grant_plan_view(self, request, User.objects.all(), plan=queryset.first())
     fieldsets = (
         (None, {"fields": ("name", "slug", "description", ("price", "currency"), "duration_days")}),
         ("Signals & charts", {"fields": ("is_vip", ("can_view_signals", "signal_delay_minutes"), "allowed_models",
@@ -266,12 +278,12 @@ class SubscriptionAdmin(admin.ModelAdmin):
 # ── Payments ─────────────────────────────────────────────────────────────────
 @admin.register(PaymentMethod)
 class PaymentMethodAdmin(admin.ModelAdmin):
-    list_display = ("name", "kind", "account_title", "account_number", "currency", "is_active", "sort_order")
-    list_editable = ("is_active", "sort_order")
+    list_display = ("name", "kind", "account_title", "account_number", "currency", "is_active", "for_plans", "for_donations", "sort_order")
+    list_editable = ("is_active", "for_plans", "for_donations", "sort_order")
     list_filter = ("kind", "is_active")
     search_fields = ("name", "account_title", "account_number")
     fieldsets = (
-        (None, {"fields": ("name", "kind", "is_active", "sort_order")}),
+        (None, {"fields": ("name", "kind", "is_active", ("for_plans", "for_donations"), "sort_order")}),
         ("Account shown to customers", {"fields": ("account_title", "account_number", "details", "currency", "instructions")}),
     )
 
@@ -479,7 +491,11 @@ class UserAdmin(BaseUserAdmin):
     inlines = [ProfileInline, UserSubscriptionInline, UserSocialInline, UserDeviceInline]
     list_display = ("email", "full_name", "current_plans", "is_active", "is_staff", "date_joined", "last_login")
     search_fields = ("email", "username", "first_name", "last_name", "profile__phone")
-    actions = ["reset_devices"]
+    actions = ["reset_devices", "give_plan"]
+
+    @admin.action(description="Give a plan… (to the selected users)")
+    def give_plan(self, request, queryset):
+        return grant_plan_view(self, request, queryset)
 
     @admin.display(description="Name")
     def full_name(self, obj):
@@ -956,3 +972,55 @@ class AIPrefsAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+
+
+# ── Giving a plan to many users at once ─────────────────────────────────────
+class GrantPlanForm(forms.Form):
+    plan = forms.ModelChoiceField(queryset=Plan.objects.all().order_by("name"))
+    days = forms.IntegerField(required=False, min_value=1, max_value=3650,
+                              help_text="Empty = the plan's own duration (lifetime plans never expire).")
+    note = forms.CharField(required=False, max_length=200, help_text="Saved on each subscription, e.g. 'Ramadan gift'.")
+
+
+def grant_plan_view(model_admin, request, users, plan=None):
+    """The confirmation page of 'Give a plan': choose the plan and the days, then apply to `users`."""
+    from django.template.response import TemplateResponse
+    users = users.filter(is_active=True)
+    if "apply" in request.POST:
+        form = GrantPlanForm(request.POST)
+        if form.is_valid():
+            created, extended = services.grant_plan(list(users), form.cleaned_data["plan"], form.cleaned_data["days"],
+                                                    form.cleaned_data["note"])
+            model_admin.message_user(request, f"{form.cleaned_data['plan'].name}: {created} new subscription(s), "
+                                              f"{extended} extended.", messages.SUCCESS)
+            return None
+    else:
+        form = GrantPlanForm(initial={"plan": plan})
+    return TemplateResponse(request, "admin/grant_plan.html", {
+        **model_admin.admin_site.each_context(request), "title": "Give a plan", "form": form, "users": users[:30],
+        "count": users.count(), "action": request.POST.get("action", ""), "selected": request.POST.getlist("_selected_action"),
+        "select_across": request.POST.get("select_across", "0"), "opts": model_admin.model._meta})
+
+
+@admin.register(Donation)
+class DonationAdmin(admin.ModelAdmin):
+    list_display = ("created_at", "amount", "currency", "method", "reference", "donor", "status", "public")
+    list_filter = ("status", "method", "public")
+    search_fields = ("reference", "name", "email", "user__email", "message")
+    readonly_fields = ("created_at", "received_at", "user", "source")
+    actions = ["mark_received", "mark_rejected"]
+
+    @admin.display(description="Donor")
+    def donor(self, obj):
+        return obj.name or obj.email or (obj.user.email if obj.user else "anonymous")
+
+    @admin.action(description="Mark as received")
+    def mark_received(self, request, queryset):
+        n = queryset.exclude(status="received").update(status="received", received_at=timezone.now())
+        self.message_user(request, f"{n} donation(s) marked received.", messages.SUCCESS)
+
+    @admin.action(description="Mark as not received")
+    def mark_rejected(self, request, queryset):
+        n = queryset.update(status="rejected")
+        self.message_user(request, f"{n} donation(s) marked not received.", messages.WARNING)

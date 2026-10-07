@@ -1,0 +1,16 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<div class="card"><div class="card-body">
+  <p>Give a plan to <b>{{ count }}</b> user{{ count|pluralize }}{% if count > 30 %} (first 30 shown){% endif %}:</p>
+  <ul>{% for u in users %}<li>{{ u.email|default:u.username }}</li>{% endfor %}</ul>
+  <p class="text-muted">A user who already has this plan gets it extended; everyone else gets a new subscription that starts now.</p>
+  <form method="post">{% csrf_token %}
+    {{ form.as_p }}
+    <input type="hidden" name="action" value="{{ action }}">
+    <input type="hidden" name="select_across" value="{{ select_across }}">
+    {% for pk in selected %}<input type="hidden" name="_selected_action" value="{{ pk }}">{% endfor %}
+    <button type="submit" name="apply" value="1" class="btn btn-success">Give the plan</button>
+    <a href="" class="btn btn-secondary">Cancel</a>
+  </form>
+</div></div>
+{% endblock %}

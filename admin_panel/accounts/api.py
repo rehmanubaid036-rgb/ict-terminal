@@ -439,8 +439,31 @@ def copy_token(request):
 @method("GET")
 def payment_methods(request):
     """Public: where to send money, plus the support WhatsApp (app, desktop, website)."""
-    return ok(methods=[m.as_dict() for m in PaymentMethod.objects.filter(is_active=True)],
+    return ok(methods=[m.as_dict() for m in PaymentMethod.objects.filter(is_active=True, for_plans=True)],
               support={"whatsapp": settings.SUPPORT_WHATSAPP, "email": settings.SUPPORT_EMAIL})
+
+
+@method("GET")
+def donations_info(request):
+    """Public: is the Donate window on, its text, suggested amounts and where to send."""
+    return ok(**services.donation_info())
+
+
+@method("POST")
+def donation_submit(request):
+    """Anyone (logged in or not) reports a donation: {amount, method, reference, name, email, message, public}."""
+    from django.core.cache import cache
+    ip = client_ip(request) or "?"
+    key = f"donate-{ip}"
+    if cache.get(key, 0) >= 5:
+        return error("Too many reports from here. Please try again in an hour.", 429)
+    token = services.resolve_token(bearer(request))
+    d, problem = services.submit_donation(body(request), user=token.user if token else None,
+                                          source=str(body(request).get("source", ""))[:12])
+    if problem:
+        return error(problem)
+    cache.set(key, cache.get(key, 0) + 1, 3600)
+    return ok(id=d.pk, message="Thank you! We will confirm it as soon as it arrives.")
 
 
 @method("POST")

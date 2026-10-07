@@ -358,3 +358,12 @@ body.cm-lock { overflow: hidden; }
   .cm-modal { padding: 0; }
   .cm-sheet { max-height: 100dvh; border-radius: 0; }
 }
+
+/* donations (shown when the admin turns them on) */
+.donate-form { margin-top: 22px; display: flex; flex-direction: column; gap: 12px; max-width: 900px; }
+.donate-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.donate-form label { display: flex; flex-direction: column; gap: 6px; font-size: 14px; color: var(--soft); }
+.donate-form input:not([type=checkbox]), .donate-form select { padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line2); background: var(--panel); color: var(--text); font: inherit; }
+.donate-form .donate-check { flex-direction: row; align-items: center; }
+.donate-form .btn { align-self: flex-start; }
+#donate code { word-break: break-all; }

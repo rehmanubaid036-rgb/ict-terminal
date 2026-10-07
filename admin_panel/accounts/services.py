@@ -711,3 +711,75 @@ def ads_for(user, placement, base_url=""):
     return [{"id": a.pk, "headline": a.headline, "text": a.text, "button_text": a.button_text,
              "image": f"{base_url}/api/v1/ads/{a.pk}/image" if a.image else "",
              "click_url": f"{base_url}/api/v1/ads/{a.pk}/click"} for a in ads]
+
+
+
+# ── Giving plans from the admin panel ───────────────────────────────────────
+def grant_plan(users, plan, days=None, note=""):
+    """Gives `plan` to every user: an existing subscription of that plan is extended (by `days`, else the
+    plan's duration; a lifetime plan is just reactivated), otherwise a new one starts now.
+    Returns (created, extended)."""
+    from datetime import timedelta
+    created = extended = 0
+    note = (note or "").strip()[:200] or "Given by an admin."
+    for user in users:
+        with transaction.atomic():
+            sub = Subscription.objects.select_for_update().filter(user=user, plan=plan).order_by("-expires_at").first()
+            if sub is not None:
+                length = days or plan.duration_days
+                if length:
+                    sub.extend(length)
+                else:
+                    sub.status = Subscription.STATUS_ACTIVE
+                sub.notes = ((sub.notes or "") + f"\n{note}").strip()[:1000]
+                sub.save()
+                extended += 1
+            else:
+                kw = {"expires_at": timezone.now() + timedelta(days=days)} if days else {}
+                Subscription.objects.create(user=user, plan=plan, notes=note, **kw)
+                created += 1
+    return created, extended
+
+
+# ── Donations ───────────────────────────────────────────────────────────────
+def donation_info():
+    site = SiteSettings.load()
+    amounts = []
+    for x in (site.donation_amounts or "").split(","):
+        try:
+            v = float(x.strip())
+            if v > 0:
+                amounts.append(v)
+        except ValueError:
+            pass
+    return {"enabled": site.donations_enabled, "title": site.donation_title, "text": site.donation_text,
+            "amounts": amounts[:8], "currency": site.donation_currency,
+            "methods": [m.as_dict() for m in PaymentMethod.objects.filter(is_active=True, for_donations=True)]
+            if site.donations_enabled else []}
+
+
+def submit_donation(data, user=None, source=""):
+    """Records a reported donation (pending until the admin marks it received). Returns (donation, problem)."""
+    from decimal import Decimal, InvalidOperation
+    from .models import Donation
+    site = SiteSettings.load()
+    if not site.donations_enabled:
+        return None, "Donations are not open right now."
+    try:
+        amount = Decimal(str(data.get("amount", "")).strip())
+    except (InvalidOperation, ValueError):
+        return None, "Enter the amount you sent."
+    if not (Decimal("0.5") <= amount <= Decimal("1000000")):
+        return None, "Enter the amount you sent."
+    method = PaymentMethod.objects.filter(pk=data.get("method"), is_active=True, for_donations=True).first()
+    if method is None:
+        return None, "Choose how you sent it."
+    reference = str(data.get("reference", "")).strip()[:120]
+    if len(reference) < 4:
+        return None, "Enter the transaction ID (or the sender name / number) so we can find it."
+    email = str(data.get("email", "") or (user.email if user else "")).strip()[:254]
+    d = Donation.objects.create(user=user, name=str(data.get("name", "")).strip()[:80], email=email, amount=amount,
+                                currency=(site.donation_currency or "USD")[:3], method=method,   # the currency the amounts are shown in
+                                reference=reference, message=str(data.get("message", "")).strip()[:300],
+                                public=bool(data.get("public")), source=str(source or "")[:12])
+    return d, ""

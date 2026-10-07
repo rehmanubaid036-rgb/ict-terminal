@@ -48,6 +48,7 @@ FORWARD = {
     ("GET", "community/ideas"), ("POST", "community/ideas"),
     ("GET", "alerts/settings"), ("POST", "alerts/settings"), ("POST", "alerts/test"),
     ("GET", "ai/settings"), ("POST", "ai/settings"),
+    ("GET", "donations/info"), ("POST", "donations"),
 }
 # a customer's own crypto order: status, cancel, transaction hash (the panel checks ownership)
 FORWARD_PATTERNS = [("GET", re.compile(r"payments/crypto/order/\d+")),

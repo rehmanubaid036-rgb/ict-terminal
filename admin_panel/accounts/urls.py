@@ -17,6 +17,8 @@ urlpatterns = [
     path("copy/settings", api.copy_settings),
     path("copy/token", api.copy_token),
     path("payments/methods", api.payment_methods),
+    path("donations/info", api.donations_info),
+    path("donations", api.donation_submit),
     path("payments/submit", api.payment_submit),
     path("payments/mine", api.payments_mine),
     path("community/status", api.community_status),

@@ -98,6 +98,7 @@ export interface SymbolInfoApi { ticker: string; name: string; description: stri
 export interface SearchItem { symbol: string; full_name: string; description: string; exchange: string; ticker: string; type: string }
 export interface Bars { s: string; t?: number[]; o?: number[]; h?: number[]; l?: number[]; c?: number[]; v?: number[] }
 export interface ModelInfo { id: string; name: string; source: string; allowed: boolean; default_on?: boolean }
+export interface DonationInfo { enabled: boolean; title: string; text: string; amounts: number[]; currency: string; methods: PaymentMethod[] }
 export interface AskAnswer { text: string; intent: string; data: Record<string, any>; llm: boolean; llm_by?: string }
 export interface AiSettings { enabled: boolean; provider: string; model: string; has_key: boolean; providers: { id: string; name: string }[] }
 export interface Quote { symbol: string; price: number | null; change: number | null; change_pct: number | null; time?: number; high?: number; low?: number; volume?: number | null }
@@ -231,6 +232,9 @@ export const api = {
   defaultTemplate: (name: string) => post(`/api/v1/templates/${encodeURIComponent(name)}/default`),
   deleteTemplate: (name: string) => del(`/api/v1/templates/${encodeURIComponent(name)}`),
 
+  donationInfo: () => get<DonationInfo>('/api/v1/donations/info'),
+  donate: (d: { amount: string; method: number | null; reference: string; name: string; message: string; public: boolean; source: string }) =>
+    post<{ id: number; message: string }>('/api/v1/donations', d),
   plans: () => get<{ plans: Plan[]; support?: { whatsapp?: string; email?: string } }>('/api/v1/plans'),
   paymentMethods: () => get<{ methods: PaymentMethod[]; support?: { whatsapp?: string; email?: string } }>('/api/v1/payments/methods'),
   submitPayment: (plan: string, method: number, reference: string, note: string) =>

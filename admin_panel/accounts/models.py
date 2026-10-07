@@ -206,6 +206,14 @@ class SiteSettings(models.Model):
     ai_model = models.CharField("AI model", max_length=80, blank=True,
                                 help_text="Empty = the provider's default (e.g. claude-haiku-4-5, gpt-4o-mini, gemini-2.0-flash).")
     ai_api_key = models.CharField("AI API key", max_length=300, blank=True)
+    donations_enabled = models.BooleanField("Donations on", default=False,
+                                            help_text="Shows a Donate button in the terminal and a Support section on the website.")
+    donation_title = models.CharField(max_length=80, default="Support ICT Terminal")
+    donation_text = models.TextField(blank=True, default="ICT Terminal is built by a small team. If it helps your trading, "
+                                     "you can support its development with a donation of any size. Thank you!")
+    donation_amounts = models.CharField("Suggested amounts", max_length=80, default="5, 10, 25, 50",
+                                        help_text="Comma separated, in the donation currency")
+    donation_currency = models.CharField(max_length=3, default="USD")
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -677,6 +685,9 @@ class PaymentMethod(models.Model):
                                           "Customers see the plan price converted to it. Empty = the customer's own currency.")
     instructions = models.TextField(blank=True, help_text="Shown under the account, e.g. exchange rate or notes")
     is_active = models.BooleanField(default=True)
+    for_plans = models.BooleanField("Show for plan payments", default=True)
+    for_donations = models.BooleanField("Show for donations", default=False,
+                                        help_text="Listed in the Donate window (terminal and website) when donations are on")
     sort_order = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -961,3 +972,28 @@ class AIPrefs(models.Model):
 
     def __str__(self):
         return f"{self.user} · {self.provider}"
+
+
+class Donation(models.Model):
+    """A donation someone reported (they send the money, the admin marks it received). Not a plan payment."""
+    STATUS = [("pending", "Waiting for check"), ("received", "Received"), ("rejected", "Not received")]
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="donations")
+    name = models.CharField(max_length=80, blank=True)
+    email = models.EmailField(blank=True)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    currency = models.CharField(max_length=3, default="USD")
+    method = models.ForeignKey("PaymentMethod", null=True, blank=True, on_delete=models.SET_NULL, related_name="donations")
+    reference = models.CharField("Transaction ID", max_length=120, blank=True)
+    message = models.CharField(max_length=300, blank=True)
+    public = models.BooleanField(default=False, help_text="The donor agreed to show their name as a supporter")
+    status = models.CharField(max_length=10, choices=STATUS, default="pending")
+    source = models.CharField(max_length=12, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    received_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.amount} {self.currency} · {self.name or self.email or self.user or 'anonymous'}"
