@@ -149,3 +149,32 @@ export function allIds() { return [...entries.keys()] }
   [...entries.values()].flatMap(e => e.chart.getOverlays({ groupId: DRAWINGS }).map(o => ({ name: o.name, step: o.currentStep, total: o.totalStep, pts: o.points.length, visible: o.visible, ext: o.extendData, p0: o.points[0] })))
 ;(window as unknown as { __ictIndicators: () => unknown[] }).__ictIndicators = () =>
   [...entries.values()].flatMap(e => e.chart.getIndicators().map(i => ({ name: i.name, pane: i.paneId, series: ((i.extendData as any)?.series ?? []).map((s: any) => [s.ticker, Object.keys(s.close ?? {}).length]) })))
+// the chart object itself, for the browser tests that create every tool / indicator once
+;(window as unknown as { __ictChart: (id?: number) => unknown }).__ictChart = (id?: number) =>
+  (id === undefined ? [...entries.values()][0] : entries.get(id))?.chart ?? null
+
+/** Copies one drawing to other charts (same times and prices, same look). Returns how many charts got it. */
+export function copyDrawing(fromId: number, overlayId: string, toIds: number[]): number {
+  const src = entries.get(fromId)?.chart.getOverlays({ id: overlayId })[0]
+  if (!src) return 0
+  let n = 0
+  for (const id of toIds) {
+    const e = entries.get(id)
+    if (!e || id === fromId) continue
+    snapshot(id)
+    const made = e.chart.createOverlay({
+      name: src.name, groupId: DRAWINGS, lock: src.lock, visible: src.visible,
+      points: src.points.map(p => ({ timestamp: p.timestamp, value: p.value })),
+      extendData: src.extendData, styles: src.styles ?? undefined, ...hooks(id),
+    } as OverlayCreate)
+    if (made) n++
+  }
+  if (n) notify()
+  for (const id of toIds) if (entries.get(id)?.tf) applyTfVisibility(id)
+  return n
+}
+
+/** The mounted charts (for "copy to"): id and symbol / interval. */
+export function chartList(): { id: number; ticker: string; tf: string }[] {
+  return [...entries.entries()].map(([id, e]) => ({ id, ticker: e.feed.ticker, tf: e.tf ?? '' }))
+}

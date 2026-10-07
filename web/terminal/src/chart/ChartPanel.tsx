@@ -13,8 +13,9 @@ import { EVENTS, loadCalendar, relTime, eventAt } from './events'
 import { COMPARE, COMPARE_COLORS, loadCompare } from './compare'
 import { closeSignal, isClosed } from './closed'
 import type { CalendarEvent } from '../api'
-import { DRAWINGS, register, unregister, getEntry, snapshot, notify, drawingHooks, removeSelected, onRegistryChange, applyTfVisibility } from './registry'
+import { DRAWINGS, register, unregister, getEntry, snapshot, notify, drawingHooks, removeSelected, onRegistryChange, applyTfVisibility, copyDrawing, chartList } from './registry'
 import { DrawingDialog } from '../ui/DrawingDialog'
+import { toast } from '../ui/common'
 import { paperModify, paperOrder, usePaper } from '../panels/Paper'
 import { registerScript, type SavedScript } from './script'
 import { CHART_STYLE } from './charttypes'
@@ -64,6 +65,8 @@ export function ChartPanel(p: ChartPanelProps) {
   const [bias, setBias] = useState<Bias | null>(null)
   const [biasOpen, setBiasOpen] = useState(false)
   const [selected, setSelected] = useState<Overlay | null>(null)
+  const [copyOpen, setCopyOpen] = useState(false)
+  useEffect(() => setCopyOpen(false), [selected?.id])
   const [replayTick, setReplayTick] = useState(0)
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [tip, setTip] = useState<{ x: number; e: CalendarEvent } | null>(null)
@@ -615,15 +618,41 @@ export function ChartPanel(p: ChartPanelProps) {
           p.onAlertShape({ kind: 'box', condition: 'enter', price: top, note: '', box: { top, bottom } })
         }}>⏰</button>}
         {isHorizontal && <button title="Add an alert at this price" onClick={() => { const v = selected?.points[0]?.value; if (v !== undefined) p.onAlert(v) }}>⏰</button>}
+        {chartList().length > 1 && <button title="Copy to other charts" className={copyOpen ? 'on' : ''} onClick={() => setCopyOpen(o => !o)}>⧉</button>}
         <button title="Settings (double-click the drawing)" onClick={() => { if (selected) setProps(selected.id) }}>⚙</button>
         <button title={selected?.lock ? 'Unlock' : 'Lock'} onClick={() => { if (selected) { chartRef.current?.overrideOverlay({ id: selected.id, lock: !selected.lock }); notify() } }}>{selected?.lock ? '🔒' : '🔓'}</button>
         <button title="Delete (Del)" className="danger" onClick={() => removeSelected(conf.id)}>🗑</button>
       </div>
+      {copyOpen && selected && <CopyTo fromId={conf.id} ticker={conf.ticker} onCopy={ids => {
+        const n = copyDrawing(conf.id, selected.id, ids)
+        setCopyOpen(false)
+        toast(n ? `Copied to ${n} chart${n > 1 ? 's' : ''}.` : 'Nothing copied.')
+      }} />}
     </div>
   )
 }
 
 const BIAS_NAMES: Record<string, string> = { daily_structure: 'Daily structure', h4_structure: '4H structure', ipda_zone: 'IPDA 20D zone', pd_reaction: 'PDH/PDL reaction', mo_zone: 'Midnight Open' }
+
+/** "Copy to other charts" for a drawing: every chart, the charts with the same symbol, or chosen ones. */
+function CopyTo({ fromId, ticker, onCopy }: { fromId: number; ticker: string; onCopy: (ids: number[]) => void }) {
+  const others = chartList().filter(c => c.id !== fromId)
+  const same = others.filter(c => c.ticker === ticker)
+  const [pick, setPick] = useState<number[]>(() => same.map(c => c.id))
+  return (
+    <div className="copy-to" onMouseDown={e => e.stopPropagation()}>
+      <div className="copy-head">Copy this drawing to</div>
+      <button className="link" onClick={() => onCopy(others.map(c => c.id))}>All other charts ({others.length})</button>
+      {same.length > 0 && <button className="link" onClick={() => onCopy(same.map(c => c.id))}>Charts with {ticker.split(':')[1]} ({same.length})</button>}
+      <div className="copy-list">{others.map((c, k) => (
+        <label key={c.id} className="mini-check"><input type="checkbox" checked={pick.includes(c.id)}
+          onChange={() => setPick(p => (p.includes(c.id) ? p.filter(x => x !== c.id) : [...p, c.id]))} /> {k + 1}. {c.ticker.split(':')[1]} {c.tf}</label>
+      ))}</div>
+      <button className="btn primary sm" disabled={!pick.length} onClick={() => onCopy(pick)}>Copy to {pick.length} chart{pick.length === 1 ? '' : 's'}</button>
+      {others.some(c => c.ticker !== ticker) && <div className="note">On another symbol the drawing keeps the same prices and times.</div>}
+    </div>
+  )
+}
 
 /** The small menu of a model trade clicked on the chart. */
 function SignalPop({ s, x, y, onClose, onShow, onRemove }: { s: Signal; x: number; y: number; onClose: () => void; onShow: () => void; onRemove: () => void }) {
