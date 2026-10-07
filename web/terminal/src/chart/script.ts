@@ -7,11 +7,18 @@
 //   plot(close > open, "Up")   comparisons give 1 / 0
 //
 // Series: open high low close volume hl2 hlc3 ohlc4.  x[1] = the value one bar ago.
-// Functions: sma ema rma wma rsi atr highest lowest stdev change abs max min.
+// Functions: sma ema rma wma rsi atr highest lowest stdev change abs max min crossover crossunder.
+// Logic: and, or (1 / 0).
+//
+// Strategy (Strategy test in the editor):
+//   long(cond)  short(cond)  exit(cond)   enter / leave at the next bar's open when cond is true
+//   @stop 1.5      stop loss = 1.5 x ATR(14) from the entry      @target 2   take profit = 2 R
+//   @maxbars 50    close a trade after 50 bars
 import { registerIndicator, type KLineData } from 'klinecharts'
 
 type Series = number[]
-export interface ScriptInfo { plots: string[]; pane: boolean }
+export interface StrategyConf { long: boolean; short: boolean; exit: boolean; stop: number; target: number; maxbars: number }
+export interface ScriptInfo { plots: string[]; pane: boolean; strategy: StrategyConf | null }
 
 // ---- tokens --------------------------------------------------------------------------------------
 type Tok = { k: 'num' | 'id' | 'str' | 'op'; v: string }
@@ -43,6 +50,8 @@ function parseExpr(toks: Tok[]): Node {
     if (!t || (v && t.v !== v)) throw new Error(v ? `Expected "${v}".` : 'Unexpected end of line.')
     return t
   }
+  const lor = (): Node => { let a = land(); while (peek() && peek().v === 'or') { eat(); a = { t: 'bin', op: 'or', a, b: land() } } return a }
+  const land = (): Node => { let a = cmp(); while (peek() && peek().v === 'and') { eat(); a = { t: 'bin', op: 'and', a, b: cmp() } } return a }
   const cmp = (): Node => { let a = add(); while (peek() && ['>', '<', '>=', '<=', '==', '!='].includes(peek().v)) { const op = eat().v; a = { t: 'bin', op, a, b: add() } } return a }
   const add = (): Node => { let a = mul(); while (peek() && (peek().v === '+' || peek().v === '-')) { const op = eat().v; a = { t: 'bin', op, a, b: mul() } } return a }
   const mul = (): Node => { let a = un(); while (peek() && (peek().v === '*' || peek().v === '/')) { const op = eat().v; a = { t: 'bin', op, a, b: un() } } return a }
@@ -55,12 +64,12 @@ function parseExpr(toks: Tok[]): Node {
   const atom = (): Node => {
     const t = eat()
     if (t.k === 'num') return { t: 'num', v: Number(t.v) }
-    if (t.v === '(') { const e = cmp(); eat(')'); return e }
+    if (t.v === '(') { const e = lor(); eat(')'); return e }
     if (t.k === 'id') {
       if (peek()?.v === '(') {
         eat('(')
         const args: Node[] = []
-        if (peek()?.v !== ')') { args.push(cmp()); while (peek()?.v === ',') { eat(','); args.push(cmp()) } }
+        if (peek()?.v !== ')') { args.push(lor()); while (peek()?.v === ',') { eat(','); args.push(lor()) } }
         eat(')')
         return { t: 'call', f: t.v, args }
       }
@@ -68,7 +77,7 @@ function parseExpr(toks: Tok[]): Node {
     }
     throw new Error(`Unexpected "${t.v}".`)
   }
-  const e = cmp()
+  const e = lor()
   if (p < toks.length) throw new Error(`Unexpected "${toks[p].v}".`)
   return e
 }
@@ -92,14 +101,19 @@ function rsi(s: Series, n: number): Series {
 }
 const stdev = (s: Series, n: number) => win(s, n, w => { const m = w.reduce((a, b) => a + b, 0) / n; return Math.sqrt(w.reduce((a, b) => a + (b - m) ** 2, 0) / n) })
 
-export function compile(src: string): { run: (bars: KLineData[]) => Series[]; info: ScriptInfo } {
+export function compile(src: string): { run: (bars: KLineData[]) => Series[]; info: ScriptInfo; runSignals: (bars: KLineData[]) => Record<'long' | 'short' | 'exit', Series> } {
   const lines = src.split('\n').map(l => l.replace(/\/\/.*$/, '').trim()).filter(Boolean)
-  const steps: ({ name: string; e: Node } | { plot: Node; title: string })[] = []
-  const info: ScriptInfo = { plots: [], pane: false }
+  const steps: ({ name: string; e: Node } | { plot: Node; title: string } | { sig: 'long' | 'short' | 'exit'; e: Node })[] = []
+  const info: ScriptInfo = { plots: [], pane: false, strategy: null }
+  const strat = (): StrategyConf => (info.strategy ??= { long: false, short: false, exit: false, stop: 1.5, target: 2, maxbars: 0 })
   lines.forEach((line, k) => {
     try {
       if (line === '@pane') { info.pane = true; return }
       if (line === '@overlay') { info.pane = false; return }
+      const set = /^@(stop|target|maxbars)\s+([0-9.]+)$/.exec(line)
+      if (set) { const v = Number(set[2]); if (!(v >= 0)) throw new Error(`@${set[1]} needs a number.`); strat()[set[1] as 'stop' | 'target' | 'maxbars'] = v; return }
+      const sig = /^(long|short|exit)\s*\((.*)\)$/.exec(line)
+      if (sig) { const k = sig[1] as 'long' | 'short' | 'exit'; strat()[k] = true; steps.push({ sig: k, e: parseExpr(lex(sig[2])) }); return }
       const toks = lex(line)
       if (toks[0]?.v === 'plot' && toks[1]?.v === '(') {
         // plot(expr, "title")
@@ -119,13 +133,15 @@ export function compile(src: string): { run: (bars: KLineData[]) => Series[]; in
         return
       }
       if (toks[0]?.k === 'id' && toks[1]?.v === '=') { steps.push({ name: toks[0].v, e: parseExpr(toks.slice(2)) }); return }
-      throw new Error('Write "name = expression" or "plot(expression, \\"title\\")".')
+      throw new Error('Write "name = expression", "plot(expression, \\"title\\")" or long(...) / short(...) / exit(...).')
     } catch (e) {
       throw new Error(`Line ${k + 1}: ${(e as Error).message}`)
     }
   })
-  if (!info.plots.length) throw new Error('Add at least one plot(...).')
+  if (!info.plots.length && !info.strategy) throw new Error('Add at least one plot(...) or a strategy line long(...) / short(...).')
+  if (info.strategy && !info.strategy.long && !info.strategy.short) throw new Error('A strategy needs long(...) or short(...).')
 
+  const signals: Record<'long' | 'short' | 'exit', Series> = { long: [], short: [], exit: [] }
   const run = (bars: KLineData[]): Series[] => {
     const n = bars.length
     const vars: Record<string, Series> = {
@@ -147,7 +163,8 @@ export function compile(src: string): { run: (bars: KLineData[]) => Series[]; in
             switch (e.op) {
               case '+': return x + y; case '-': return x - y; case '*': return x * y; case '/': return y === 0 ? NaN : x / y
               case '>': return x > y ? 1 : 0; case '<': return x < y ? 1 : 0; case '>=': return x >= y ? 1 : 0; case '<=': return x <= y ? 1 : 0
-              case '==': return x === y ? 1 : 0; default: return x !== y ? 1 : 0
+              case '==': return x === y ? 1 : 0; case 'and': return x && y ? 1 : 0; case 'or': return x || y ? 1 : 0
+              default: return x !== y ? 1 : 0
             }
           }
           if (typeof a === 'number' && typeof b === 'number') return f(a, b)
@@ -173,6 +190,10 @@ export function compile(src: string): { run: (bars: KLineData[]) => Series[]; in
               return rma(tr, k)
             }
             case 'abs': { const a = args[0]; return typeof a === 'number' ? Math.abs(a) : a.map(Math.abs) }
+            case 'crossover': case 'crossunder': {
+              const A = ser(args[0]), B = ser(args[1] ?? 0), up = e.f === 'crossover'
+              return A.map((x, i) => (i && (up ? x > B[i] && A[i - 1] <= B[i - 1] : x < B[i] && A[i - 1] >= B[i - 1]) ? 1 : 0))
+            }
             case 'max': case 'min': {
               const A = ser(args[0]), B = ser(args[1] ?? 0), fn = e.f === 'max' ? Math.max : Math.min
               return A.map((x, i) => fn(x, B[i]))
@@ -183,13 +204,64 @@ export function compile(src: string): { run: (bars: KLineData[]) => Series[]; in
       }
     }
     const plots: Series[] = []
+    signals.long = []; signals.short = []; signals.exit = []
     for (const s of steps) {
       if ('plot' in s) plots.push(ser(ev(s.plot)))
+      else if ('sig' in s) signals[s.sig] = ser(ev(s.e))
       else vars[s.name] = ser(ev(s.e))
     }
     return plots
   }
-  return { run, info }
+  /** The strategy's entry / exit series for these bars (empty series when the script has none). */
+  const runSignals = (bars: KLineData[]) => { run(bars); return { ...signals } }
+  return { run, info, runSignals }
+}
+
+// ---- strategy tester ---------------------------------------------------------------------------------
+export interface TestTrade { dir: 1 | -1; entryTime: number; entry: number; exitTime: number; exit: number; stop: number; target: number | null; r: number; reason: 'stop' | 'target' | 'exit' | 'reverse' | 'time' | 'open' }
+export interface TestResult { trades: TestTrade[]; wins: number; netR: number; avgR: number; winRate: number; profitFactor: number | null; maxDD: number; equity: number[]; bars: number }
+
+/** Runs the script's strategy on the bars: signals on a closed bar act at the next bar's open; the stop is
+ *  checked before the target inside a bar (the cautious reading); one trade at a time. Results in R. */
+export function testStrategy(src: string, bars: KLineData[]): TestResult {
+  const { info, runSignals } = compile(src)
+  if (!info.strategy) throw new Error('This script has no strategy lines (long / short / exit).')
+  const st = info.strategy, sig = runSignals(bars), n = bars.length
+  const tr = bars.map((b, i) => (i ? Math.max(b.high - b.low, Math.abs(b.high - bars[i - 1].close), Math.abs(b.low - bars[i - 1].close)) : b.high - b.low))
+  const atr = rma(tr, 14)
+  const on = (s: Series, i: number) => !!s.length && Number.isFinite(s[i]) && s[i] !== 0
+  const trades: TestTrade[] = []
+  let pos: (Omit<TestTrade, 'exitTime' | 'exit' | 'r' | 'reason'> & { i: number; risk: number }) | null = null
+  const close = (i: number, price: number, reason: TestTrade['reason']) => {
+    if (!pos) return
+    trades.push({ dir: pos.dir, entryTime: pos.entryTime, entry: pos.entry, exitTime: bars[i].timestamp, exit: price, stop: pos.stop, target: pos.target,
+      r: ((price - pos.entry) * pos.dir) / pos.risk, reason })
+    pos = null
+  }
+  for (let i = 1; i < n; i++) {
+    const b = bars[i], k = i - 1
+    // the previous bar's signals act at this bar's open
+    const wantLong = st.long && on(sig.long, k), wantShort = st.short && on(sig.short, k)
+    if (pos && (on(sig.exit, k) || (pos.dir > 0 && wantShort) || (pos.dir < 0 && wantLong))) close(i, b.open, on(sig.exit, k) ? 'exit' : 'reverse')
+    if (!pos && (wantLong || wantShort) && Number.isFinite(atr[k]) && atr[k] > 0) {
+      const dir: 1 | -1 = wantLong ? 1 : -1, risk = (st.stop || 1.5) * atr[k]
+      pos = { dir, entryTime: b.timestamp, entry: b.open, stop: b.open - dir * risk, target: st.target > 0 ? b.open + dir * st.target * risk : null, i, risk }
+    }
+    if (!pos) continue
+    const p = pos as NonNullable<typeof pos>
+    const hitStop = p.dir > 0 ? b.low <= p.stop : b.high >= p.stop
+    const hitTarget = p.target !== null && (p.dir > 0 ? b.high >= p.target : b.low <= p.target)
+    if (hitStop) close(i, p.stop, 'stop')
+    else if (hitTarget) close(i, p.target!, 'target')
+    else if (st.maxbars > 0 && i - p.i + 1 >= st.maxbars) close(i, b.close, 'time')
+  }
+  if (pos) close(n - 1, bars[n - 1].close, 'open')
+  let eq = 0, peak = 0, maxDD = 0
+  const equity = trades.map(t => { eq += t.r; peak = Math.max(peak, eq); maxDD = Math.max(maxDD, peak - eq); return eq })
+  const wins = trades.filter(t => t.r > 0).length
+  const gain = trades.filter(t => t.r > 0).reduce((a, t) => a + t.r, 0), loss = -trades.filter(t => t.r < 0).reduce((a, t) => a + t.r, 0)
+  return { trades, wins, netR: eq, avgR: trades.length ? eq / trades.length : 0, winRate: trades.length ? wins / trades.length : 0,
+    profitFactor: loss > 0 ? gain / loss : gain > 0 ? null : 0, maxDD, equity, bars: n }
 }
 
 // ---- saved scripts as chart indicators -------------------------------------------------------------
