@@ -71,6 +71,49 @@ export function ChartPanel(p: ChartPanelProps) {
   const st = p.settings
   const tf = timeframeByLabel(conf.tf)
   const digits = Math.max(0, Math.round(Math.log10(conf.pricescale || 100)))
+  const [cd, setCd] = useState<{ y: number; text: string } | null>(null)     // bar close countdown
+  useEffect(() => {
+    if (!st.countdown || tf.seconds >= 7 * 86400) { setCd(null); return }
+    const tick = () => {
+      const chart = chartRef.current
+      const list = chart?.getDataList() ?? []
+      const last = list[list.length - 1]
+      if (!chart || !last || feedRef.current?.mode === 'replay') { setCd(null); return }
+      const left = Math.floor((last.timestamp + tf.seconds * 1000 - Date.now()) / 1000)
+      const y = (chart.convertToPixel({ value: last.close }, { paneId: 'candle_pane' }) as { y?: number }).y
+      if (left < 0 || left > tf.seconds || y === undefined) { setCd(null); return }
+      const h = Math.floor(left / 3600), m = Math.floor((left % 3600) / 60), s = left % 60
+      const two = (n: number) => String(n).padStart(2, '0')
+      const ph = chart.getSize('candle_pane')?.height ?? y
+      setCd({ y: Math.max(0, Math.min(ph - 24, y)), text: h ? `${h}:${two(m)}:${two(s)}` : `${two(m)}:${two(s)}` })
+    }
+    tick()
+    const id = window.setInterval(tick, 1000)
+    return () => window.clearInterval(id)
+  }, [st.countdown, tf.seconds, conf.ticker])
+  // go to a date (right-click menu / Alt+G): scroll left until that bar is loaded, then centre it
+  useEffect(() => {
+    const go = (e: Event) => {
+      const d = (e as CustomEvent).detail
+      const chart = chartRef.current
+      if (!chart || d?.chartId !== conf.id) return
+      const t = Number(d.ts)
+      let tries = 0
+      const seek = () => {
+        const list = chart.getDataList()
+        if (list.length && list[0].timestamp <= t) {
+          chart.scrollToTimestamp(t)
+          chart.scrollByDistance(-(chart.getSize()?.width ?? 0) * 0.35)
+          return
+        }
+        if (list.length) chart.scrollToDataIndex(0)
+        if (++tries < 40) window.setTimeout(seek, 500)
+      }
+      seek()
+    }
+    window.addEventListener('ict:goto', go)
+    return () => window.removeEventListener('ict:goto', go)
+  }, [conf.id])
 
   // ---- create the chart once -------------------------------------------------------------------
   useEffect(() => {
@@ -382,6 +425,7 @@ export function ChartPanel(p: ChartPanelProps) {
       <div ref={box} className="chart-canvas" />
       {pop && <SignalPop {...pop} onClose={() => setPop(null)} onShow={() => { p.onSignal(pop.s); setPop(null) }}
         onRemove={() => { if (p.signal?.id === pop.s.id) p.onSignal(null); closeSignal(pop.s.id) }} />}
+      {cd && <div className={`bar-countdown${st.scale === 'left' ? ' left' : ''}`} style={{ top: cd.y + 11 }}>{cd.text}</div>}
       {props_ && <DrawingDialog chartId={conf.id} overlayId={props_} onClose={() => setProps(null)} />}
       {tip && <div className="event-tip" style={{ left: tip.x }}><b className={tip.e.impact.toLowerCase()}>{tip.e.currency} · {tip.e.impact}</b>{tip.e.title}<small>{new Date(tip.e.time * 1000).toLocaleString()} · {relTime(tip.e.time, now)}</small></div>}
       {bias && st.biasBadge && (

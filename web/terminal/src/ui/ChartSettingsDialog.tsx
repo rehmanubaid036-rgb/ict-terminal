@@ -91,6 +91,7 @@ export function ChartSettingsDialog({ tab: first, onClose }: { tab: SettingsTab;
       {check('lastLine', 'Symbol last price line')}
       {check('lastLabel', 'Symbol last price label')}
       {check('highLow', 'High and low price marks')}
+      {check('countdown', 'Countdown to bar close')}
       {row('Scale placement', select<string>('scale', [['right', 'Right'], ['left', 'Left']]))}
       {head('Lines')}
       {row('Grid lines', <>{select<string>('grid', [['both', 'Vert and horz'], ['vert', 'Vert only'], ['horz', 'Horz only'], ['none', 'None']])}{color('gridColor', dark ? '#1a2135' : '#eef1f6', s.grid === 'none')}</>)}

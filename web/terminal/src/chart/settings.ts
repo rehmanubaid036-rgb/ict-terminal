@@ -16,7 +16,7 @@ export interface ChartSettings {
   indTitles: boolean; indArgs: boolean; indValues: boolean
   biasBadge: boolean
   // Scales and lines
-  lastLine: boolean; lastLabel: boolean; highLow: boolean
+  lastLine: boolean; lastLabel: boolean; highLow: boolean; countdown: boolean
   scale: 'right' | 'left'
   grid: 'both' | 'vert' | 'horz' | 'none'; gridColor: string; gridStyle: LineStyle
   crossColor: string; crossStyle: LineStyle
@@ -42,7 +42,7 @@ export const DEFAULT_SETTINGS: ChartSettings = {
   wicks: true, wickUp: '#26a69a', wickDown: '#ef5350', precision: -1, timezone: 'America/New_York',
   title: true, titleMode: 'full', ohlc: true, barChange: true, volume: true,
   indTitles: true, indArgs: true, indValues: true, biasBadge: true,
-  lastLine: true, lastLabel: true, highLow: true, scale: 'right',
+  lastLine: true, lastLabel: true, highLow: true, countdown: true, scale: 'right',
   grid: 'both', gridColor: '', gridStyle: 'dashed', crossColor: '', crossStyle: 'dashed',
   bgType: 'solid', bg: '', bg2: '', textColor: '', textSize: 11, axisColor: '', watermark: false,
   sigLines: true, sigLabels: true,

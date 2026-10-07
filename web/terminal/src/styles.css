@@ -733,3 +733,9 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 .dd-note { margin: 0 0 6px; font-size: 12px; }
 .dd-presets { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
 .dd-tfs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+
+/* bar close countdown (under the last price label) and go to date */
+.bar-countdown { position: absolute; z-index: 5; right: 1px; min-width: 58px; text-align: center; transform: translateY(-50%); pointer-events: none; font: 600 10.5px var(--mono); color: #fff; background: rgba(41, 98, 255, .85); border-radius: 3px; padding: 1px 4px; }
+.bar-countdown.left { right: auto; left: 1px; }
+.goto-row { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--muted); }
+.goto-quick { display: flex; gap: 6px; flex-wrap: wrap; }

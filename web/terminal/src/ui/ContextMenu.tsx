@@ -24,6 +24,7 @@ export function ContextMenu({ x, y, onClose }: { x: number; y: number; onClose: 
     <div ref={ref} className="ctx-menu" style={{ left: Math.max(8, left), top: Math.max(8, top), maxHeight: window.innerHeight - Math.max(8, top) - 8 }}>
       <button onClick={run(() => getChart(a.id)?.scrollToRealTime(200))}>Go to the latest bar</button>
       <button onClick={run(() => { const c = getChart(a.id); c?.setBarSpace(8); c?.scrollToRealTime() })}>Reset chart view</button>
+      <button onClick={run(() => window.dispatchEvent(new CustomEvent('ict:goto-ask')))}>Go to date… <kbd>Alt+G</kbd></button>
       {last && <button onClick={run(() => t.addAlert({ ticker: a.ticker, condition: 'crossing', price: Number(last.toFixed(digits)), note: '' }))}>Add alert at {last.toFixed(digits)}</button>}
       <div className="menu-sep" />
       <div className="ctx-label">Chart type</div>

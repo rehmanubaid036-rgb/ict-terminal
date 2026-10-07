@@ -14,6 +14,7 @@ import { ChartSettingsDialog, type SettingsTab } from './ui/ChartSettingsDialog'
 import { FavBar, type CursorKind } from './ui/FavBar'
 import { CommunityWindow, type CommunityStart } from './ui/Community'
 import { IccWindow } from './ui/IccWindow'
+import { GoToDate } from './ui/GoToDate'
 import { TopBar } from './ui/TopBar'
 import { Toolbar } from './ui/Toolbar'
 import { SidePanel, type SideTab } from './panels/SidePanel'
@@ -120,6 +121,14 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
   const [cursor, setCursorState] = useState<CursorKind>(() => (['cross', 'dot', 'arrow'].includes(localStorage.getItem('ict.cursor') ?? '') ? localStorage.getItem('ict.cursor') as CursorKind : 'cross'))
   const [community, setCommunity] = useState<CommunityStart | null>(null)
   const [iccOpen, setIccOpen] = useState(false)
+  const [gotoOpen, setGotoOpen] = useState(false)
+  useEffect(() => {
+    const ask = () => setGotoOpen(true)
+    const key = (e: KeyboardEvent) => { if (e.altKey && (e.key === 'g' || e.key === 'G')) { e.preventDefault(); setGotoOpen(true) } }
+    window.addEventListener('ict:goto-ask', ask)
+    window.addEventListener('keydown', key)
+    return () => { window.removeEventListener('ict:goto-ask', ask); window.removeEventListener('keydown', key) }
+  }, [])
   // phones: all the layout's charts on screen (stacked / 2x2), or one at a time with chips
   const [phoneAll, setPhoneAllState] = useState(() => localStorage.getItem('ict.phoneAll') !== '0')
   const setPhoneAll = (v: boolean) => { setPhoneAllState(v); try { localStorage.setItem('ict.phoneAll', v ? '1' : '0') } catch { /* ignore */ } }
@@ -469,6 +478,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
         {menu && <ContextMenu x={menu.x} y={menu.y} onClose={() => setMenu(null)} />}
         {account && <AccountDialog tab={account} onClose={() => setAccount(null)} onAccess={onAccess} />}
         {!phone && <FavBar />}
+        {gotoOpen && <GoToDate chartId={active.id} onClose={() => setGotoOpen(false)} />}
         {community && <CommunityWindow start={community} onClose={() => setCommunity(null)} />}
         {settingsTab && <ChartSettingsDialog tab={settingsTab} onClose={() => setSettingsTab(null)} />}
         <Toasts />
