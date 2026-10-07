@@ -33,7 +33,10 @@ class RunnerConfig:
     models: tuple[str, ...] = tuple(MODELS)
     lookback_days: int = 40
     keep_days: int = 10          # only signals newer than this are written each pass
-    partners: dict[str, str] = field(default_factory=lambda: {"XAUUSD": "XAGUSD", "NAS100": "US500"})
+    partners: dict[str, str] = field(default_factory=lambda: {"XAUUSD": "XAGUSD", "XAGUSD": "XAUUSD",
+                                                              "NAS100": "US500", "US500": "NAS100"})
+    history_days: int = 120      # older 1m bars (month files are cached) for the 1h / 4h / 1d analyses and
+                                 # the daily levels / IPDA 60; the 1m-15m analyses stay on lookback_days
 
 
 def primary_broker() -> tuple[str, set[str]]:
@@ -68,7 +71,8 @@ def run_once(store: Store, load: Loader, cfg: RunnerConfig = RunnerConfig(), now
     for symbol in cfg.symbols:
         t0 = time.time()
         try:
-            df = load(symbol, start, now)
+            full = load(symbol, now - pd.Timedelta(days=max(cfg.history_days, cfg.lookback_days)), now)
+            df, history = full[full.index >= start], full[full.index < start]
             if len(df) < 2000:
                 store.set_status(symbol, None, 0, time.time() - t0, "not enough data")
                 summary[symbol] = 0
@@ -77,7 +81,7 @@ def run_once(store: Store, load: Loader, cfg: RunnerConfig = RunnerConfig(), now
             if symbol in cfg.partners:
                 p = load(cfg.partners[symbol], start, now)
                 partner = p if len(p) else None
-            ctx = Context(symbol, df, partner=partner)
+            ctx = Context(symbol, df, partner=partner, history=history if len(history) else None)
             count = 0
             for mid in cfg.models:
                 for rb in (True, False):

@@ -27,11 +27,11 @@ non-zero risk, position fractions summing to 1, no duplicate signal on the same 
 | # | Finding | Status |
 |---|---------|--------|
 | 1 | **M13 Opening Range Gap** did not use its own targets. The rulebook says "target the gap's CE, then the full fill", but the targets came from the general liquidity ladder. | **Fixed**: TP1 = ORG CE, TP2 = full fill (previous 16:15 close); minimum 1.5R to the fill. |
-| 2 | The live runner reads 40 days of 1m history. M5 takes its targets from 4h / 1d swing liquidity, and older swings are missing with 40 days. On XAUUSD, 4 of 9 M5 signals of the last 10 days were not produced live. No other model was affected. 120 days would make a runner pass about 3 times slower on the VPS. | Open: give the context daily / 4h bars from MT5 for the HTF levels (cheap) instead of more 1m history. |
+| 2 | The live runner reads 40 days of 1m history. M5 takes its targets from 4h / 1d swing liquidity, and older swings are missing with 40 days. On XAUUSD, 4 of 9 M5 signals of the last 10 days were not produced live. No other model was affected. 120 days would make a runner pass about 3 times slower on the VPS. | **Fixed**: the runner reads 120 days (month files are cached) and passes the older part as `Context(history=...)`: the 15m / 1h / 4h / 1d analyses and the daily levels (IPDA, bias) use it, the 1m / 5m work stays on 40 days. The cause was old unfilled 15m FVGs used as M5 entries. Check on Sep 2026 cut points: XAUUSD 22 differing M5 signals -> 0, NAS100 1 -> 0; a pass is ~10% slower. |
 | 3 | **M15 London protraction**: 0 signals in 3 months. 26 of 73 NAS100 days pass the small-CBDR / Asian-range rule, but no bias-direction raid -> MSS -> FVG formed 00:00-05:00 on those days. Without the bias filter it gives 6. | Not a bug; the model is very strict. Kept. |
-| 4 | **M16 SMT** needs the partner symbol (XAGUSD for gold, US500 for NAS100). The runner passes it; the API's on-demand scan (`source=scan`) does not, so M16 is empty there. | Open (small). |
+| 4 | **M16 SMT** needs the partner symbol (XAGUSD for gold, US500 for NAS100). The runner passes it; the API's on-demand scan (`source=scan`) does not, so M16 is empty there. | **Fixed**: the on-demand scan and the strategy tester load the partner when M16 is asked for; the runner also pairs US500 -> NAS100 and XAGUSD -> XAUUSD. |
 | 5 | **M17 Wolf** gives about 2 setups a day on NAS100 / US500 (one per direction allowed, as in the journal). A grade is the common grade; the A+ grade is rare (needs NDOG over 20 handles and a breakaway). | Kept as the PDF says. Results below. |
-| 6 | **M11 IFVG** is the weakest model: many signals and clearly negative on all three symbols. | Recommend: off by default until it is tuned. |
+| 6 | **M11 IFVG** is the weakest model: many signals and clearly negative on all three symbols. | **Done**: M11 is off by default (`default_on=False`): it stays selectable, but the Signals tab and WhatsApp alerts leave it out until the user picks it. |
 
 ## 4. Backtest, 1 Jul - 30 Sep 2026 (R = multiples of the risk)
 
@@ -56,6 +56,16 @@ non-zero risk, position fractions summing to 1, no duplicate signal on the same 
 Three months is a small sample for most models (fewer than 20 trades): these numbers say "no proven
 edge yet", not "broken". Models with more trades: M5 positive on all three symbols; M12 about break-even;
 M11 negative; M17 mixed (positive on NAS100, negative on US500).
+
+## 6. New models (2026-10-07)
+
+| Model | Rules | Jul - Sep 2026 (any bias: signals / filled / total R) |
+|-------|-------|------------------------------------------------------|
+| **M8 Power of 3 (AMD)** | Asia accumulates (Asian range at most half the 20-day ADR); 01:00-05:00 or 08:30-11:00 NY a raid of the Asian range against the bias, then a bias-direction MSS + FVG; buy below / sell above the midnight open. | NAS100 7 / 4 / -1.4R; XAUUSD 6 / 5 / -5.7R; US500 8 / 8 / -7.5R. With the bias filter: 1 signal per symbol. |
+| **M10 News aftermath** | NFP / FOMC: skip the 15-minute shock window; the release leg must move at least 15% of the ADR; entry at the CE of the 5m FVG the leg left (the nearest one that still pays 1.5R), stop beyond the leg's origin, targets the move's extreme then the 1.618 extension. FOMC is traded at the Asian open (20:00 NY). | NAS100 1 / 1 / -1.0R; XAUUSD 3 / 2 / +0.5R; US500 2 / 2 / +0.9R. |
+
+Both are small samples: no edge is claimed. M10 only knows FOMC and NFP history (CPI dates are not in the
+history list), so it trades at most two or three events a month.
 
 ## 5. How to repeat
 

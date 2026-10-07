@@ -11,6 +11,9 @@ M7  Unicorn: the FVG must overlap a breaker block of the same direction.
 M14 London close reversal: 10:00-12:00, counter-move after the morning, graded at most A.
 M15 London protraction: small CBDR and Asian range, Judas raid 00:00-05:00 of those ranges,
     London reversal entry.
+M8  Power of 3 (AMD): Asia accumulates (a quiet Asian range), London or the NY open manipulates it
+    against the daily bias (raids the Asian low for a buy), then a bias-direction MSS + FVG entry
+    for the distribution leg, bought below / sold above the day's opening price (midnight open).
 M9  Market Maker Buy / Sell model (simplified): a raid of daily / weekly liquidity (PDL/PWL for
     the buy model, PDH/PWH for the sell model) followed by a 1h smart money reversal (MSS) and
     an entry at the 1h FVG; wide stop, minimum 3R toward the opposite HTF liquidity.
@@ -133,6 +136,35 @@ M14_CONFIG = ReversalConfig("M14_london_close_reversal", (clock.get_window("lond
 M9_CONFIG = ReversalConfig("M9_market_maker", (_tw("trading_day", "18:00", "18:00"),), "htf",
                            raid_lead_min=24 * 60, timeframe="1h", max_fvg_delay=3, stop_buffer_mult=5.0,
                            min_rr=3.0, exit_after_min=3 * 24 * 60)
+def asia_accumulated(ctx: Context, day, t: int, max_adr: float = 0.5) -> bool:
+    """M8 accumulation: the Asian range (20:00-00:00) is complete and at most ``max_adr`` of the 20-day
+    average daily range (a range, not already a trend)."""
+    lv = ctx.levels
+    key = pd.Timestamp(day)
+    if key not in lv.index:
+        return False
+    i = lv.index.get_loc(key)
+    adr = (lv["day_high"] - lv["day_low"]).iloc[max(0, i - 20):i]
+    row = lv.iloc[i]
+    hi, lo = row.get("asian_range_high", np.nan), row.get("asian_range_low", np.nan)
+    if len(adr) < 10 or not (np.isfinite(hi) and np.isfinite(lo)):
+        return False
+    return bool(0 < hi - lo <= max_adr * float(adr.mean()))
+
+
+def po3_from_open(ctx: Context, s: Setup) -> bool:
+    """M8 distribution entry: buy below the day's opening price (midnight open), sell above it."""
+    lv = ctx.day_levels(min(s.ready_pos, len(ctx.base) - 1))
+    if lv is None or not np.isfinite(lv.get("midnight_open", np.nan)):
+        return False
+    ce = (float(s.fvg.top) + float(s.fvg.bottom)) / 2
+    return s.direction * (float(lv["midnight_open"]) - ce) > 0
+
+
+M8_CONFIG = ReversalConfig("M8_power_of_3", (_tw("po3_london", "01:00", "05:00"), _tw("po3_ny_open", "08:30", "11:00")),
+                           "asian", raid_lead_min=60, timeframe="1m", precondition=asia_accumulated, accept=po3_from_open)
+
+
 def protraction_targets(ctx: Context, day, s: Setup, entry: float, risk: float) -> list[tuple[float, str]]:
     """M15 targets: CBDR (Asian range when CBDR is missing) standard deviations -2, -3, -4 in the
     trade direction, projected from the range's far side."""
@@ -190,6 +222,8 @@ def _scan_window(ctx: Context, day, w: TimeWindow, cfg: ReversalConfig) -> Signa
     levels = session_levels(ctx, lead)
     if cfg.level_source == "ranges":
         levels = [lv for lv in levels if lv.name in ("pdh", "pdl")]
+    elif cfg.level_source == "asian":
+        levels = [lv for lv in levels if lv.name in ("asian_range_high", "asian_range_low")]
     elif cfg.level_source == "htf":
         levels = [lv for lv in levels if lv.name in ("pdh", "pdl", "pwh", "pwl")]
     for key in cfg.extra_ranges:
@@ -220,6 +254,10 @@ def _session_start(day, w0: pd.Timestamp) -> pd.Timestamp:
         if s0 <= w0 < s1:
             return s0
     return clock.get_window("ny_am").bounds(day)[0]
+
+
+def scan_m8(ctx: Context, **kw) -> list[Signal]:
+    return scan(ctx, _with(M8_CONFIG, kw))
 
 
 def scan_m2(ctx: Context, **kw) -> list[Signal]:

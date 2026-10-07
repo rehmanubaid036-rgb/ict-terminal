@@ -230,3 +230,34 @@ def test_strategy_tester_needs_data_and_a_plan_model(client):
     body = r.json()
     assert (body["days"], body["stats"]["signals"], body["trades"]) == (30, 0, [])
     assert client.get("/api/v1/backtest", params={"symbol": "AXI:XAUUSD", "model": "M1", "days": 30}).json() == body   # cached
+
+
+def test_models_say_which_are_off_by_default(client):
+    ms = {m["id"]: m for m in client.get("/api/v1/models").json()}
+    assert ms["M11"]["default_on"] is False and ms["M1"]["default_on"] is True
+    assert {"M8", "M10"} <= set(ms)
+
+
+def test_m16_scan_gets_the_smt_partner(gold, store):
+    """M16 needs the partner symbol (gold -> silver): the on-demand scan loads it."""
+    from fastapi.testclient import TestClient
+    from ictapi.main import create_app
+    from ictapi.market import FrameProvider
+
+    asked = []
+
+    class Spy(FrameProvider):
+        def candles(self, ticker, start, end):
+            asked.append(ticker)
+            return super().candles(ticker, start, end)
+
+    silver = gold.copy()
+    for k in ("open", "high", "low", "close"):
+        silver[k] = silver[k] / 80.0
+    c = TestClient(create_app(Spy({"AXI:XAUUSD": gold, "AXI:XAGUSD": silver}), store, require_auth=False))
+    p = {"symbol": "AXI:XAUUSD", "from": ts("2026-09-03 00:00"), "to": ts("2026-09-04 00:00"),
+         "require_bias": "false", "source": "scan"}
+    assert c.get("/api/v1/signals", params={**p, "models": "M1"}).status_code == 200
+    assert "AXI:XAGUSD" not in asked                       # only M16 needs it
+    r = c.get("/api/v1/signals", params={**p, "models": "M16"})
+    assert r.status_code == 200 and "AXI:XAGUSD" in asked

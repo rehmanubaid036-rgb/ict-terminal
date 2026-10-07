@@ -1512,6 +1512,22 @@ class SignalAlertTests(TestCase):
         AlertPrefs.objects.update(auto_notify=True, min_grade="all")
         self.assertEqual(alerts.run_once(path=self.db, sender=lambda *a: sent.append(a)), 2)    # + the B grade M5
 
+    def test_default_off_model_only_when_listed(self):
+        import sqlite3
+        from . import alerts
+        from .models import AlertPrefs, Plan
+        Plan.objects.filter(slug="pro-x").update(allowed_models="all")
+        con = sqlite3.connect(self.db)
+        con.execute("DELETE FROM signals")
+        con.execute("INSERT INTO signals VALUES (?,?,?,?,?,?,?,?,?)",
+                    ("XAUUSD", "M11", 1, (timezone.now() - timedelta(minutes=1)).isoformat(), 4000.0, 3990.0, "[[4020, 1.0]]", "A", 1))
+        con.commit()
+        con.close()
+        sent = []
+        self.assertEqual(alerts.run_once(path=self.db, sender=lambda *a: sent.append(a)), 0)     # M11 is off by default
+        AlertPrefs.objects.update(models_csv="M11")
+        self.assertEqual(alerts.run_once(path=self.db, sender=lambda *a: sent.append(a)), 1)     # chosen: sent
+
     def test_settings_api(self):
         r = self.client.post("/api/v1/auth/login", json.dumps({"email": "w@example.com", "password": PASSWORD,
                                                                "device_id": "d1", "platform": "web"}), content_type="application/json")

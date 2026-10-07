@@ -262,7 +262,7 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
     def models(a: dict = Depends(access)):
         allowed = a.get("features", {}).get("models") or []
         return [{"id": m.id, "name": m.name, "source": m.source,
-                 "allowed": allowed == "all" or m.id in allowed} for m in MODELS.values()]
+                 "allowed": allowed == "all" or m.id in allowed, "default_on": m.default_on} for m in MODELS.values()]
 
     @app.get("/api/v1/calendar")
     async def calendar(frm: int = Query(alias="from"), to: int = Query(...), impact: str = "High", a: dict = Depends(access)):
@@ -331,7 +331,8 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
             df = provider.candles(i.ticker, start - pd.Timedelta(days=45), end)    # warm-up for the daily bias
             if len(df) < 2000:
                 raise HTTPException(400, "Not enough data for this symbol.")
-            ctx = Context(i.symbol, df)
+            partner = _partner_1m(i, start - pd.Timedelta(days=45), end) if model == "M16" else None
+            ctx = Context(i.symbol, df, partner=partner)
             sigs = [s for s in MODELS[model].scan(ctx, require_bias=bias) if s.created_time >= start]
             spread = SPECS[i.symbol].spread if i.symbol in SPECS else 0.0
             trades = bt_run(sigs, df, spread=spread)
@@ -382,6 +383,19 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
         return {"quotes": out}
 
     # ---- saved terminal layouts (charts, indicators, ICT layers, drawings) per user -----------
+    def _partner_1m(i, start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame | None:
+        """1m bars of the SMT partner on the same feed (M16 needs them); None when there is none."""
+        if i.symbol not in SMT_PARTNERS:
+            return None
+        partner = provider.symbols().get(f"{i.feed}:{SMT_PARTNERS[i.symbol]}")
+        if partner is None:
+            return None
+        try:
+            pdf = provider.candles(partner.ticker, start, end)
+        except Exception:  # noqa: BLE001 - no partner data: M16 just finds nothing
+            return None
+        return pdf if len(pdf) else None
+
     def _owner(a: dict) -> str:
         return str(a.get("email") or a.get("user") or "")
 
@@ -637,7 +651,8 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
         df = provider.candles(i.ticker, start - pd.Timedelta(days=30), end)
         out = []
         if len(df) >= 1000:
-            ctx = Context(i.symbol, df)
+            partner = _partner_1m(i, start - pd.Timedelta(days=30), end) if "M16" in ids else None
+            ctx = Context(i.symbol, df, partner=partner)
             for mid in ids:
                 for s in MODELS[mid].scan(ctx, require_bias=require_bias):
                     if start <= s.created_time < end:

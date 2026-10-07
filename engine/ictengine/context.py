@@ -40,6 +40,10 @@ class Context:
     timeframes: tuple[str, ...] = ("5m", "15m", "1h", "4h", "1d")
     params: dict[str, Params] = field(default_factory=dict)
     partner: pd.DataFrame | None = None   # correlated instrument for SMT (e.g. XAGUSD for XAUUSD)
+    # older 1m bars before ``base``: the 15m / 1h / 4h / 1d analyses and the daily levels (IPDA 20/40/60, so the
+    # daily bias) then reach further back (old unfilled FVGs, swings), while the 1m / 5m work stays on the short
+    # base (the costly part).
+    history: pd.DataFrame | None = None
 
     def __post_init__(self):
         validate(self.base)
@@ -53,8 +57,15 @@ class Context:
         self.analyses: dict[str, Analysis] = {}
         self._asof: dict[str, np.ndarray] = {}
         base_close = epoch_ns(self.base.index) + TIMEFRAMES[BASE_TF].value
+        long_src = self.base
+        if self.history is not None and len(self.history) and len(self.base):
+            validate(self.history)
+            old = self.history[self.history.index < self.base.index[0]]
+            cols = [c for c in self.base.columns if c in old.columns]
+            long_src = pd.concat([old[cols], self.base[cols]]) if len(old) else self.base
         for tf in (BASE_TF,) + tuple(self.timeframes):
-            frame = self.base if tf == BASE_TF else resample(self.base, tf).drop(columns="n_bars")
+            src = long_src if TIMEFRAMES[tf] >= pd.Timedelta(minutes=15) else self.base
+            frame = self.base if tf == BASE_TF else resample(src, tf).drop(columns="n_bars")
             self.frames[tf] = frame
             p = self.params.get(tf) or Params.for_timeframe(tf, fvg_min_size=self.spec.min_fvg)
             self.analyses[tf] = analyze(frame, p)
@@ -66,7 +77,7 @@ class Context:
             nxt = np.r_[epoch_ns(frame.index)[1:], np.iinfo(np.int64).max]
             closes = np.minimum(closes, nxt)
             self._asof[tf] = np.searchsorted(closes, base_close, side="right") - 1
-        self.levels = daily_levels(self.base)
+        self.levels = daily_levels(long_src)
         self.ipda = ipda_ranges(self.levels)
         self.trading_day = clock.trading_days(self.base.index)
         self.minute = clock.minute_of_day(self.base.index)

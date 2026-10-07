@@ -101,6 +101,9 @@ def new_signals(since, path: Path | None = None) -> list[dict]:
     return out
 
 
+DEFAULT_OFF = {"M11"}   # the engine's models that are off by default (see ictengine.models.registry)
+
+
 def _wants(p: AlertPrefs, feats: dict, s: dict, now) -> bool:
     if not feats.get("signals"):
         return False
@@ -117,6 +120,8 @@ def _wants(p: AlertPrefs, feats: dict, s: dict, now) -> bool:
     models = {m.strip().upper() for m in p.models_csv.split(",") if m.strip()}
     if models and s["model_id"].upper() not in models:
         return False
+    if not models and s["model_id"].upper() in DEFAULT_OFF:
+        return False                                   # weak models only when the user lists them
     syms = {m.strip().upper().split(":")[-1] for m in p.symbols_csv.split(",") if m.strip()}
     return not syms or s["symbol"].upper() in syms
 
