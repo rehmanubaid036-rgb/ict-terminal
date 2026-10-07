@@ -558,6 +558,78 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
         store.paper_reset(_owner(a), start)
         return _paper_state(_owner(a))
 
+    # ---- chart pictures shared by link ---------------------------------------------------------
+    SNAP_MAX_BYTES = 3_000_000
+    SNAP_PER_DAY = 40
+    SNAP_ID = re.compile(r"^[A-Za-z0-9_-]{8,20}$")
+
+    @app.post("/api/v1/snapshots")
+    async def snapshot_add(request: Request, a: dict = Depends(logged_in)):
+        import base64
+        import secrets
+        try:
+            data = await request.json()
+        except ValueError:
+            raise HTTPException(400, "Send JSON.")
+        m = re.match(r"^data:image/(png|jpeg);base64,(.+)$", str(data.get("image") or ""), re.S)
+        if not m:
+            raise HTTPException(400, "The picture must be a PNG or JPEG data URL.")
+        try:
+            raw = base64.b64decode(m.group(2), validate=True)
+        except ValueError:
+            raise HTTPException(400, "The picture is not valid base64.")
+        ext = "png" if m.group(1) == "png" else "jpg"
+        if not (raw.startswith(b"\x89PNG\r\n\x1a\n") if ext == "png" else raw.startswith(b"\xff\xd8")):
+            raise HTTPException(400, "That is not a picture.")
+        if len(raw) > SNAP_MAX_BYTES:
+            raise HTTPException(413, "The picture is too large (over 3 MB).")
+        user = _owner(a)
+        day_ago = (pd.Timestamp.now(tz="UTC") - pd.Timedelta(days=1)).isoformat()
+        if len(store.snapshots(user, day_ago)) >= SNAP_PER_DAY:
+            raise HTTPException(429, f"You can share up to {SNAP_PER_DAY} pictures a day.")
+        sid = secrets.token_urlsafe(9)
+        (store.snapshot_dir / f"{sid}.{ext}").write_bytes(raw)
+        title = re.sub(r"[\x00-\x1f<>]", "", str(data.get("title") or ""))[:120]
+        store.add_snapshot(sid, user, title, ext, len(raw))
+        return {"id": sid, "url": f"/api/v1/snapshots/{sid}", "image": f"/api/v1/snapshots/{sid}.{ext}"}
+
+    @app.get("/api/v1/snapshots")
+    def snapshot_list(a: dict = Depends(logged_in)):
+        return {"snapshots": store.snapshots(_owner(a))}
+
+    @app.delete("/api/v1/snapshots/{sid}")
+    def snapshot_delete(sid: str, a: dict = Depends(logged_in)):
+        if not SNAP_ID.match(sid) or not store.delete_snapshot(sid, _owner(a)):
+            raise HTTPException(404, "No such picture.")
+        return {"deleted": True}
+
+    @app.get("/api/v1/snapshots/{name}")
+    def snapshot_get(name: str, request: Request):
+        """Open to everyone with the link: the picture itself (id.png / id.jpg) or a small page showing it."""
+        from fastapi.responses import FileResponse, HTMLResponse
+        from html import escape
+        sid, _, ext = name.partition(".")
+        row = store.snapshot(sid) if SNAP_ID.match(sid) else None
+        if row is None:
+            raise HTTPException(404, "This picture was removed or the link is wrong.")
+        f = store.snapshot_dir / f"{sid}.{row['ext']}"
+        if ext:
+            if ext != row["ext"] or not f.exists():
+                raise HTTPException(404, "No such picture.")
+            return FileResponse(f, media_type="image/png" if row["ext"] == "png" else "image/jpeg",
+                                headers={"Cache-Control": "public, max-age=86400"})
+        img = f"/api/v1/snapshots/{sid}.{row['ext']}"
+        full = str(request.base_url).rstrip("/") + img
+        title = escape(row["title"] or "ICT Terminal chart")
+        page = f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{title}</title><meta property="og:title" content="{title}"><meta property="og:image" content="{escape(full)}">
+<meta property="og:type" content="website"><meta name="twitter:card" content="summary_large_image"><meta name="robots" content="noindex">
+<style>body{{margin:0;background:#0b1020;color:#e3e8f4;font:15px Inter,system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;gap:12px;padding:16px}}
+img{{max-width:100%;height:auto;border-radius:10px;border:1px solid #232c45}}a{{color:#2dd4bf}}small{{color:#8a94ad}}</style></head>
+<body><h1 style="font-size:18px;margin:4px 0">{title}</h1><img src="{img}" alt="{title}">
+<small>Shared {escape(row["created_at"][:16].replace("T", " "))} UTC · <a href="/">ICT Terminal</a> · not financial advice</small></body></html>"""
+        return HTMLResponse(page, headers={"Cache-Control": "public, max-age=600"})
+
     @app.get("/api/v1/alerts/fired")
     def alerts_fired(since: int = 0, a: dict = Depends(logged_in)):
         """Chart alerts the server sent (ms times), so the terminal can show them and switch them off."""

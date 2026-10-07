@@ -9,6 +9,7 @@ export interface HotkeyAction { id: string; label: string; group: string; def: s
 const TF_KEYS = ['1m', '5m', '15m', '1H', '4H', 'D']
 export const HOTKEY_ACTIONS: HotkeyAction[] = [
   { id: 'screenshot', label: 'Save a picture of the chart', group: 'Chart', def: 'Alt+S' },
+  { id: 'share', label: 'Copy a share link to the chart picture', group: 'Chart', def: '' },
   { id: 'alert', label: 'Alert at the last price', group: 'Chart', def: 'Alt+A' },
   { id: 'goto', label: 'Go to date', group: 'Chart', def: 'Alt+G' },
   { id: 'replay', label: 'Bar replay on / off', group: 'Chart', def: '' },
@@ -51,6 +52,7 @@ function runAction(t: TerminalApi, id: string) {
   if (id.startsWith('side:')) { const tab = id.slice(5) as any; t.setSideTab(t.sideTab === tab ? null : tab); return }
   switch (id) {
     case 'screenshot': t.screenshot(); return
+    case 'share': void t.sharePicture(); return
     case 'alert': {
       const last = getEntry(t.active.id)?.feed.lastClose()
       if (last) t.addAlert({ ticker: t.active.ticker, condition: 'crossing', price: Number(last.toFixed(Math.round(Math.log10(t.active.pricescale)))), note: '' })

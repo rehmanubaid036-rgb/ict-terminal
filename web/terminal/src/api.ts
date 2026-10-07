@@ -241,6 +241,7 @@ export const api = {
   defaultTemplate: (name: string) => post(`/api/v1/templates/${encodeURIComponent(name)}/default`),
   deleteTemplate: (name: string) => del(`/api/v1/templates/${encodeURIComponent(name)}`),
 
+  shareSnapshot: (image: string, title: string) => post<{ id: string; url: string; image: string }>('/api/v1/snapshots', { image, title }),
   donationInfo: () => get<DonationInfo>('/api/v1/donations/info'),
   donate: (d: { amount: string; method: number | null; reference: string; name: string; message: string; public: boolean; source: string }) =>
     post<{ id: number; message: string }>('/api/v1/donations', d),

@@ -85,6 +85,15 @@ CREATE TABLE IF NOT EXISTS screener (      -- one row per symbol, written by the
     data       TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS snapshots (     -- chart pictures shared by link (files in data/snapshots)
+    id         TEXT PRIMARY KEY,
+    user       TEXT NOT NULL,
+    title      TEXT NOT NULL DEFAULT '',
+    ext        TEXT NOT NULL,
+    bytes      INTEGER NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS snapshots_user ON snapshots (user, created_at);
 CREATE TABLE IF NOT EXISTS alert_state (   -- server-side chart alerts: what the API's alert watcher already did
     user       TEXT NOT NULL,
     alert_id   TEXT NOT NULL,
@@ -345,6 +354,37 @@ class Store:
     def delete_layout(self, user: str, name: str) -> bool:
         with self._conn() as c:
             return c.execute("DELETE FROM layouts WHERE user = ? AND name = ?", (user, name)).rowcount > 0
+
+    # ---- shared chart pictures ------------------------------------------------------------------
+    @property
+    def snapshot_dir(self) -> Path:
+        d = self.path.parent / "snapshots"
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+
+    def add_snapshot(self, sid: str, user: str, title: str, ext: str, size: int) -> None:
+        with self._conn() as c:
+            c.execute("INSERT INTO snapshots (id, user, title, ext, bytes, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                      (sid, user, title, ext, size, pd.Timestamp.now(tz="UTC").isoformat()))
+
+    def snapshot(self, sid: str) -> dict | None:
+        with self._conn() as c:
+            r = c.execute("SELECT id, user, title, ext, bytes, created_at FROM snapshots WHERE id = ?", (sid,)).fetchone()
+        return dict(r) if r else None
+
+    def snapshots(self, user: str, since: str | None = None) -> list[dict]:
+        with self._conn() as c:
+            q = "SELECT id, title, ext, bytes, created_at FROM snapshots WHERE user = ?" + (" AND created_at >= ?" if since else "") + " ORDER BY created_at DESC LIMIT 200"
+            return [dict(r) for r in c.execute(q, (user, since) if since else (user,))]
+
+    def delete_snapshot(self, sid: str, user: str) -> bool:
+        row = self.snapshot(sid)
+        if not row or row["user"] != user:
+            return False
+        with self._conn() as c:
+            c.execute("DELETE FROM snapshots WHERE id = ?", (sid,))
+        (self.snapshot_dir / f"{sid}.{row['ext']}").unlink(missing_ok=True)
+        return True
 
     # ---- server-side chart alerts ---------------------------------------------------------------
     def alert_states(self, user: str) -> dict[str, dict]:

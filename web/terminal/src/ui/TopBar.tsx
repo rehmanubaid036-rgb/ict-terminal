@@ -26,6 +26,8 @@ export function TopBar() {
   const [indicators, setIndicators] = useState(false)
   const [screener, setScreener] = useState(false)
   const [hotkeys, setHotkeys] = useState(false)
+  const [shot, setShot] = useState(false)
+  const shotRef = useRef<HTMLButtonElement>(null)
   const donations = useDonations()
   const [donate, setDonate] = useState(false)
   const refs = { tf: useRef<HTMLButtonElement>(null), type: useRef<HTMLButtonElement>(null), ict: useRef<HTMLButtonElement>(null),
@@ -110,7 +112,7 @@ export function TopBar() {
       <span className="grow" />
       <button ref={refs.layout} className="tb-btn" title="Layout and sync" onClick={() => toggle('layout')}><LayoutGlyph id={t.state.layout} /></button>
       {!phone && <>
-        <button className="tb-btn" title="Screenshot (Alt+S)" onClick={t.screenshot}><Icon name="camera" /></button>
+        <button ref={shotRef} className="tb-btn" title="Picture of the chart: download or share a link" onClick={() => setShot(v => !v)}><Icon name="camera" /></button>
         <button className="tb-btn" title="Full screen" onClick={() => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.())}><Icon name="full" /></button>
       </>}
       <button ref={refs.more} className="tb-btn" title="Settings" onClick={() => toggle('more')}><Icon name="gear" /></button>
@@ -168,6 +170,11 @@ export function TopBar() {
       {indicators && <IndicatorsDialog onClose={() => setIndicators(false)} />}
       {screener && <Screener onClose={() => setScreener(false)} />}
       {hotkeys && <HotkeysDialog onClose={() => setHotkeys(false)} />}
+      {shot && <Popover anchor={shotRef} onClose={() => setShot(false)} className="menu-panel narrow" align="right" title="Chart picture">
+        <button className="btn ghost sm" onClick={() => { setShot(false); t.screenshot() }}>⬇ Download picture <kbd>Alt+S</kbd></button>
+        <button className="btn ghost sm" onClick={() => { setShot(false); void t.sharePicture() }}>🔗 Copy a share link</button>
+        <p className="note">The link opens the picture for anyone who has it.</p>
+      </Popover>}
       {donate && donations && <DonateDialog info={donations} onClose={() => setDonate(false)} />}
     </header>
   )

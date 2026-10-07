@@ -22,3 +22,6 @@ mt5/MetaEditor64.exe
 
 # web terminal build cache
 *.tsbuildinfo
+
+# chart pictures users share by link (API, data/snapshots)
+data/snapshots/

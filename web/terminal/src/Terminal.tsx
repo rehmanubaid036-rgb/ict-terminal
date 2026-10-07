@@ -97,6 +97,8 @@ export interface TerminalApi {
   setBottomOpen: (v: boolean) => void
   openAccount: (tab?: string) => void
   screenshot: () => void
+  /** Uploads the active chart's picture and copies a public link to it. */
+  sharePicture: () => Promise<void>
   replay: ReplayState
   /** Starts bar replay at `at` (ms; default: the middle of the active chart's view). */
   startReplay: (at?: number) => void
@@ -579,6 +581,16 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
     a.download = `${active.ticker.replace(':', '_')}_${active.tf}_${new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '')}.png`
     a.click()
   }
+  const sharePicture = async () => {
+    const ch = getChart(active.id)
+    if (!ch) return
+    const img = ch.getConvertPictureUrl(true, 'png', chartBackground(theme, state.chart))
+    try {
+      const r = await api.shareSnapshot(img, `${active.ticker.split(':')[1] ?? active.ticker} ${active.tf} · ${new Date().toLocaleString()}`)
+      const link = window.location.origin + r.url
+      try { await navigator.clipboard.writeText(link); toast('Link copied: ' + link) } catch { window.prompt('Copy the link to your chart picture:', link) }
+    } catch (e) { toast(errorText(e), 'error') }
+  }
 
   const logout = async () => {
     if (!POPOUT) { try { await api.saveLayout(AUTOSAVE, serialize(stateRef.current, drawingsOf)) } catch { /* ignore */ } }
@@ -662,7 +674,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
       if (sig && ONE_MINUTE_MODELS.has(sig.model_id) && active.tf !== '1m') setTf('1m')  // a 1-minute model
       setSignals(m => ({ ...m, [active.id]: sig }))
     },
-    crosshair, sideTab, setSideTab, bottomOpen, setBottomOpen, openAccount, screenshot,
+    crosshair, sideTab, setSideTab, bottomOpen, setBottomOpen, openAccount, screenshot, sharePicture,
     replay, startReplay: at => void startReplay(at), stopReplay, setReplay: r => setReplayState(x => ({ ...x, ...r })), stepReplay, backReplay,
     maxCharts, allowed, logout, saveNamed, loadNamed, applyTemplate, saveTemplate, maximized, setMaximized,
   }
