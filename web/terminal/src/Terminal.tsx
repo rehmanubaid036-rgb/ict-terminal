@@ -537,7 +537,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
           <div className="center">
             <div className={layoutClass}>
               {charts.map((c, i) => (
-                <ChartPanel key={c.id} conf={c} scripts={state.scripts} theme={theme} settings={state.chart} cursor={cursor} compact={phone && !single && visible > 2}
+                <ChartPanel key={c.id} conf={c} scripts={state.scripts} theme={theme} settings={state.chart} cursor={cursor} compact={!single && ((phone && visible > 2) || (window.innerWidth <= 1180 && visible >= 6))}
                   alerts={state.alerts.filter(a => a.active && a.ticker === c.ticker && (!a.kind || a.kind === 'price'))} active={i === Math.min(state.active, visible - 1)}
                   hidden={single && visible > 1 && i !== Math.min(state.active, visible - 1)}
                   tool={tool} magnet={magnet} signal={signals[c.id] ?? null} showClose={visible > 1 && !phone}

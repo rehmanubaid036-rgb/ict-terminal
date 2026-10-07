@@ -132,7 +132,9 @@ export const LAYOUTS = [
   { id: '2h', charts: 2, label: '2 stacked' },
   { id: '3', charts: 3, label: '3 charts' },
   { id: '4', charts: 4, label: '4 charts (2×2)' },
+  { id: '5', charts: 5, label: '5 charts' },
   { id: '6', charts: 6, label: '6 charts' },
+  { id: '7', charts: 7, label: '7 charts' },
   { id: '8', charts: 8, label: '8 charts' },
 ] as const
 export type LayoutId = (typeof LAYOUTS)[number]['id']

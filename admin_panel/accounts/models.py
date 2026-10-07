@@ -36,7 +36,7 @@ class Plan(models.Model):
         help_text='"all", or model ids separated by commas, e.g. M1,M2,M4')
     ict_indicators = models.BooleanField("ICT indicators", default=True,
                                          help_text="FVG, order blocks, liquidity and market structure on charts")
-    max_charts = models.PositiveSmallIntegerField("Charts per layout", default=4, choices=[(1, "1"), (2, "2"), (4, "4")])
+    max_charts = models.PositiveSmallIntegerField("Charts per layout", default=4, choices=[(n, str(n)) for n in range(1, 9)])
     can_view_trades = models.BooleanField("MT5 accounts", default=True,
                                           help_text="Connected MT5 accounts, positions and P/L in the terminal")
     can_auto_trade = models.BooleanField("Auto-trading (ICT Bridge EA)", default=False)

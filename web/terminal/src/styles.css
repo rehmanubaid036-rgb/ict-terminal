@@ -891,6 +891,27 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
   .rail-sep { width: 1px; height: 30px; margin: 9px 2px; }
   .topbar { -webkit-mask-image: none; mask-image: none; }
   .tb-arrow { width: 24px; }
-  .pp-quick { top: auto; bottom: 30px; left: 50%; transform: translateX(-50%); }
+  .pp-quick { top: auto; bottom: 84px; left: 50%; transform: translateX(-50%); }
   .rail { -webkit-mask-image: linear-gradient(to right, #000 90%, transparent); mask-image: linear-gradient(to right, #000 90%, transparent); }
+}
+
+/* 5 and 7 chart layouts */
+.grid-5 { grid-template: 1fr 1fr / repeat(6, 1fr); }
+.grid-5 > .chart-panel { grid-column: span 2; }
+.grid-5 > .chart-panel:nth-child(-n+2) { grid-column: span 3; }
+.grid-7 { grid-template: 1fr 1fr / repeat(4, 1fr); }
+.grid-7 > .chart-panel:first-child { grid-row: 1 / span 2; }
+.grid.maxed > .chart-panel { grid-column: auto; grid-row: auto; }
+/* tablets standing up: two columns, so 5-8 charts stay readable */
+@media (min-width: 761px) and (max-width: 1180px) and (orientation: portrait) {
+  .grid-5, .grid-6 { grid-template: repeat(3, 1fr) / 1fr 1fr; }
+  .grid-7, .grid-8 { grid-template: repeat(4, 1fr) / 1fr 1fr; }
+  .grid-5 > .chart-panel, .grid-5 > .chart-panel:nth-child(-n+2) { grid-column: auto; }
+  .grid-5 > .chart-panel:first-child, .grid-7 > .chart-panel:first-child { grid-column: 1 / span 2; grid-row: auto; }
+}
+@media (max-width: 760px) {
+  .grid.phone-all.grid-5 { grid-template: repeat(3, 1fr) / 1fr 1fr; }
+  .grid.phone-all.grid-7 { grid-template: repeat(4, 1fr) / 1fr 1fr; }
+  .grid.phone-all.grid-5 > .chart-panel, .grid.phone-all.grid-5 > .chart-panel:nth-child(-n+2) { grid-column: auto; }
+  .grid.phone-all.grid-5 > .chart-panel:first-child, .grid.phone-all.grid-7 > .chart-panel:first-child { grid-column: 1 / span 2; grid-row: auto; }
 }

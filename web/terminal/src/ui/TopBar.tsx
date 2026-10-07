@@ -165,7 +165,7 @@ const TF_NAMES: Record<string, string> = { '1m': '1 minute', '3m': '3 minutes', 
 export function LayoutGlyph({ id }: { id: string }) {
   const cells: Record<string, string> = {
     '1': 'M3 4h18v16H3z', '2v': 'M3 4h18v16H3zM12 4v16', '2h': 'M3 4h18v16H3zM3 12h18', '3': 'M3 4h18v16H3zM12 4v16M12 12h9',
-    '4': 'M3 4h18v16H3zM12 4v16M3 12h18', '6': 'M3 4h18v16H3zM9 4v16M15 4v16M3 12h18', '8': 'M3 4h18v16H3zM7.5 4v16M12 4v16M16.5 4v16M3 12h18',
+    '4': 'M3 4h18v16H3zM12 4v16M3 12h18', '5': 'M3 4h18v16H3zM3 12h18M12 4v8M9 12v8M15 12v8', '6': 'M3 4h18v16H3zM9 4v16M15 4v16M3 12h18', '7': 'M3 4h18v16H3zM9 4v16M3 12h18M13 4v16M17 4v16', '8': 'M3 4h18v16H3zM7.5 4v16M12 4v16M16.5 4v16M3 12h18',
   }
   return <svg className="ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}><path d={cells[id] ?? cells['1']} /></svg>
 }

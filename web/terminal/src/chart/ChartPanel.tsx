@@ -298,13 +298,37 @@ export function ChartPanel(p: ChartPanelProps) {
       if (def?.overlay) chart.createIndicator({ ...value, paneId: 'candle_pane' }, true)
       else {
         chart.createIndicator({ ...value, paneId: `pane_${ind.name}` })
-        // small screens: thin indicator panes so the candles keep the room
-        const small = window.innerWidth <= 760 || window.innerHeight <= 500
-        chart.setPaneOptions({ id: `pane_${ind.name}`, height: small ? 56 : 100, minHeight: 30 })
       }
     }
+    sizePanes()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [indKey])
+  // indicator panes take a share of the chart's height (thin on small charts: phones, 6-8 chart grids),
+  // so the candles keep the room; again whenever the chart is resized (layout change, rotation)
+  const sizePanes = () => {
+    const chart = chartRef.current, h = box.current?.clientHeight ?? 0
+    if (!chart || !h) return
+    const each = Math.round(Math.max(24, Math.min(100, h * 0.17)))
+    for (const ind of props.current.conf.indicators) {
+      // only indicators in their own pane (overlays and scripts on the price chart have none)
+      if (chart.getIndicators({ paneId: `pane_${ind.name}` }).length) chart.setPaneOptions({ id: `pane_${ind.name}`, height: each, minHeight: 20 })
+    }
+  }
+  useEffect(() => {
+    const el = box.current
+    if (!el) return
+    let t = 0, last = 0
+    const ro = new ResizeObserver(() => {
+      const h = el.clientHeight
+      if (Math.abs(h - last) < 24) return
+      last = h
+      window.clearTimeout(t)
+      t = window.setTimeout(sizePanes, 120)
+    })
+    ro.observe(el)
+    return () => { ro.disconnect(); window.clearTimeout(t) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // ---- engine overlays (ICT layers + model setups) ----------------------------------------------
   const timer = useRef(0)
