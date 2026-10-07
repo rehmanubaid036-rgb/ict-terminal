@@ -38,7 +38,9 @@ export function FavBar() {
   const ref = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ x: number; y: number }>(() => {
     try { const p = JSON.parse(localStorage.getItem(POS) || 'null'); if (p && Number.isFinite(p.x)) return p } catch { /* none */ }
-    return { x: 70, y: 70 }
+    // first time: top centre of the charts (desktop) / above the bottom menu (phone), clear of the chart
+    // legend, the buy / sell buttons and the bottom panel
+    return { x: Math.max(60, Math.round(window.innerWidth / 2 - 70)), y: window.innerWidth <= 760 ? Math.max(80, window.innerHeight - 190) : 56 }
   })
   if (!list.length || !t.favBarOn) return null
   const clamp = (x: number, y: number) => {

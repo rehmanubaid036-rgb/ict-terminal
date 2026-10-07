@@ -43,6 +43,11 @@ function useJournal(days: number, bias: boolean) {
 export function BottomPanel() {
   const t = useTerminal()
   const [tab, setTab] = useState<'journal' | 'stats' | 'tester' | 'engine'>('journal')
+  useEffect(() => {
+    const on = (e: Event) => { const d = (e as CustomEvent).detail; if (d === 'journal' || d === 'stats' || d === 'tester' || d === 'engine') setTab(d) }
+    window.addEventListener('ict:bottom', on)
+    return () => window.removeEventListener('ict:bottom', on)
+  }, [])
   return (
     <section className="bottom">
       <div className="bottom-tabs">

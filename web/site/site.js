@@ -61,8 +61,8 @@
 
   // screenshot tabs
   var captions = [
-    ['XAUUSD · 15m', 'Sessions, killzones, Silver Bullet windows, 90-minute quarters and key opens on XAUUSD 15m.'],
-    ['Daily bias · OTE · SMT', 'Daily bias panel, premium / discount with OTE, Asian range and CBDR projections, opening gaps and SMT.']
+    ['4 charts · live', 'Four charts with FVGs, liquidity and structure, and the watchlist on the right.'],
+    ['XAUUSD · 15m', 'ICT layers on gold: FVGs, order blocks, liquidity, structure, sessions, key levels, premium / discount and the daily bias.']
   ];
   var tabs = document.querySelectorAll('.tab'), shots = document.querySelectorAll('.shot');
   tabs.forEach(function (tab) {

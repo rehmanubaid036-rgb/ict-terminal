@@ -31,9 +31,17 @@ export function TopBar() {
   useEffect(() => {
     const s = (e: Event) => setSearch((e as CustomEvent).detail ?? '')
     const i = (e: Event) => setInterval((e as CustomEvent).detail ?? '')
+    // ?open=screener|indicators|templates|layout|ict links (see Terminal)
+    const o = (e: Event) => {
+      const d = (e as CustomEvent).detail
+      if (d === 'screener') setScreener(true)
+      else if (d === 'indicators') setIndicators(true)
+      else if (d === 'templates' || d === 'layout' || d === 'ict') setMenu(d)
+    }
     window.addEventListener('ict:symbol', s)
     window.addEventListener('ict:interval', i)
-    return () => { window.removeEventListener('ict:symbol', s); window.removeEventListener('ict:interval', i) }
+    window.addEventListener('ict:open', o)
+    return () => { window.removeEventListener('ict:symbol', s); window.removeEventListener('ict:interval', i); window.removeEventListener('ict:open', o) }
   }, [])
 
   // the bar is wider than small screens: the mouse wheel scrolls it sideways, and arrows show what is hidden

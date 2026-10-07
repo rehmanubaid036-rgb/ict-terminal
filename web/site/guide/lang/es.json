@@ -1,0 +1,230 @@
+{
+  "ui": {
+    "page_title": "ICT Terminal — Guía del usuario",
+    "guide": "Guía",
+    "eyebrow": "Guía del usuario",
+    "title_a": "ICT Terminal",
+    "title_b": "Guía del usuario",
+    "lead": "Todo lo que necesitas para usar ICT Terminal: las capas ICT en el gráfico, el escáner de modelos, las herramientas de dibujo, las alertas (también por WhatsApp), el paper trading, el probador de estrategias, diseños de hasta 8 gráficos y la app del móvil — paso a paso, con imágenes.",
+    "chips": ["Conceptos ICT dibujados por ti", "17 modelos basados en reglas", "Web, Android y Windows", "14 idiomas"],
+    "uinote": "Los botones, pestañas y menús están en inglés dentro del terminal. Esta guía los muestra tal como los ves, en **negrita**.",
+    "toc": "Contenido",
+    "home": "Sitio web",
+    "open": "Abrir terminal",
+    "pdf": "Descargar PDF",
+    "footer": "ICT Terminal es una herramienta de gráficos y análisis para aprender. No es asesoramiento financiero. Operar CFD, forex, índices y cripto conlleva un alto riesgo de perder dinero."
+  },
+  "caps": {
+    "overview": "El terminal con cuatro gráficos: barra superior, herramientas de dibujo a la izquierda, el menú derecho y la lista de seguimiento.",
+    "eight": "Hasta ocho gráficos en un diseño, cada uno con su símbolo e intervalo.",
+    "templates": "**Templates**: configuraciones de gráfico listas en un clic. La marcada con ★ es con la que empiezan los nuevos miembros.",
+    "ict_layers": "Capas ICT en oro 15m: FVG, order blocks, liquidez, estructura, sesiones, niveles clave, premium / discount y el sesgo diario.",
+    "ict_menu": "El menú **ICT**: activa o desactiva cada capa y cada modelo con un clic.",
+    "signals": "La pestaña **Signals** lista los setups de tus modelos; haz clic en uno para ver entrada, stop y objetivos en el gráfico.",
+    "indicators": "**Indicators**: busca, añade, cambia ajustes, color y grosor, mueve entre el gráfico de precio y su propio panel.",
+    "volume": "Perfil de volumen por sesión: un perfil para Asia, Londres y Nueva York con el punto de control.",
+    "alerts": "La pestaña **Alerts**: alertas de precio, una alerta diaria de sesión y una alerta de evento ICT (MSS en NAS100 5m).",
+    "phone_alerts": "Alertas en el móvil.",
+    "trade": "Paper trading: la pestaña **Trade** y los botones SELL / BUY de un clic en el gráfico.",
+    "tester": "El **Strategy tester**: un modelo en el símbolo activo durante 30, 60 o 90 días.",
+    "screener": "El **Screener**: sesgo, premium / discount, barridos, FVG y setups de hoy de cada símbolo.",
+    "calendar": "El **Calendar** económico: haz clic en un evento para ver su hora en el gráfico.",
+    "assistant": "El asistente **AI** responde sobre el gráfico actual, en inglés o urdu romanizado.",
+    "community": "**Community**: ideas de trading con imágenes del gráfico, me gusta, comentarios y salas de chat.",
+    "phone": "El terminal en un móvil: dos gráficos apilados, herramientas arriba, el menú abajo.",
+    "account": "Tu cuenta: plan, lo que incluye, pagos y dispositivos."
+  },
+  "sections": [
+    {"id": "intro", "t": "¿Qué es ICT Terminal?", "b": [
+      "ICT Terminal es un terminal de gráficos hecho para traders que usan los conceptos **ICT (Inner Circle Trader)**. Dibuja los conceptos en el gráfico por ti y escanea los mercados en busca de setups ICT basados en reglas.",
+      {"ul": [
+        "**Capas ICT:** fair value gaps (FVG / IFVG), order y breaker blocks, liquidez buy-side y sell-side, estructura de mercado (MSS / BOS), sesiones y killzones, aperturas clave, premium / discount y OTE, gaps de apertura, rangos IPDA, SMT y el sesgo diario.",
+        "**Escáner de modelos:** 17 modelos ICT (Silver Bullet, modelo 2022, Judas swing, OTE, Unicorn, Power of 3, post-noticias y más), cada uno escrito como reglas fijas con entrada, stop y objetivos.",
+        "**Un terminal completo:** 1–8 gráficos por diseño, más de 40 herramientas de dibujo, indicadores, alertas, paper trading, probador de estrategias, screener, calendario económico y comunidad."
+      ]},
+      {"info": "ICT Terminal no opera por ti salvo que instales tú mismo el puente MT5. Los setups siguen reglas; muchos pierden. Prueba siempre primero en una cuenta demo."}
+    ]},
+    {"id": "start", "t": "Primeros pasos", "b": [
+      "Abre [ict.iccterminal.trade/terminal](https://ict.iccterminal.trade/terminal/) en Chrome, Edge, Firefox o Safari. No hay que instalar nada.",
+      {"ol": [
+        "Elige **Create account**, escribe tu e-mail y una contraseña, o pulsa **Continue as guest** para echar un vistazo primero.",
+        "El plan gratuito se abre al instante. Para desbloquear todos los modelos en tiempo real, abre tu cuenta (el botón arriba a la derecha) y elige **Upgrade or renew**.",
+        "Tu pantalla — gráficos, dibujos, indicadores, listas y alertas — se guarda en tu cuenta automáticamente y se abre igual en cada dispositivo."
+      ]},
+      {"h": "Apps"},
+      {"ul": [
+        "**Android:** descarga la app desde el sitio web (**Apps**). Si Android lo pide, permite instalar apps desde tu navegador.",
+        "**Windows:** el terminal en su propia ventana; se instala solo en la primera ejecución.",
+        "Ambas apps cargan el mismo terminal, así que cada novedad les llega sin una nueva descarga."
+      ]}
+    ]},
+    {"id": "screen", "t": "La pantalla", "b": [
+      "El terminal tiene cuatro zonas:",
+      {"table": {"head": ["Zona", "Qué contiene"], "rows": [
+        ["Barra superior", "Búsqueda de símbolo, intervalos, tipo de gráfico, **Indicators**, **Templates**, **Compare**, **ICT**, **Wolf Models**, **Screener**, alertas, replay, deshacer / rehacer, diseño, captura, pantalla completa, ajustes y tu cuenta. Si la barra es más ancha que la pantalla, usa la rueda del ratón o las flechas ‹ ›."],
+        ["Barra izquierda", "Herramientas de dibujo en grupos, el imán, modo de dibujo continuo, bloquear / ocultar / borrar todos los dibujos."],
+        ["Menú derecho", "**Watchlist**, **Signals**, **Trade**, **AI**, **Alerts**, **Calendar**, **News**, **Object tree**, **Data window**, el diario y, bajo una línea, **Community** e **ICC**."],
+        ["Gráficos", "De uno a ocho gráficos. Haz clic en un gráfico para activarlo: la barra superior siempre actúa sobre el gráfico activo."]
+      ]}},
+      {"tip": "Clic derecho en un gráfico para su menú (ir a fecha, tipo de gráfico, escala de precio, nueva ventana, ajustes). Clic derecho en la escala de precio para el menú de la escala."}
+    ]},
+    {"id": "charts", "t": "Gráficos, diseños y plantillas", "b": [
+      {"ul": [
+        "**Símbolo:** haz clic en el símbolo arriba (o empieza a escribir sobre el gráfico) y busca. Haz clic en el símbolo del título de un gráfico para cambiar solo ese gráfico.",
+        "**Intervalo:** de 1m a mensual, o escribe un número (por ejemplo `90` o `2h`) para un intervalo personalizado.",
+        "**Tipo de gráfico:** velas, velas huecas, Heikin Ashi, barras, línea, área, Renko, line break, range bars, baseline y columnas.",
+        "**Diseño:** el botón de diseño arriba a la derecha ofrece 1, 2, 3, 4, 5, 6, 7 u 8 gráficos (los que permita tu plan). Ahí también sincronizas símbolo, intervalo y cruz entre gráficos.",
+        "**Cerrar un gráfico:** la ✕ de su esquina. **Un gráfico grande:** menú de diseño → **Show only the active chart**.",
+        "**Templates:** una configuración lista — diseño, intervalos, indicadores, capas ICT y modelos — en un clic. Tu lista, alertas y dibujos se mantienen.",
+        "**Diseños guardados:** menú de diseño → **Save as…**; vuelve a abrirlos desde el mismo menú en cualquier dispositivo.",
+        "**Nueva ventana:** clic derecho → **Open this chart in a new window** (para un segundo monitor).",
+        "**Ir a fecha:** clic derecho → **Go to date…** o Alt+G. **Replay de barras:** el botón de replay en la barra superior."
+      ]},
+      {"h": "Escala de precio"},
+      "Clic derecho en la escala de precio: **Auto (fit)**, **Lock range** (la escala se queda al desplazarte), **Lock price / bar** (el mismo precio por barra al hacer zoom), **Regular**, **Log**, **Percent**, **Invert** y el lado de la escala."
+    ]},
+    {"id": "ict", "t": "Capas ICT", "b": [
+      "Abre el menú **ICT** en la barra superior y activa las capas que quieras. El motor las calcula para el símbolo e intervalo de cada gráfico.",
+      {"table": {"head": ["Capa", "Qué muestra"], "rows": [
+        ["FVG / IFVG", "Fair value gaps alcistas (BISI) y bajistas (SIBI) con la línea del 50% (CE). Un gap que el precio cierra al otro lado se convierte en FVG de inversión."],
+        ["Order blocks", "La última vela contraria antes de un desplazamiento; los que fallan pasan a breaker blocks."],
+        ["Liquidity", "Liquidez buy-side (BSL) y sell-side (SSL) en máximos / mínimos de swing e iguales, marcada al ser barrida."],
+        ["Structure", "MSS (cambio de estructura, contra la tendencia) y BOS (ruptura de estructura, con la tendencia)."],
+        ["Sessions & killzones", "Asia, Londres y Nueva York, las killzones, las ventanas Silver Bullet y los cuartos de 90 minutos, en hora de Nueva York."],
+        ["Key levels", "Aperturas de medianoche y 08:30, máximos y mínimos del día / semana anterior."],
+        ["Premium / Discount + OTE", "El rango de negociación, su 50% (equilibrio) y la zona de entrada óptima 62–79%."],
+        ["Projections, gaps, IPDA", "Desviaciones estándar del rango asiático y del CBDR, gaps de apertura NWOG / NDOG, rangos de 20 / 40 / 60 días."],
+        ["SMT, displacement, bias", "Divergencia con el mercado pareja (oro–plata, Nasdaq–S&P), grandes velas de desplazamiento y el panel de sesgo diario con el objetivo de liquidez."]
+      ]}},
+      {"tip": "¿Demasiado en el gráfico? Desactiva capas por gráfico o cambia los colores en **Settings**."}
+    ]},
+    {"id": "models", "t": "Escáner de modelos y señales", "b": [
+      "El motor escanea los mercados con cada modelo y guarda cada setup con su entrada, stop, objetivos, grado y checklist.",
+      {"ol": [
+        "En el menú **ICT**, marca los modelos que quieres ver en un gráfico. Sus setups se dibujan como cajas con entrada, stop y objetivos.",
+        "Abre **Signals** a la derecha: elige los modelos, el periodo (30 minutos a 7 días), el grado (todos, A, A+) y si solo cuentan los setups **con el sesgo diario**.",
+        "Haz clic en una señal para ir a ella en el gráfico. Activa **notify** para un sonido y una notificación de escritorio con nuevos setups A / A+.",
+        "El diario (panel inferior) muestra cómo terminó cada setup pasado: TP1–TP3, stop, breakeven o no ejecutado, con el resultado en R."
+      ]},
+      {"table": {"head": ["Grado", "Significado"], "rows": [
+        ["A+", "Se cumple cada punto del checklist del modelo, incluido el sesgo diario."],
+        ["A", "Falta un punto."],
+        ["B", "Un setup válido al que le faltan más puntos: para estudiar más que para operar."]
+      ]}},
+      {"warn": "Ningún modelo tiene aún una ventaja demostrada. M11 (IFVG reversal) está desactivado por defecto porque fue el más débil en las pruebas; aun así puedes elegirlo. Los resultados pasados no garantizan los futuros."}
+    ]},
+    {"id": "drawing", "t": "Herramientas de dibujo", "b": [
+      {"ul": [
+        "Líneas, Fibonacci (con los niveles ICT 0.62 / 0.705 / 0.79 y las extensiones), canales, pitchfork, abanico de Gann, XABCD / ABCD, hombro-cabeza-hombro, ondas de Elliott, formas, texto y notas.",
+        "Herramientas ICT: caja FVG con CE, order block con umbral medio, línea de liquidez (BSL / SSL), herramienta OTE, rango de negociación y caja de killzone.",
+        "Medición: posición larga / corta con riesgo-beneficio, rango de precio y fecha, rango de fechas, VWAP anclado y **Fixed range volume profile**. Shift + clic en el gráfico mide rápido."
+      ]},
+      {"h": "Ajustes de un dibujo"},
+      "Haz doble clic en un dibujo (o pulsa el engranaje de su barrita) para **Style**, **Text**, **Coordinates** y **Visibility**. En **Visibility** puedes mostrar un dibujo solo en intervalos elegidos — por ejemplo un FVG de 1H solo en gráficos de 1m–15m.",
+      {"tip": "Selecciona una línea o una caja y pulsa ⏰ en su barra para crear una alerta a partir de ella."}
+    ]},
+    {"id": "indicators", "t": "Indicadores, perfiles de volumen e ICT Script", "b": [
+      {"ul": [
+        "**Indicators** en la barra superior: unos 30 indicadores (medias móviles, VWAP, SuperTrend, Bollinger, RSI, MACD, ATR, volumen y más). Busca, añade y en **On this chart** cambia ajustes, color, grosor, oculta o quita.",
+        "Los indicadores de precio (medias, VWAP …) pasan a su propio panel con **↓ Own pane** y vuelven con **↑ On price**; los de panel (RSI, MACD, volumen) suben y bajan con ▲ ▼.",
+        "**Perfiles de volumen:** VPVR (rango visible), SVP (un perfil por sesión o por día) y el dibujo de rango fijo, cada uno con el punto de control (POC) y el área de valor.",
+        "**Apply to all charts** copia los indicadores del gráfico activo a todos los gráficos."
+      ]},
+      {"h": "ICT Script: tu propio indicador"},
+      "En **Indicators → My scripts → + New script** escribe unas líneas, por ejemplo:",
+      "`fast = ema(close, 9)` · `plot(fast, \"EMA 9\")`",
+      {"ul": [
+        "Valores: `open high low close volume hl2 hlc3 ohlc4`; `close[1]` es la barra anterior.",
+        "Funciones: `sma ema rma wma rsi atr highest lowest stdev change abs max min`; hasta 6 líneas `plot()`; `@pane` en la primera línea lo dibuja en su propio panel.",
+        "La comprobación bajo el editor muestra los errores con el número de línea. **Save and add to chart** lo guarda en tu cuenta."
+      ]}
+    ]},
+    {"id": "alerts", "t": "Alertas y WhatsApp", "b": [
+      "Abre **Alerts** a la derecha. Las alertas funcionan mientras el terminal esté abierto en alguno de tus dispositivos; las de WhatsApp las envía el servidor.",
+      {"table": {"head": ["Alerta", "Cómo crearla"], "rows": [
+        ["Price", "Escribe un precio y elige **Crossing**, **Above** o **Below**. Alt+A pone una en el último precio."],
+        ["Trend line / zone", "Selecciona una línea de tendencia, una caja, un FVG o un order block en el gráfico y pulsa ⏰."],
+        ["Session", "Elige una sesión (killzones, ventanas Silver Bullet, apertura de Nueva York) → **Daily session alert**. Suena cada día."],
+        ["ICT event", "En **ICT event**: MSS, BOS, nuevo FVG o barrido de liquidez, un intervalo (1m–4H) y una dirección. Suena con cada evento nuevo."]
+      ]}},
+      {"h": "Setups por WhatsApp"},
+      {"ol": [
+        "En **Alerts → WhatsApp alerts** escribe tu número en formato internacional, solo dígitos (por ejemplo `923001234567`).",
+        "Elige el grado mínimo y, si quieres, solo algunos modelos o símbolos, y si solo cuentan los setups con el sesgo.",
+        "Activa **Auto notify**, guarda y pulsa **Test**. Cada setup nuevo se envía una vez; los planes con retraso lo envían tras el retraso."
+      ]},
+      {"tip": "Activa las notificaciones de escritorio (el botón de la pestaña Alerts) para oír las alertas aunque estés en otra ventana."}
+    ]},
+    {"id": "trade", "t": "Paper trading", "b": [
+      "Practica sin dinero real. La cuenta de papel empieza con 10,000 USD (puedes reiniciarla con cualquier saldo).",
+      {"ol": [
+        "Abre **Trade** a la derecha, o usa los botones **SELL** / **BUY** del gráfico activo con la cantidad entre ellos.",
+        "Elige **Market**, **Limit** o **Stop**, la cantidad y, si quieres, **Stop loss** y **Take profit**. Antes de enviarla ves riesgo, beneficio y R.",
+        "Las posiciones y órdenes se dibujan en el gráfico. Arrastra la línea de SL, TP u orden para moverla.",
+        "Cierra con ✕ en **Positions**; las operaciones terminadas están en **History** con el P&L y el porcentaje de acierto."
+      ]},
+      {"info": "El servidor ejecuta las órdenes con barras de 1 minuto: las limit y stop a su precio, un gap a la apertura, y cuando una barra toca a la vez el stop y el objetivo, cuenta primero el stop."}
+    ]},
+    {"id": "tester", "t": "Probador de estrategias y screener", "b": [
+      {"h": "Probador de estrategias"},
+      {"ol": [
+        "Abre el panel inferior (el botón del diario en el menú derecho, o ajustes → **Journal & stats panel**) y elige **Strategy tester**.",
+        "Elige un modelo, 30, 60 o 90 días y si se exige el sesgo diario, luego **Run test**.",
+        "Ves los setups, ejecuciones, porcentaje de acierto, R medio, R total, profit factor, la mayor caída, una curva de capital y cada operación (haz clic en una para verla en el gráfico)."
+      ]},
+      {"h": "Screener"},
+      "**Screener** en la barra superior muestra todos los símbolos en una tabla: sesgo diario, premium o discount, barridos del máximo / mínimo del día anterior, los FVG de 15m y 1H más cercanos, la killzone actual y los setups de hoy. Haz clic en una fila para abrir ese gráfico."
+    ]},
+    {"id": "market", "t": "Calendario, noticias y el asistente de IA", "b": [
+      {"ul": [
+        "**Calendar:** los eventos económicos de la semana con filtros de impacto y divisa; haz clic en uno para ver su hora en el gráfico. Las noticias de alto impacto también aparecen como marca en el gráfico y etiqueta con cuenta atrás.",
+        "**News:** los últimos titulares del mercado.",
+        "**AI:** pregunta por el gráfico activo — sesgo, niveles clave, liquidez, gaps abiertos, los últimos setups y su hora. Responde en inglés o urdu romanizado con los datos del propio motor."
+      ]},
+      {"warn": "Los modelos no abren operaciones nuevas en torno a noticias de alto impacto (15 minutos antes y después), y los días de FOMC las posiciones se cierran antes de las 14:00 de Nueva York."}
+    ]},
+    {"id": "community", "t": "Comunidad e ICC Terminal", "b": [
+      {"ul": [
+        "**Community** (menú derecho): comparte una idea de trading con una imagen de tu gráfico, da me gusta y comenta ideas, y chatea en las salas. Las mismas ideas están en el sitio web.",
+        "La primera vez elige un apodo y acepta las normas. Los reportes van a los moderadores.",
+        "**ICC** (menú derecho): abre ICC Terminal junto a tus gráficos con su propio inicio de sesión — acoplado, a pantalla completa o en una pestaña nueva."
+      ]}
+    ]},
+    {"id": "mobile", "t": "Móvil y tablet", "b": [
+      {"ul": [
+        "En el móvil las herramientas están arriba, los gráficos en medio y el menú (Watchlist, Signals, Trade, AI, Alerts …) abajo; desliza el menú inferior para ver Community e ICC.",
+        "Con 2–8 gráficos, **▦ All** muestra todos en pantalla y **▢ One** uno cada vez, con chips para cambiar.",
+        "Las tablets en vertical muestran hasta 8 gráficos en dos columnas.",
+        "Pellizca para hacer zoom, arrastra para desplazarte, mantén pulsado para la cruz; también se dibuja con el dedo."
+      ]}
+    ]},
+    {"id": "account", "t": "Planes y tu cuenta", "b": [
+      {"ul": [
+        "El botón de cuenta arriba a la derecha muestra tu plan, su vencimiento y lo que incluye (gráficos por diseño, indicadores ICT, modelos, retraso de señales, alertas, backtests).",
+        "**Upgrade or renew:** elige un plan y paga con uno de los métodos mostrados (transferencia bancaria / billetera con el ID de la transacción, o cripto). El plan empieza cuando se confirma el pago.",
+        "**Devices:** tu cuenta lista los dispositivos que usas; cada plan permite un número fijo a la vez.",
+        "**Security:** cambia ahí tu contraseña; usa **Forgot password?** en la página de acceso si la olvidas."
+      ]}
+    ]},
+    {"id": "shortcuts", "t": "Atajos de teclado", "b": [
+      {"table": {"head": ["Teclas", "Acción"], "rows": [
+        ["A–Z", "Buscar símbolo"], ["0–9", "Intervalo (escribe un número)"], ["Alt+T / Alt+H / Alt+F / Alt+R", "Línea de tendencia / línea horizontal / Fibonacci ICT / rectángulo"],
+        ["Alt+A", "Alerta en el último precio"], ["Alt+G", "Ir a fecha"], ["Alt+S", "Captura"], ["Ctrl+Z / Ctrl+Y", "Deshacer / rehacer"],
+        ["Del", "Borrar el dibujo seleccionado"], ["Esc", "Cancelar la herramienta o cerrar una ventana"], ["Shift + click", "Medición rápida"]
+      ]}}
+    ]},
+    {"id": "faq", "t": "Preguntas", "b": [
+      {"h": "El gráfico está vacío o deja de actualizarse."},
+      "Comprueba tu internet y recarga la página. Si un símbolo no tiene datos, el feed del bróker puede estar cerrado (fin de semana) u ocupado un momento.",
+      {"h": "Veo un candado en un modelo o capa."},
+      "Tu plan no lo incluye. Abre el botón de cuenta → **Upgrade or renew**.",
+      {"h": "Mis dibujos han desaparecido."},
+      "Los dibujos se guardan con cada gráfico unos segundos después de dibujarlos. Comprueba que estás en la misma cuenta y que el dibujo no está oculto para este intervalo (**Visibility**).",
+      {"h": "¿Opera por mí?"},
+      "Solo mediante el puente MT5 (ICT Bridge EA) en tu propia cuenta de MetaTrader 5, para modelos aprobados y planes que lo incluyan. Empieza en una cuenta demo."
+    ]},
+    {"id": "risk", "t": "Advertencia de riesgo", "b": [
+      "Operar CFD, forex, índices y cripto con apalancamiento conlleva un alto riesgo de perder dinero rápidamente. ICT Terminal es una herramienta de análisis y aprendizaje, no asesoramiento financiero. Los modelos siguen reglas fijas y muchos setups pierden; los resultados pasados no garantizan los futuros. Opera solo con dinero que puedas permitirte perder."
+    ]}
+  ]
+}

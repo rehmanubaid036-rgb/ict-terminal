@@ -1,0 +1,230 @@
+{
+  "ui": {
+    "page_title": "ICT Terminal — Kullanım Kılavuzu",
+    "guide": "Kılavuz",
+    "eyebrow": "Kullanım kılavuzu",
+    "title_a": "ICT Terminal",
+    "title_b": "Kullanım Kılavuzu",
+    "lead": "ICT Terminal'i kullanmak için gereken her şey: grafikteki ICT katmanları, model tarayıcı, çizim araçları, alarmlar (WhatsApp'ta da), kâğıt üzerinde işlem, strateji test aracı, 8 grafiğe kadar düzenler ve telefon uygulaması — adım adım, görsellerle.",
+    "chips": ["ICT kavramları sizin için çizilir", "Kurallara dayalı 17 model", "Web, Android ve Windows", "14 dil"],
+    "uinote": "Terminalin içindeki düğmeler, sekmeler ve menüler İngilizcedir. Bu kılavuz onları tam gördüğünüz gibi **kalın** yazıyla gösterir.",
+    "toc": "İçindekiler",
+    "home": "Web sitesi",
+    "open": "Terminali aç",
+    "pdf": "PDF indir",
+    "footer": "ICT Terminal öğrenme amaçlı bir grafik ve analiz aracıdır, yatırım tavsiyesi değildir. CFD, forex, endeks ve kripto işlemleri yüksek para kaybı riski taşır."
+  },
+  "caps": {
+    "overview": "Dört grafikli terminal: üst çubuk, solda çizim araçları, sağ menü ve izleme listesi.",
+    "eight": "Bir düzende sekiz grafiğe kadar, her birinin kendi sembolü ve zaman dilimi.",
+    "templates": "**Templates**: tek tıkla hazır grafik kurulumları. ★ işaretli olan, yeni üyelerin başladığı şablondur.",
+    "ict_layers": "Altın 15m üzerinde ICT katmanları: FVG, order block, likidite, yapı, seanslar, önemli seviyeler, premium / discount ve günlük yön.",
+    "ict_menu": "**ICT** menüsü: her katmanı ve her modeli tek tıkla açıp kapatın.",
+    "signals": "**Signals** sekmesi modellerinizin kurulumlarını listeler; birine tıklayınca grafikte giriş, stop ve hedefler görünür.",
+    "indicators": "**Indicators**: arayın, ekleyin, ayar, renk ve kalınlığı değiştirin, fiyat grafiği ile ayrı panel arasında taşıyın.",
+    "volume": "Seans hacim profili: Asya, Londra ve New York için ayrı profil, kontrol noktasıyla.",
+    "alerts": "**Alerts** sekmesi: fiyat alarmları, günlük seans alarmı ve bir ICT olay alarmı (NAS100 5m üzerinde MSS).",
+    "phone_alerts": "Telefonda alarmlar.",
+    "trade": "Kâğıt üzerinde işlem: **Trade** sekmesi ve grafikte tek tıkla SELL / BUY düğmeleri.",
+    "tester": "**Strategy tester**: aktif sembolde bir modeli son 30, 60 veya 90 gün üzerinde dener.",
+    "screener": "**Screener**: her sembolün yönü, premium / discount, süpürmeler, FVG'ler ve bugünkü kurulumlar.",
+    "calendar": "Ekonomik **Calendar**: bir olaya tıklayınca grafikteki zamanını görürsünüz.",
+    "assistant": "**AI** asistanı mevcut grafik hakkında İngilizce veya Latin harfli Urduca yanıt verir.",
+    "community": "**Community**: grafik görselli işlem fikirleri, beğeniler, yorumlar ve sohbet odaları.",
+    "phone": "Telefonda terminal: üst üste iki grafik, araçlar üstte, menü altta.",
+    "account": "Hesabınız: plan, neleri içerdiği, ödemeler ve cihazlar."
+  },
+  "sections": [
+    {"id": "intro", "t": "ICT Terminal nedir?", "b": [
+      "ICT Terminal, **ICT (Inner Circle Trader)** kavramlarını kullanan yatırımcılar için yapılmış bir grafik terminalidir. Kavramları sizin yerinize grafiğe çizer ve piyasaları kurallara dayalı ICT kurulumları için tarar.",
+      {"ul": [
+        "**ICT katmanları:** fair value gap'ler (FVG / IFVG), order ve breaker block'lar, buy-side ve sell-side likidite, piyasa yapısı (MSS / BOS), seanslar ve killzone'lar, önemli açılışlar, premium / discount ve OTE, açılış boşlukları, IPDA aralıkları, SMT ve günlük yön.",
+        "**Model tarayıcı:** 17 ICT modeli (Silver Bullet, 2022 modeli, Judas swing, OTE, Unicorn, Power of 3, haber sonrası ve daha fazlası), her biri giriş, stop ve hedeflerle sabit kurallar olarak yazılmıştır.",
+        "**Tam bir terminal:** düzen başına 1–8 grafik, 40'tan fazla çizim aracı, göstergeler, alarmlar, kâğıt üzerinde işlem, strateji test aracı, tarayıcı, ekonomik takvim ve topluluk."
+      ]},
+      {"info": "MT5 köprüsünü kendiniz kurmadıkça ICT Terminal sizin yerinize işlem yapmaz. Kurulumlar kurallara uyar; birçoğu zararla biter. Her zaman önce demo hesapta deneyin."}
+    ]},
+    {"id": "start", "t": "Başlarken", "b": [
+      "Chrome, Edge, Firefox veya Safari'de [ict.iccterminal.trade/terminal](https://ict.iccterminal.trade/terminal/) adresini açın. Hiçbir şey kurmanız gerekmez.",
+      {"ol": [
+        "**Create account** seçin, e-postanızı ve bir şifre girin veya önce göz atmak için **Continue as guest**'e basın.",
+        "Ücretsiz plan hemen açılır. Tüm modelleri gerçek zamanlı açmak için hesabınızı (sağ üstteki düğme) açın ve **Upgrade or renew** seçin.",
+        "Ekranınız — grafikler, çizimler, göstergeler, listeler ve alarmlar — hesabınıza otomatik kaydedilir ve her cihazda aynı açılır."
+      ]},
+      {"h": "Uygulamalar"},
+      {"ul": [
+        "**Android:** uygulamayı web sitesinden (**Apps**) indirin. Android sorarsa tarayıcınızdan uygulama yüklemeye izin verin.",
+        "**Windows:** terminal kendi penceresinde; ilk çalıştırmada kendini kurar.",
+        "İki uygulama da aynı terminali açar; her yenilik yeni indirme gerekmeden ulaşır."
+      ]}
+    ]},
+    {"id": "screen", "t": "Ekran", "b": [
+      "Terminalin dört alanı vardır:",
+      {"table": {"head": ["Alan", "İçindekiler"], "rows": [
+        ["Üst çubuk", "Sembol arama, zaman dilimleri, grafik türü, **Indicators**, **Templates**, **Compare**, **ICT**, **Wolf Models**, **Screener**, alarmlar, tekrar oynatma, geri al / yinele, düzen, ekran görüntüsü, tam ekran, ayarlar ve hesabınız. Çubuk ekrandan genişse fare tekerleğini veya ‹ › oklarını kullanın."],
+        ["Sol araç çubuğu", "Gruplar halinde çizim araçları, mıknatıs, çizim modunda kalma, tüm çizimleri kilitle / gizle / sil."],
+        ["Sağ menü", "**Watchlist**, **Signals**, **Trade**, **AI**, **Alerts**, **Calendar**, **News**, **Object tree**, **Data window**, günlük ve bir çizginin altında **Community** ile **ICC**."],
+        ["Grafikler", "Birden sekize kadar grafik. Bir grafiğe tıklayınca aktif olur: üst çubuk her zaman aktif grafikte çalışır."]
+      ]}},
+      {"tip": "Grafik menüsü için grafiğe sağ tıklayın (tarihe git, grafik türü, fiyat ölçeği, yeni pencere, ayarlar). Ölçek menüsü için sağdaki fiyat ölçeğine sağ tıklayın."}
+    ]},
+    {"id": "charts", "t": "Grafikler, düzenler ve şablonlar", "b": [
+      {"ul": [
+        "**Sembol:** üstteki sembole tıklayın (veya grafikte yazmaya başlayın) ve arayın. Bir grafiğin başlığındaki sembole tıklarsanız yalnızca o grafik değişir.",
+        "**Zaman dilimi:** 1m'den aylığa kadar veya özel bir zaman dilimi için bir sayı yazın (örneğin `90` ya da `2h`).",
+        "**Grafik türü:** mumlar, içi boş mumlar, Heikin Ashi, çubuklar, çizgi, alan, Renko, line break, range bar, baseline ve sütunlar.",
+        "**Düzen:** sağ üstteki düzen düğmesi 1, 2, 3, 4, 5, 6, 7 veya 8 grafik sunar (planınızın izin verdiği kadar). Grafikler arasında sembol, zaman dilimi ve artı imlecini orada eşitleyin.",
+        "**Grafiği kapat:** köşesindeki ✕. **Tek grafik büyük:** düzen menüsü → **Show only the active chart**.",
+        "**Templates:** tek tıkla hazır kurulum — düzen, zaman dilimleri, göstergeler, ICT katmanları ve modeller. İzleme listeniz, alarmlarınız ve çizimleriniz kalır.",
+        "**Kayıtlı düzenler:** düzen menüsü → **Save as…**; aynı menüden herhangi bir cihazda yeniden açın.",
+        "**Yeni pencere:** sağ tık → **Open this chart in a new window** (ikinci monitör için).",
+        "**Tarihe git:** sağ tık → **Go to date…** veya Alt+G. **Bar tekrarı:** üst çubuktaki tekrar düğmesi."
+      ]},
+      {"h": "Fiyat ölçeği"},
+      "Fiyat ölçeğine sağ tıklayın: **Auto (fit)**, **Lock range** (kaydırırken ölçek sabit kalır), **Lock price / bar** (yakınlaştırırken çubuk başına aynı fiyat), **Regular**, **Log**, **Percent**, **Invert** ve ölçeğin tarafı."
+    ]},
+    {"id": "ict", "t": "ICT katmanları", "b": [
+      "Üst çubuktaki **ICT** menüsünü açın ve istediğiniz katmanları açın. Motor bunları her grafiğin sembolü ve zaman dilimi için hesaplar.",
+      {"table": {"head": ["Katman", "Ne gösterir"], "rows": [
+        ["FVG / IFVG", "Yükseliş (BISI) ve düşüş (SIBI) fair value gap'leri, %50 çizgisiyle (CE). Fiyatın ötesinde kapandığı boşluk ters FVG olur."],
+        ["Order blocks", "Bir sıçramadan önceki son ters mum; başarısız olanlar breaker block olur."],
+        ["Liquidity", "Swing tepe / diplerde ve eşit tepe / diplerde buy-side (BSL) ve sell-side (SSL) likidite, süpürüldüğünde işaretlenir."],
+        ["Structure", "MSS (yapı değişimi, trende karşı) ve BOS (yapı kırılımı, trend yönünde)."],
+        ["Sessions & killzones", "Asya, Londra ve New York, killzone'lar, Silver Bullet pencereleri ve 90 dakikalık çeyrekler, New York saatiyle."],
+        ["Key levels", "Gece yarısı ve 08:30 açılışları, önceki gün / hafta tepe ve dipleri."],
+        ["Premium / Discount + OTE", "İşlem aralığı, %50'si (denge) ve %62–79 optimal giriş bölgesi."],
+        ["Projections, gaps, IPDA", "Asya aralığı ve CBDR'nin standart sapmaları, NWOG / NDOG açılış boşlukları, 20 / 40 / 60 günlük aralıklar."],
+        ["SMT, displacement, bias", "Eş piyasa ile uyumsuzluk (altın–gümüş, Nasdaq–S&P), büyük sıçrama mumları ve likidite hedefiyle günlük yön paneli."]
+      ]}},
+      {"tip": "Grafik çok mu kalabalık? Katmanları her grafikte ayrı kapatın veya **Settings**'te renkleri değiştirin."}
+    ]},
+    {"id": "models", "t": "Model tarayıcı ve sinyaller", "b": [
+      "Motor piyasaları her modelle tarar ve her kurulumu giriş, stop, hedefler, not ve kontrol listesiyle kaydeder.",
+      {"ol": [
+        "**ICT** menüsünde grafikte görmek istediğiniz modelleri işaretleyin. Kurulumları giriş, stop ve hedeflerle kutular halinde çizilir.",
+        "Sağda **Signals**'ı açın: modelleri, süreyi (30 dakikadan 7 güne), notu (hepsi, A, A+) ve yalnızca **günlük yönle uyumlu** kurulumların sayılıp sayılmayacağını seçin.",
+        "Bir sinyale tıklayınca grafikte ona gidilir. Yeni A / A+ kurulumlarında ses ve masaüstü bildirimi için **notify**'ı açın.",
+        "Günlük (alt panel), her geçmiş kurulumun nasıl bittiğini gösterir: TP1–TP3, stop, başabaş veya gerçekleşmedi, R sonucuyla."
+      ]},
+      {"table": {"head": ["Not", "Anlamı"], "rows": [
+        ["A+", "Modelin kontrol listesindeki her madde, günlük yön dahil, karşılanmış."],
+        ["A", "Bir madde eksik."],
+        ["B", "Geçerli ama daha fazla maddesi eksik bir kurulum: işlemden çok öğrenmek için."]
+      ]}},
+      {"warn": "Henüz hiçbir modelin kanıtlanmış bir avantajı yok. M11 (IFVG reversal) testlerde en zayıf çıktığı için varsayılan olarak kapalıdır; yine de seçebilirsiniz. Geçmiş sonuçlar geleceği garanti etmez."}
+    ]},
+    {"id": "drawing", "t": "Çizim araçları", "b": [
+      {"ul": [
+        "Çizgiler, Fibonacci (ICT seviyeleri 0.62 / 0.705 / 0.79 ve uzantılarla), kanallar, pitchfork, Gann yelpazesi, XABCD / ABCD, omuz-baş-omuz, Elliott dalgaları, şekiller, metin ve notlar.",
+        "ICT araçları: CE'li FVG kutusu, ortalama eşikli order block, likidite çizgisi (BSL / SSL), OTE aracı, işlem aralığı ve killzone kutusu.",
+        "Ölçüm: risk-getirili uzun / kısa pozisyon, fiyat ve tarih aralığı, tarih aralığı, sabitlenmiş VWAP ve **Fixed range volume profile**. Grafikte Shift + tık hızlı ölçer."
+      ]},
+      {"h": "Bir çizimin ayarları"},
+      "**Style**, **Text**, **Coordinates** ve **Visibility** için çizime çift tıklayın (veya küçük çubuğundaki dişliye basın). **Visibility**'de bir çizimi yalnızca seçtiğiniz zaman dilimlerinde gösterebilirsiniz — örneğin 1H FVG'yi yalnızca 1m–15m grafiklerde.",
+      {"tip": "Bir çizgi veya kutu seçip çubuğundaki ⏰'a basarak ondan alarm oluşturun."}
+    ]},
+    {"id": "indicators", "t": "Göstergeler, hacim profilleri ve ICT Script", "b": [
+      {"ul": [
+        "Üst çubukta **Indicators**: yaklaşık 30 gösterge (hareketli ortalamalar, VWAP, SuperTrend, Bollinger, RSI, MACD, ATR, hacim ve diğerleri). Arayın, ekleyin ve **On this chart** bölümünde ayar, renk, kalınlığı değiştirin, gizleyin veya kaldırın.",
+        "Fiyat göstergeleri (ortalamalar, VWAP …) **↓ Own pane** ile kendi paneline geçer, **↑ On price** ile geri döner; panel göstergeleri (RSI, MACD, hacim) ▲ ▼ ile yukarı aşağı taşınır.",
+        "**Hacim profilleri:** VPVR (görünen aralık), SVP (her seans veya gün için bir profil) ve sabit aralık çizimi; her biri kontrol noktası (POC) ve değer alanıyla.",
+        "**Apply to all charts** aktif grafiğin göstergelerini tüm grafiklere kopyalar."
+      ]},
+      {"h": "ICT Script: kendi göstergeniz"},
+      "**Indicators → My scripts → + New script** içinde birkaç satır yazın, örneğin:",
+      "`fast = ema(close, 9)` · `plot(fast, \"EMA 9\")`",
+      {"ul": [
+        "Değerler: `open high low close volume hl2 hlc3 ohlc4`; `close[1]` önceki çubuktur.",
+        "Fonksiyonlar: `sma ema rma wma rsi atr highest lowest stdev change abs max min`; en fazla 6 `plot()` satırı; ilk satırdaki `@pane` onu kendi panelinde çizer.",
+        "Düzenleyicinin altındaki kontrol hataları satır numarasıyla gösterir. **Save and add to chart** onu hesabınıza kaydeder."
+      ]}
+    ]},
+    {"id": "alerts", "t": "Alarmlar ve WhatsApp", "b": [
+      "Sağda **Alerts**'ı açın. Alarmlar, terminal cihazlarınızdan birinde açık olduğu sürece çalışır; WhatsApp alarmlarını sunucu gönderir.",
+      {"table": {"head": ["Alarm", "Nasıl oluşturulur"], "rows": [
+        ["Price", "Bir fiyat girin ve **Crossing**, **Above** veya **Below** seçin. Alt+A son fiyata alarm kurar."],
+        ["Trend line / zone", "Grafikte bir trend çizgisi, kutu, FVG veya order block seçip ⏰'a basın."],
+        ["Session", "Bir seans seçin (killzone'lar, Silver Bullet pencereleri, New York açılışı) → **Daily session alert**. Her gün çalar."],
+        ["ICT event", "**ICT event** altında: MSS, BOS, yeni FVG veya likidite süpürmesi, bir zaman dilimi (1m–4H) ve yön. Her yeni olayda çalar."]
+      ]}},
+      {"h": "Kurulumlar WhatsApp'ta"},
+      {"ol": [
+        "**Alerts → WhatsApp alerts** içinde numaranızı uluslararası biçimde, yalnızca rakamlarla girin (örneğin `923001234567`).",
+        "En düşük notu seçin, isterseniz yalnızca bazı modeller veya semboller ve yalnızca yönle uyumlu kurulumların sayılıp sayılmayacağını belirleyin.",
+        "**Auto notify**'ı açın, kaydedin ve **Test**'e basın. Her yeni kurulum bir kez gönderilir; gecikmeli planlar gecikmeden sonra gönderir."
+      ]},
+      {"tip": "Başka bir pencerede bile alarmları duymak için masaüstü bildirimlerini açın (Alerts sekmesindeki düğme)."}
+    ]},
+    {"id": "trade", "t": "Kâğıt üzerinde işlem", "b": [
+      "Gerçek para olmadan pratik yapın. Kâğıt hesap 10,000 USD ile başlar (istediğiniz bakiyeyle sıfırlayabilirsiniz).",
+      {"ol": [
+        "Sağda **Trade**'i açın veya aktif grafikteki **SELL** / **BUY** düğmelerini kullanın, miktar ikisinin arasında.",
+        "**Market**, **Limit** veya **Stop**, miktar ve isteğe bağlı **Stop loss** ile **Take profit** seçin. Göndermeden önce risk, getiri ve R görünür.",
+        "Pozisyonlar ve emirler grafikte çizilir. SL, TP veya emir çizgisini sürükleyerek taşıyın.",
+        "**Positions**'ta ✕ ile kapatın; biten işlemler K/Z ve kazanma oranıyla **History**'dedir."
+      ]},
+      {"info": "Sunucu emirleri 1 dakikalık çubuklarla gerçekleştirir: limit ve stop emirleri kendi fiyatından, boşluk açılıştan; bir çubuk hem stopa hem hedefe değerse önce stop sayılır."}
+    ]},
+    {"id": "tester", "t": "Strateji test aracı ve tarayıcı", "b": [
+      {"h": "Strateji test aracı"},
+      {"ol": [
+        "Alt paneli açın (sağ menüdeki günlük düğmesi veya ayarlar → **Journal & stats panel**) ve **Strategy tester**'ı seçin.",
+        "Bir model, 30, 60 veya 90 gün ve günlük yönün gerekip gerekmediğini seçin, ardından **Run test**.",
+        "Kurulumları, gerçekleşenleri, kazanma oranını, ortalama R'yi, toplam R'yi, kâr faktörünü, en büyük düşüşü, sermaye eğrisini ve her işlemi görürsünüz (birine tıklayınca grafikte gösterilir)."
+      ]},
+      {"h": "Tarayıcı"},
+      "Üst çubuktaki **Screener** tüm sembolleri tek tabloda gösterir: günlük yön, premium veya discount, önceki günün tepe / dip süpürmeleri, en yakın 15m ve 1H FVG'ler, şu anki killzone ve bugünün kurulumları. O grafiği açmak için bir satıra tıklayın."
+    ]},
+    {"id": "market", "t": "Takvim, haberler ve yapay zekâ asistanı", "b": [
+      {"ul": [
+        "**Calendar:** haftanın ekonomik olayları, etki ve para birimi filtreleriyle; birine tıklayınca grafikteki zamanı görünür. Yüksek etkili haberler grafikte işaret ve geri sayım etiketi olarak da görünür.",
+        "**News:** piyasanın son manşetleri.",
+        "**AI:** aktif grafik hakkında sorun — yön, önemli seviyeler, likidite, açık boşluklar, son kurulumlar ve zamanları. Motorun kendi verisinden İngilizce veya Latin harfli Urduca yanıt verir."
+      ]},
+      {"warn": "Modeller yüksek etkili haberler çevresinde (15 dakika önce ve sonra) yeni işlem açmaz; FOMC günlerinde pozisyonlar New York saatiyle 14:00'ten önce kapatılır."}
+    ]},
+    {"id": "community", "t": "Topluluk ve ICC Terminal", "b": [
+      {"ul": [
+        "**Community** (sağ menü): grafiğinizin görseliyle bir işlem fikri paylaşın, fikirleri beğenin ve yorumlayın, odalarda sohbet edin. Aynı fikirler web sitesinde de var.",
+        "İlk seferde bir takma ad seçin ve kuralları kabul edin. Şikâyetler moderatörlere gider.",
+        "**ICC** (sağ menü): ICC Terminal'i kendi girişiyle grafiklerinizin yanında açar — yanaşık, tam ekran veya yeni sekmede."
+      ]}
+    ]},
+    {"id": "mobile", "t": "Telefon ve tablet", "b": [
+      {"ul": [
+        "Telefonda araçlar üstte, grafikler ortada ve menü (Watchlist, Signals, Trade, AI, Alerts …) alttadır; Community ve ICC için alt menüyü yana kaydırın.",
+        "2–8 grafikte **▦ All** hepsini ekranda, **▢ One** tek tek gösterir; değiştirmek için çipler vardır.",
+        "Dikey tutulan tabletler 8 grafiğe kadar iki sütunda gösterir.",
+        "Yakınlaştırmak için iki parmakla sıkıştırın, kaydırmak için sürükleyin, artı imleci için uzun basın; çizim parmakla da yapılır."
+      ]}
+    ]},
+    {"id": "account", "t": "Planlar ve hesabınız", "b": [
+      {"ul": [
+        "Sağ üstteki hesap düğmesi planınızı, bitiş tarihini ve neleri içerdiğini gösterir (düzen başına grafik, ICT göstergeleri, modeller, sinyal gecikmesi, alarmlar, geriye dönük testler).",
+        "**Upgrade or renew:** bir plan seçin ve gösterilen yöntemlerden biriyle ödeyin (işlem kimliğiyle banka / cüzdan havalesi veya kripto). Plan, ödeme onaylanınca başlar.",
+        "**Devices:** hesabınız kullandığınız cihazları listeler; her plan aynı anda belirli sayıda cihaza izin verir.",
+        "**Security:** şifrenizi orada değiştirin; unutursanız giriş sayfasında **Forgot password?** kullanın."
+      ]}
+    ]},
+    {"id": "shortcuts", "t": "Klavye kısayolları", "b": [
+      {"table": {"head": ["Tuşlar", "İşlem"], "rows": [
+        ["A–Z", "Sembol arama"], ["0–9", "Zaman dilimi (sayı yazın)"], ["Alt+T / Alt+H / Alt+F / Alt+R", "Trend çizgisi / yatay çizgi / ICT Fibonacci / dikdörtgen"],
+        ["Alt+A", "Son fiyata alarm"], ["Alt+G", "Tarihe git"], ["Alt+S", "Ekran görüntüsü"], ["Ctrl+Z / Ctrl+Y", "Geri al / yinele"],
+        ["Del", "Seçili çizimi sil"], ["Esc", "Aracı iptal et veya pencereyi kapat"], ["Shift + click", "Hızlı ölçüm"]
+      ]}}
+    ]},
+    {"id": "faq", "t": "Sorular", "b": [
+      {"h": "Grafik boş veya güncellenmiyor."},
+      "İnternetinizi kontrol edip sayfayı yenileyin. Bir sembolün verisi yoksa aracı kurum akışı kapalı (hafta sonu) veya kısa süre meşgul olabilir.",
+      {"h": "Bir model veya katmanda kilit görüyorum."},
+      "Planınız bunu içermiyor. Hesap düğmesi → **Upgrade or renew**'ı açın.",
+      {"h": "Çizimlerim kayboldu."},
+      "Çizimler, çizildikten birkaç saniye sonra her grafikle birlikte kaydedilir. Aynı hesapta olduğunuzu ve çizimin bu zaman dilimi için gizlenmediğini (**Visibility**) kontrol edin.",
+      {"h": "Benim yerime işlem yapar mı?"},
+      "Yalnızca kendi MetaTrader 5 hesabınızdaki MT5 köprüsü (ICT Bridge EA) üzerinden, onaylı modeller ve bunu içeren planlar için. Demo hesapla başlayın."
+    ]},
+    {"id": "risk", "t": "Risk uyarısı", "b": [
+      "Kaldıraçlı CFD, forex, endeks ve kripto işlemleri hızla para kaybetme konusunda yüksek risk taşır. ICT Terminal bir analiz ve öğrenme aracıdır, yatırım tavsiyesi değildir. Modeller sabit kurallara uyar ve birçok kurulum zararla biter; geçmiş sonuçlar geleceği garanti etmez. Yalnızca kaybetmeyi göze alabileceğiniz parayla işlem yapın."
+    ]}
+  ]
+}

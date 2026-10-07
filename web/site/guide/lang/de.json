@@ -1,0 +1,230 @@
+{
+  "ui": {
+    "page_title": "ICT Terminal — Benutzerhandbuch",
+    "guide": "Handbuch",
+    "eyebrow": "Benutzerhandbuch",
+    "title_a": "ICT Terminal",
+    "title_b": "Benutzerhandbuch",
+    "lead": "Alles, was Sie für ICT Terminal brauchen: die ICT-Ebenen im Chart, den Modell-Scanner, Zeichenwerkzeuge, Alarme (auch per WhatsApp), Paper Trading, den Strategietester, Layouts mit bis zu 8 Charts und die Handy-App — Schritt für Schritt, mit Bildern.",
+    "chips": ["ICT-Konzepte für Sie gezeichnet", "17 regelbasierte Modelle", "Web, Android und Windows", "14 Sprachen"],
+    "uinote": "Schaltflächen, Tabs und Menüs sind im Terminal auf Englisch. Dieses Handbuch zeigt sie genau so, wie Sie sie sehen, in **Fettschrift**.",
+    "toc": "Inhalt",
+    "home": "Webseite",
+    "open": "Terminal öffnen",
+    "pdf": "PDF herunterladen",
+    "footer": "ICT Terminal ist ein Chart- und Analysewerkzeug zum Lernen. Es ist keine Finanzberatung. Der Handel mit CFDs, Forex, Indizes und Krypto birgt ein hohes Verlustrisiko."
+  },
+  "caps": {
+    "overview": "Das Terminal mit vier Charts: obere Leiste, Zeichenwerkzeuge links, das rechte Menü und die Watchlist.",
+    "eight": "Bis zu acht Charts in einem Layout, jeder mit eigenem Symbol und Intervall.",
+    "templates": "**Templates**: fertige Chart-Setups mit einem Klick. Das mit ★ markierte nutzen neue Mitglieder zum Start.",
+    "ict_layers": "ICT-Ebenen auf Gold 15m: FVGs, Order Blocks, Liquidität, Struktur, Sessions, Schlüssellevel, Premium / Discount und der Tages-Bias.",
+    "ict_menu": "Das **ICT**-Menü: jede Ebene und jedes Modell mit einem Klick ein- oder ausschalten.",
+    "signals": "Der Tab **Signals** listet die Setups Ihrer Modelle; ein Klick zeigt Einstieg, Stop und Ziele im Chart.",
+    "indicators": "**Indicators**: suchen, hinzufügen, Einstellungen, Farbe und Breite ändern, zwischen Preis-Chart und eigenem Bereich verschieben.",
+    "volume": "Session-Volumenprofil: je ein Profil für Asien, London und New York mit dem Point of Control.",
+    "alerts": "Der Tab **Alerts**: Preisalarme, ein täglicher Session-Alarm und ein ICT-Ereignisalarm (MSS auf NAS100 5m).",
+    "phone_alerts": "Alarme auf dem Handy.",
+    "trade": "Paper Trading: der Tab **Trade** und die Ein-Klick-Schaltflächen SELL / BUY im Chart.",
+    "tester": "Der **Strategy tester**: ein Modell auf dem aktiven Symbol über 30, 60 oder 90 Tage.",
+    "screener": "Der **Screener**: Bias, Premium / Discount, Sweeps, FVGs und heutige Setups jedes Symbols.",
+    "calendar": "Der Wirtschafts-**Calendar**: ein Klick auf ein Ereignis zeigt seine Zeit im Chart.",
+    "assistant": "Der **AI**-Assistent antwortet zum aktuellen Chart, auf Englisch oder Roman-Urdu.",
+    "community": "**Community**: Trading-Ideen mit Chartbildern, Likes, Kommentaren und Chaträumen.",
+    "phone": "Das Terminal auf dem Handy: zwei Charts übereinander, Werkzeuge oben, Menü unten.",
+    "account": "Ihr Konto: Plan, was er enthält, Zahlungen und Geräte."
+  },
+  "sections": [
+    {"id": "intro", "t": "Was ist ICT Terminal?", "b": [
+      "ICT Terminal ist ein Chart-Terminal für Trader, die mit den **ICT (Inner Circle Trader)**-Konzepten arbeiten. Es zeichnet die Konzepte für Sie in den Chart und durchsucht die Märkte nach regelbasierten ICT-Setups.",
+      {"ul": [
+        "**ICT-Ebenen:** Fair Value Gaps (FVG / IFVG), Order und Breaker Blocks, Buy-Side- und Sell-Side-Liquidität, Marktstruktur (MSS / BOS), Sessions und Killzones, wichtige Eröffnungen, Premium / Discount und OTE, Eröffnungslücken, IPDA-Bereiche, SMT und der Tages-Bias.",
+        "**Modell-Scanner:** 17 ICT-Modelle (Silver Bullet, 2022-Modell, Judas Swing, OTE, Unicorn, Power of 3, News-Nachlauf und mehr), jedes als feste Regeln mit Einstieg, Stop und Zielen.",
+        "**Ein komplettes Terminal:** 1–8 Charts pro Layout, über 40 Zeichenwerkzeuge, Indikatoren, Alarme, Paper Trading, Strategietester, Screener, Wirtschaftskalender und Community."
+      ]},
+      {"info": "ICT Terminal handelt nicht für Sie, außer Sie installieren die MT5-Brücke selbst. Setups folgen Regeln; viele verlieren. Testen Sie immer zuerst auf einem Demokonto."}
+    ]},
+    {"id": "start", "t": "Erste Schritte", "b": [
+      "Öffnen Sie [ict.iccterminal.trade/terminal](https://ict.iccterminal.trade/terminal/) in Chrome, Edge, Firefox oder Safari. Nichts muss installiert werden.",
+      {"ol": [
+        "Wählen Sie **Create account**, geben Sie E-Mail und Passwort ein, oder tippen Sie **Continue as guest**, um sich erst umzusehen.",
+        "Der kostenlose Plan öffnet sofort. Für alle Modelle in Echtzeit öffnen Sie Ihr Konto (Schaltfläche oben rechts) und wählen **Upgrade or renew**.",
+        "Ihr Bildschirm — Charts, Zeichnungen, Indikatoren, Watchlists und Alarme — wird automatisch in Ihrem Konto gespeichert und öffnet auf jedem Gerät gleich."
+      ]},
+      {"h": "Apps"},
+      {"ul": [
+        "**Android:** laden Sie die App von der Webseite (**Apps**). Wenn Android fragt, erlauben Sie die Installation über Ihren Browser.",
+        "**Windows:** das Terminal im eigenen Fenster; es installiert sich beim ersten Start selbst.",
+        "Beide Apps laden dasselbe Terminal, daher kommt jede Neuerung ohne neuen Download an."
+      ]}
+    ]},
+    {"id": "screen", "t": "Der Bildschirm", "b": [
+      "Das Terminal hat vier Bereiche:",
+      {"table": {"head": ["Bereich", "Inhalt"], "rows": [
+        ["Obere Leiste", "Symbolsuche, Intervalle, Chart-Typ, **Indicators**, **Templates**, **Compare**, **ICT**, **Wolf Models**, **Screener**, Alarme, Replay, Rückgängig / Wiederholen, Layout, Screenshot, Vollbild, Einstellungen und Ihr Konto. Ist die Leiste breiter als der Bildschirm, nutzen Sie das Mausrad oder die Pfeile ‹ ›."],
+        ["Linke Werkzeugleiste", "Zeichenwerkzeuge in Gruppen, der Magnet, Zeichenmodus beibehalten, alle Zeichnungen sperren / ausblenden / löschen."],
+        ["Rechtes Menü", "**Watchlist**, **Signals**, **Trade**, **AI**, **Alerts**, **Calendar**, **News**, **Object tree**, **Data window**, das Journal und unter einer Linie **Community** und **ICC**."],
+        ["Charts", "Ein bis acht Charts. Klicken Sie auf einen Chart, um ihn zu aktivieren: die obere Leiste wirkt immer auf den aktiven Chart."]
+      ]}},
+      {"tip": "Rechtsklick in einen Chart öffnet das Chart-Menü (Zu Datum, Chart-Typ, Preisskala, neues Fenster, Einstellungen). Rechtsklick auf die Preisskala öffnet das Skalenmenü."}
+    ]},
+    {"id": "charts", "t": "Charts, Layouts und Templates", "b": [
+      {"ul": [
+        "**Symbol:** klicken Sie oben auf das Symbol (oder tippen Sie einfach im Chart) und suchen. Ein Klick auf das Symbol im Titel eines Charts ändert nur diesen Chart.",
+        "**Intervall:** von 1m bis monatlich, oder tippen Sie eine Zahl (z. B. `90` oder `2h`) für ein eigenes Intervall.",
+        "**Chart-Typ:** Kerzen, hohle Kerzen, Heikin Ashi, Balken, Linie, Fläche, Renko, Line Break, Range Bars, Baseline und Säulen.",
+        "**Layout:** die Layout-Schaltfläche oben rechts bietet 1, 2, 3, 4, 5, 6, 7 oder 8 Charts (so viele Ihr Plan erlaubt). Dort synchronisieren Sie auch Symbol, Intervall und Fadenkreuz.",
+        "**Chart schließen:** das ✕ in seiner Ecke. **Einen Chart groß:** Layout-Menü → **Show only the active chart**.",
+        "**Templates:** ein fertiges Setup — Layout, Intervalle, Indikatoren, ICT-Ebenen und Modelle — mit einem Klick. Watchlist, Alarme und Zeichnungen bleiben.",
+        "**Gespeicherte Layouts:** Layout-Menü → **Save as…**; auf jedem Gerät im selben Menü wieder öffnen.",
+        "**Neues Fenster:** Rechtsklick → **Open this chart in a new window** (für einen zweiten Monitor).",
+        "**Zu Datum:** Rechtsklick → **Go to date…** oder Alt+G. **Bar Replay:** die Replay-Schaltfläche in der oberen Leiste."
+      ]},
+      {"h": "Preisskala"},
+      "Rechtsklick auf die Preisskala: **Auto (fit)**, **Lock range** (die Skala bleibt beim Scrollen), **Lock price / bar** (gleicher Preis pro Balken beim Zoomen), **Regular**, **Log**, **Percent**, **Invert** und die Seite der Skala."
+    ]},
+    {"id": "ict", "t": "ICT-Ebenen", "b": [
+      "Öffnen Sie das **ICT**-Menü in der oberen Leiste und schalten Sie die gewünschten Ebenen ein. Die Engine berechnet sie für Symbol und Intervall jedes Charts.",
+      {"table": {"head": ["Ebene", "Was sie zeigt"], "rows": [
+        ["FVG / IFVG", "Bullische (BISI) und bärische (SIBI) Fair Value Gaps mit der 50-%-Linie (CE). Eine Lücke, über die der Preis hinaus schließt, wird zum Inversion-FVG."],
+        ["Order blocks", "Die letzte Gegenkerze vor einer Verdrängung; gescheiterte werden zu Breaker Blocks."],
+        ["Liquidity", "Buy-Side- (BSL) und Sell-Side-Liquidität (SSL) an Swing-Hochs / -Tiefs und gleichen Hochs / Tiefs, markiert, wenn sie abgegriffen wird."],
+        ["Structure", "MSS (Strukturwechsel, gegen den Trend) und BOS (Strukturbruch, mit dem Trend)."],
+        ["Sessions & killzones", "Asien, London und New York, die Killzones, die Silver-Bullet-Fenster und die 90-Minuten-Viertel, in New Yorker Zeit."],
+        ["Key levels", "Mitternachts- und 08:30-Eröffnung, Hochs und Tiefs des Vortags / der Vorwoche."],
+        ["Premium / Discount + OTE", "Die Handelsspanne, ihre 50 % (Gleichgewicht) und die optimale Einstiegszone 62–79 %."],
+        ["Projections, gaps, IPDA", "Standardabweichungen der Asien-Range und der CBDR, Eröffnungslücken NWOG / NDOG, die 20- / 40- / 60-Tage-Bereiche."],
+        ["SMT, displacement, bias", "Divergenz zum Partnermarkt (Gold–Silber, Nasdaq–S&P), große Verdrängungskerzen und das Tages-Bias-Panel mit dem Liquiditätsziel."]
+      ]}},
+      {"tip": "Zu viel im Chart? Schalten Sie Ebenen pro Chart aus oder ändern Sie die Farben unter **Settings**."}
+    ]},
+    {"id": "models", "t": "Modell-Scanner und Signale", "b": [
+      "Die Engine durchsucht die Märkte mit jedem Modell und speichert jedes Setup mit Einstieg, Stop, Zielen, Note und Checkliste.",
+      {"ol": [
+        "Haken Sie im **ICT**-Menü die Modelle an, die Sie im Chart sehen wollen. Ihre Setups werden als Boxen mit Einstieg, Stop und Zielen gezeichnet.",
+        "Öffnen Sie rechts **Signals**: wählen Sie Modelle, Zeitraum (30 Minuten bis 7 Tage), Note (alle, A, A+) und ob nur Setups **mit dem Tages-Bias** zählen.",
+        "Ein Klick auf ein Signal springt im Chart dorthin. Schalten Sie **notify** ein für Ton und Desktop-Benachrichtigung bei neuen A / A+-Setups.",
+        "Das Journal (unteres Panel) zeigt, wie jedes vergangene Setup endete: TP1–TP3, Stop, Breakeven oder nicht ausgeführt, mit dem Ergebnis in R."
+      ]},
+      {"table": {"head": ["Note", "Bedeutung"], "rows": [
+        ["A+", "Jeder Punkt der Modell-Checkliste ist erfüllt, einschließlich Tages-Bias."],
+        ["A", "Ein Punkt fehlt."],
+        ["B", "Ein gültiges Setup, dem mehr Punkte fehlen: eher zum Lernen als zum Handeln."]
+      ]}},
+      {"warn": "Noch kein Modell hat einen nachgewiesenen Vorteil. M11 (IFVG reversal) ist standardmäßig aus, da es im Test am schwächsten war; Sie können es trotzdem wählen. Vergangene Ergebnisse garantieren keine künftigen."}
+    ]},
+    {"id": "drawing", "t": "Zeichenwerkzeuge", "b": [
+      {"ul": [
+        "Linien, Fibonacci (mit den ICT-Leveln 0.62 / 0.705 / 0.79 und den Erweiterungen), Kanäle, Pitchfork, Gann-Fächer, XABCD / ABCD, Schulter-Kopf-Schulter, Elliott-Wellen, Formen, Text und Notizen.",
+        "ICT-Werkzeuge: FVG-Box mit CE, Order Block mit Mean Threshold, Liquiditätslinie (BSL / SSL), OTE-Werkzeug, Handelsspanne und Killzone-Box.",
+        "Messen: Long- / Short-Position mit Chance-Risiko, Preis- und Datumsbereich, Datumsbereich, verankerter VWAP und **Fixed range volume profile**. Umschalt + Klick im Chart misst schnell."
+      ]},
+      {"h": "Einstellungen einer Zeichnung"},
+      "Doppelklicken Sie eine Zeichnung (oder das Zahnrad in ihrer kleinen Leiste) für **Style**, **Text**, **Coordinates** und **Visibility**. Unter **Visibility** zeigen Sie eine Zeichnung nur auf gewählten Intervallen — z. B. ein 1H-FVG nur auf 1m–15m-Charts.",
+      {"tip": "Wählen Sie eine Linie oder Box und drücken Sie ⏰ in ihrer Leiste, um daraus einen Alarm zu machen."}
+    ]},
+    {"id": "indicators", "t": "Indikatoren, Volumenprofile und ICT Script", "b": [
+      {"ul": [
+        "**Indicators** in der oberen Leiste: etwa 30 Indikatoren (gleitende Durchschnitte, VWAP, SuperTrend, Bollinger, RSI, MACD, ATR, Volumen und mehr). Suchen, hinzufügen und unter **On this chart** Einstellungen, Farbe, Breite ändern, ausblenden oder entfernen.",
+        "Preis-Indikatoren (Durchschnitte, VWAP …) wandern mit **↓ Own pane** in einen eigenen Bereich und mit **↑ On price** zurück; Bereichs-Indikatoren (RSI, MACD, Volumen) bewegen sich mit ▲ ▼ nach oben und unten.",
+        "**Volumenprofile:** VPVR (sichtbarer Bereich), SVP (ein Profil pro Session oder Tag) und die Fixed-Range-Zeichnung, jeweils mit Point of Control (POC) und Value Area.",
+        "**Apply to all charts** kopiert die Indikatoren des aktiven Charts auf alle Charts."
+      ]},
+      {"h": "ICT Script: Ihr eigener Indikator"},
+      "Schreiben Sie unter **Indicators → My scripts → + New script** ein paar Zeilen, zum Beispiel:",
+      "`fast = ema(close, 9)` · `plot(fast, \"EMA 9\")`",
+      {"ul": [
+        "Werte: `open high low close volume hl2 hlc3 ohlc4`; `close[1]` ist der vorige Balken.",
+        "Funktionen: `sma ema rma wma rsi atr highest lowest stdev change abs max min`; bis zu 6 `plot()`-Zeilen; `@pane` in der ersten Zeile zeichnet in einem eigenen Bereich.",
+        "Die Prüfung unter dem Editor zeigt Fehler mit Zeilennummer. **Save and add to chart** speichert ihn in Ihrem Konto."
+      ]}
+    ]},
+    {"id": "alerts", "t": "Alarme und WhatsApp", "b": [
+      "Öffnen Sie rechts **Alerts**. Alarme funktionieren, solange das Terminal auf einem Ihrer Geräte offen ist; WhatsApp-Alarme sendet der Server.",
+      {"table": {"head": ["Alarm", "So erstellen Sie ihn"], "rows": [
+        ["Price", "Preis eingeben und **Crossing**, **Above** oder **Below** wählen. Alt+A setzt einen beim letzten Preis."],
+        ["Trend line / zone", "Eine Trendlinie, Box, ein FVG oder einen Order Block im Chart wählen und ⏰ drücken."],
+        ["Session", "Eine Session wählen (Killzones, Silver-Bullet-Fenster, New-York-Eröffnung) → **Daily session alert**. Er läutet jeden Tag."],
+        ["ICT event", "Unter **ICT event**: MSS, BOS, neues FVG oder Liquiditäts-Sweep, ein Intervall (1m–4H) und eine Richtung. Läutet bei jedem neuen Ereignis."]
+      ]}},
+      {"h": "Setups per WhatsApp"},
+      {"ol": [
+        "Geben Sie unter **Alerts → WhatsApp alerts** Ihre Nummer im internationalen Format ein, nur Ziffern (z. B. `923001234567`).",
+        "Wählen Sie die niedrigste Note, nach Wunsch nur bestimmte Modelle oder Symbole, und ob nur Setups mit dem Bias zählen.",
+        "Schalten Sie **Auto notify** ein, speichern Sie und drücken Sie **Test**. Jedes neue Setup wird einmal gesendet; Pläne mit Verzögerung senden es nach der Verzögerung."
+      ]},
+      {"tip": "Schalten Sie Desktop-Benachrichtigungen ein (Schaltfläche im Tab Alerts), damit Sie Alarme auch in einem anderen Fenster hören."}
+    ]},
+    {"id": "trade", "t": "Paper Trading", "b": [
+      "Üben ohne echtes Geld. Das Papierkonto startet mit 10,000 USD (Sie können es mit jedem Guthaben zurücksetzen).",
+      {"ol": [
+        "Öffnen Sie rechts **Trade** oder nutzen Sie die Schaltflächen **SELL** / **BUY** im aktiven Chart, die Menge dazwischen.",
+        "Wählen Sie **Market**, **Limit** oder **Stop**, die Menge und optional **Stop loss** und **Take profit**. Risiko, Chance und R sehen Sie vor dem Senden.",
+        "Positionen und Orders werden im Chart gezeichnet. Ziehen Sie die SL-, TP- oder Orderlinie, um sie zu verschieben.",
+        "Schließen Sie mit ✕ unter **Positions**; beendete Trades stehen unter **History** mit G&V und Trefferquote."
+      ]},
+      {"info": "Der Server führt Orders auf 1-Minuten-Balken aus: Limit- und Stop-Orders zu ihrem Preis, eine Lücke zur Eröffnung, und berührt ein Balken Stop und Ziel zugleich, zählt der Stop zuerst."}
+    ]},
+    {"id": "tester", "t": "Strategietester und Screener", "b": [
+      {"h": "Strategietester"},
+      {"ol": [
+        "Öffnen Sie das untere Panel (Journal-Schaltfläche im rechten Menü oder Einstellungen → **Journal & stats panel**) und wählen Sie **Strategy tester**.",
+        "Wählen Sie ein Modell, 30, 60 oder 90 Tage und ob der Tages-Bias nötig ist, dann **Run test**.",
+        "Sie sehen Setups, Ausführungen, Trefferquote, durchschnittliches R, gesamtes R, Profit Factor, den größten Drawdown, eine Kapitalkurve und jeden Trade (Klick zeigt ihn im Chart)."
+      ]},
+      {"h": "Screener"},
+      "**Screener** in der oberen Leiste zeigt alle Symbole in einer Tabelle: Tages-Bias, Premium oder Discount, Sweeps des Vortageshochs / -tiefs, die nächsten 15m- und 1H-FVGs, die aktuelle Killzone und die heutigen Setups. Ein Klick auf eine Zeile öffnet diesen Chart."
+    ]},
+    {"id": "market", "t": "Kalender, Nachrichten und KI-Assistent", "b": [
+      {"ul": [
+        "**Calendar:** die Wirtschaftsereignisse der Woche mit Wirkungs- und Währungsfilter; ein Klick zeigt die Zeit im Chart. Wichtige Nachrichten erscheinen auch als Markierung im Chart und als Countdown-Etikett.",
+        "**News:** die neuesten Marktschlagzeilen.",
+        "**AI:** fragen Sie zum aktiven Chart — Bias, Schlüssellevel, Liquidität, offene Lücken, neueste Setups und ihre Zeit. Er antwortet auf Englisch oder Roman-Urdu aus den Daten der Engine."
+      ]},
+      {"warn": "Um wichtige Nachrichten herum (15 Minuten davor und danach) eröffnen die Modelle keine neuen Trades, und an FOMC-Tagen werden Positionen vor 14:00 New Yorker Zeit geschlossen."}
+    ]},
+    {"id": "community", "t": "Community und ICC Terminal", "b": [
+      {"ul": [
+        "**Community** (rechtes Menü): teilen Sie eine Trading-Idee mit einem Bild Ihres Charts, liken und kommentieren Sie Ideen und chatten Sie in den Räumen. Dieselben Ideen stehen auf der Webseite.",
+        "Wählen Sie beim ersten Mal einen Spitznamen und akzeptieren Sie die Regeln. Meldungen gehen an die Moderatoren.",
+        "**ICC** (rechtes Menü): öffnet ICC Terminal neben Ihren Charts mit eigenem Login — angedockt, im Vollbild oder in einem neuen Tab."
+      ]}
+    ]},
+    {"id": "mobile", "t": "Handy und Tablet", "b": [
+      {"ul": [
+        "Auf dem Handy sind die Werkzeuge oben, die Charts in der Mitte und das Menü (Watchlist, Signals, Trade, AI, Alerts …) unten; wischen Sie das untere Menü seitlich für Community und ICC.",
+        "Bei 2–8 Charts zeigt **▦ All** alle auf dem Bildschirm, **▢ One** einen nach dem anderen mit Chips zum Wechseln.",
+        "Tablets im Hochformat zeigen bis zu 8 Charts in zwei Spalten.",
+        "Zum Zoomen zusammenziehen, zum Scrollen ziehen, lange drücken für das Fadenkreuz; Zeichnen geht mit dem Finger."
+      ]}
+    ]},
+    {"id": "account", "t": "Pläne und Ihr Konto", "b": [
+      {"ul": [
+        "Die Konto-Schaltfläche oben rechts zeigt Ihren Plan, sein Ablaufdatum und was er enthält (Charts pro Layout, ICT-Indikatoren, Modelle, Signalverzögerung, Alarme, Backtests).",
+        "**Upgrade or renew:** wählen Sie einen Plan und zahlen Sie mit einer der angezeigten Methoden (Bank- / Wallet-Überweisung mit Transaktions-ID oder Krypto). Der Plan startet, sobald die Zahlung bestätigt ist.",
+        "**Devices:** Ihr Konto listet die Geräte, die Sie nutzen; jeder Plan erlaubt eine feste Anzahl gleichzeitig.",
+        "**Security:** ändern Sie dort Ihr Passwort; nutzen Sie **Forgot password?** auf der Anmeldeseite, wenn Sie es vergessen haben."
+      ]}
+    ]},
+    {"id": "shortcuts", "t": "Tastenkürzel", "b": [
+      {"table": {"head": ["Tasten", "Aktion"], "rows": [
+        ["A–Z", "Symbolsuche"], ["0–9", "Intervall (Zahl eingeben)"], ["Alt+T / Alt+H / Alt+F / Alt+R", "Trendlinie / horizontale Linie / ICT-Fibonacci / Rechteck"],
+        ["Alt+A", "Alarm beim letzten Preis"], ["Alt+G", "Zu Datum"], ["Alt+S", "Screenshot"], ["Ctrl+Z / Ctrl+Y", "Rückgängig / Wiederholen"],
+        ["Del", "Gewählte Zeichnung löschen"], ["Esc", "Werkzeug abbrechen oder Fenster schließen"], ["Shift + click", "Schnelles Messen"]
+      ]}}
+    ]},
+    {"id": "faq", "t": "Fragen", "b": [
+      {"h": "Der Chart ist leer oder aktualisiert sich nicht mehr."},
+      "Prüfen Sie Ihr Internet und laden Sie die Seite neu. Hat ein Symbol keine Daten, ist der Broker-Feed evtl. geschlossen (Wochenende) oder kurz ausgelastet.",
+      {"h": "Ich sehe ein Schloss an einem Modell oder einer Ebene."},
+      "Ihr Plan enthält es nicht. Öffnen Sie die Konto-Schaltfläche → **Upgrade or renew**.",
+      {"h": "Meine Zeichnungen sind weg."},
+      "Zeichnungen werden wenige Sekunden nach dem Zeichnen mit jedem Chart gespeichert. Prüfen Sie, ob Sie im selben Konto sind und die Zeichnung für dieses Intervall nicht ausgeblendet ist (**Visibility**).",
+      {"h": "Handelt es für mich?"},
+      "Nur über die MT5-Brücke (ICT Bridge EA) auf Ihrem eigenen MetaTrader-5-Konto, für freigegebene Modelle und Pläne, die das enthalten. Beginnen Sie mit einem Demokonto."
+    ]},
+    {"id": "risk", "t": "Risikohinweis", "b": [
+      "Der gehebelte Handel mit CFDs, Forex, Indizes und Krypto birgt ein hohes Risiko, schnell Geld zu verlieren. ICT Terminal ist ein Analyse- und Lernwerkzeug, keine Finanzberatung. Die Modelle folgen festen Regeln, und viele Setups verlieren; vergangene Ergebnisse garantieren keine künftigen. Handeln Sie nur mit Geld, dessen Verlust Sie verkraften können."
+    ]}
+  ]
+}

@@ -1,0 +1,230 @@
+{
+  "ui": {
+    "page_title": "ICT Terminal — Panduan Pengguna",
+    "guide": "Panduan",
+    "eyebrow": "Panduan pengguna",
+    "title_a": "ICT Terminal",
+    "title_b": "Panduan Pengguna",
+    "lead": "Semua yang Anda perlukan untuk memakai ICT Terminal: lapisan ICT di grafik, pemindai model, alat gambar, peringatan (juga di WhatsApp), paper trading, penguji strategi, tata letak hingga 8 grafik, dan aplikasi ponsel — langkah demi langkah, dengan gambar.",
+    "chips": ["Konsep ICT digambar untuk Anda", "17 model berbasis aturan", "Web, Android & Windows", "14 bahasa"],
+    "uinote": "Tombol, tab, dan menu di dalam terminal berbahasa Inggris. Panduan ini menampilkannya persis seperti yang Anda lihat, dengan **huruf tebal**.",
+    "toc": "Daftar isi",
+    "home": "Situs web",
+    "open": "Buka terminal",
+    "pdf": "Unduh PDF",
+    "footer": "ICT Terminal adalah alat grafik dan analisis untuk belajar, bukan nasihat keuangan. Trading CFD, forex, indeks, dan kripto berisiko tinggi kehilangan uang."
+  },
+  "caps": {
+    "overview": "Terminal dengan empat grafik: bilah atas, alat gambar di kiri, menu kanan, dan daftar pantau.",
+    "eight": "Hingga delapan grafik dalam satu tata letak, masing-masing dengan simbol dan interval sendiri.",
+    "templates": "**Templates**: pengaturan grafik siap pakai dalam satu klik. Yang bertanda ★ dipakai anggota baru untuk memulai.",
+    "ict_layers": "Lapisan ICT pada emas 15m: FVG, order block, likuiditas, struktur, sesi, level kunci, premium / discount, dan bias harian.",
+    "ict_menu": "Menu **ICT**: nyalakan atau matikan setiap lapisan dan setiap model dengan satu klik.",
+    "signals": "Tab **Signals** menampilkan setup model Anda; klik salah satu untuk melihat entri, stop, dan target di grafik.",
+    "indicators": "**Indicators**: cari, tambah, ubah pengaturan, warna dan ketebalan, pindahkan antara grafik harga dan panel sendiri.",
+    "volume": "Profil volume per sesi: satu profil untuk Asia, London, dan New York dengan point of control.",
+    "alerts": "Tab **Alerts**: peringatan harga, peringatan sesi harian, dan peringatan peristiwa ICT (MSS pada NAS100 5m).",
+    "phone_alerts": "Peringatan di ponsel.",
+    "trade": "Paper trading: tab **Trade** dan tombol SELL / BUY satu klik di grafik.",
+    "tester": "**Strategy tester**: satu model pada simbol aktif selama 30, 60, atau 90 hari.",
+    "screener": "**Screener**: bias, premium / discount, sapuan, FVG, dan setup hari ini untuk setiap simbol.",
+    "calendar": "**Calendar** ekonomi: klik peristiwa untuk melihat waktunya di grafik.",
+    "assistant": "Asisten **AI** menjawab tentang grafik yang sedang dibuka, dalam bahasa Inggris atau Urdu latin.",
+    "community": "**Community**: ide trading dengan gambar grafik, suka, komentar, dan ruang obrolan.",
+    "phone": "Terminal di ponsel: dua grafik bertumpuk, alat di atas, menu di bawah.",
+    "account": "Akun Anda: paket, isinya, pembayaran, dan perangkat."
+  },
+  "sections": [
+    {"id": "intro", "t": "Apa itu ICT Terminal?", "b": [
+      "ICT Terminal adalah terminal grafik untuk trader yang memakai konsep **ICT (Inner Circle Trader)**. Ia menggambar konsep-konsep itu di grafik untuk Anda dan memindai pasar untuk setup ICT berbasis aturan.",
+      {"ul": [
+        "**Lapisan ICT:** fair value gap (FVG / IFVG), order block dan breaker block, likuiditas buy-side dan sell-side, struktur pasar (MSS / BOS), sesi dan killzone, pembukaan penting, premium / discount dan OTE, gap pembukaan, rentang IPDA, SMT, dan bias harian.",
+        "**Pemindai model:** 17 model ICT (Silver Bullet, model 2022, Judas swing, OTE, Unicorn, Power of 3, pasca-berita, dan lainnya), masing-masing ditulis sebagai aturan tetap dengan entri, stop, dan target.",
+        "**Terminal lengkap:** 1–8 grafik per tata letak, lebih dari 40 alat gambar, indikator, peringatan, paper trading, penguji strategi, screener, kalender ekonomi, dan komunitas."
+      ]},
+      {"info": "ICT Terminal tidak bertrading untuk Anda kecuali Anda sendiri memasang jembatan MT5. Setup mengikuti aturan; banyak yang rugi. Selalu uji dulu di akun demo."}
+    ]},
+    {"id": "start", "t": "Memulai", "b": [
+      "Buka [ict.iccterminal.trade/terminal](https://ict.iccterminal.trade/terminal/) di Chrome, Edge, Firefox, atau Safari. Tidak perlu memasang apa pun.",
+      {"ol": [
+        "Pilih **Create account**, masukkan e-mail dan kata sandi, atau tekan **Continue as guest** untuk melihat-lihat dulu.",
+        "Paket gratis langsung terbuka. Untuk membuka semua model secara real-time, buka akun Anda (tombol kanan atas) dan pilih **Upgrade or renew**.",
+        "Layar Anda — grafik, gambar, indikator, daftar pantau, dan peringatan — tersimpan otomatis di akun dan terbuka sama di setiap perangkat."
+      ]},
+      {"h": "Aplikasi"},
+      {"ul": [
+        "**Android:** unduh aplikasi dari situs web (**Apps**). Jika Android meminta, izinkan pemasangan aplikasi dari browser.",
+        "**Windows:** terminal di jendelanya sendiri; terpasang sendiri saat pertama dijalankan.",
+        "Kedua aplikasi memuat terminal yang sama, jadi setiap fitur baru sampai tanpa unduhan baru."
+      ]}
+    ]},
+    {"id": "screen", "t": "Layar", "b": [
+      "Terminal memiliki empat area:",
+      {"table": {"head": ["Area", "Isinya"], "rows": [
+        ["Bilah atas", "Pencarian simbol, interval, jenis grafik, **Indicators**, **Templates**, **Compare**, **ICT**, **Wolf Models**, **Screener**, peringatan, replay, batal / ulang, tata letak, tangkapan layar, layar penuh, pengaturan, dan akun Anda. Jika bilah lebih lebar dari layar, gunakan roda mouse atau panah ‹ ›."],
+        ["Bilah alat kiri", "Alat gambar per kelompok, magnet, mode tetap menggambar, kunci / sembunyikan / hapus semua gambar."],
+        ["Menu kanan", "**Watchlist**, **Signals**, **Trade**, **AI**, **Alerts**, **Calendar**, **News**, **Object tree**, **Data window**, jurnal, dan di bawah garis **Community** serta **ICC**."],
+        ["Grafik", "Satu hingga delapan grafik. Klik grafik untuk mengaktifkannya: bilah atas selalu bekerja pada grafik aktif."]
+      ]}},
+      {"tip": "Klik kanan grafik untuk menu grafik (ke tanggal, jenis grafik, skala harga, jendela baru, pengaturan). Klik kanan skala harga di kanan untuk menu skala."}
+    ]},
+    {"id": "charts", "t": "Grafik, tata letak, dan template", "b": [
+      {"ul": [
+        "**Simbol:** klik simbol di atas (atau langsung mengetik di grafik) lalu cari. Klik simbol di judul grafik untuk mengubah grafik itu saja.",
+        "**Interval:** dari 1m hingga bulanan, atau ketik angka (misalnya `90` atau `2h`) untuk interval khusus.",
+        "**Jenis grafik:** candle, candle berongga, Heikin Ashi, bar, garis, area, Renko, line break, range bar, baseline, dan kolom.",
+        "**Tata letak:** tombol tata letak di kanan atas menyediakan 1, 2, 3, 4, 5, 6, 7, atau 8 grafik (sebanyak yang diizinkan paket Anda). Di sana juga sinkronkan simbol, interval, dan crosshair antar grafik.",
+        "**Tutup grafik:** ✕ di sudutnya. **Satu grafik besar:** menu tata letak → **Show only the active chart**.",
+        "**Templates:** pengaturan siap pakai — tata letak, interval, indikator, lapisan ICT, dan model — dalam satu klik. Daftar pantau, peringatan, dan gambar Anda tetap.",
+        "**Tata letak tersimpan:** menu tata letak → **Save as…**; buka lagi dari menu yang sama di perangkat mana pun.",
+        "**Jendela baru:** klik kanan → **Open this chart in a new window** (untuk monitor kedua).",
+        "**Ke tanggal:** klik kanan → **Go to date…** atau Alt+G. **Replay bar:** tombol replay di bilah atas."
+      ]},
+      {"h": "Skala harga"},
+      "Klik kanan skala harga: **Auto (fit)**, **Lock range** (skala tetap saat menggulir), **Lock price / bar** (harga per bar sama saat zoom), **Regular**, **Log**, **Percent**, **Invert**, dan sisi skala."
+    ]},
+    {"id": "ict", "t": "Lapisan ICT", "b": [
+      "Buka menu **ICT** di bilah atas dan nyalakan lapisan yang Anda mau. Mesin menghitungnya untuk simbol dan interval setiap grafik.",
+      {"table": {"head": ["Lapisan", "Yang ditampilkan"], "rows": [
+        ["FVG / IFVG", "Fair value gap naik (BISI) dan turun (SIBI) dengan garis 50% (CE). Gap yang ditutup harga di seberangnya menjadi FVG inversi."],
+        ["Order blocks", "Candle berlawanan terakhir sebelum displacement; yang gagal menjadi breaker block."],
+        ["Liquidity", "Likuiditas buy-side (BSL) dan sell-side (SSL) di swing high / low dan high / low sama, ditandai saat tersapu."],
+        ["Structure", "MSS (pergeseran struktur, melawan tren) dan BOS (patahan struktur, searah tren)."],
+        ["Sessions & killzones", "Asia, London, dan New York, killzone, jendela Silver Bullet, dan kuartal 90 menit, dalam waktu New York."],
+        ["Key levels", "Pembukaan tengah malam dan 08:30, high dan low hari / minggu sebelumnya."],
+        ["Premium / Discount + OTE", "Rentang transaksi, 50%-nya (ekuilibrium), dan zona entri optimal 62–79%."],
+        ["Projections, gaps, IPDA", "Deviasi standar rentang Asia dan CBDR, gap pembukaan NWOG / NDOG, rentang 20 / 40 / 60 hari."],
+        ["SMT, displacement, bias", "Divergensi dengan pasar pasangan (emas–perak, Nasdaq–S&P), candle displacement besar, dan panel bias harian dengan target likuiditas."]
+      ]}},
+      {"tip": "Grafik terlalu ramai? Matikan lapisan per grafik, atau ubah warna di **Settings**."}
+    ]},
+    {"id": "models", "t": "Pemindai model dan sinyal", "b": [
+      "Mesin memindai pasar dengan setiap model dan menyimpan setiap setup beserta entri, stop, target, nilai, dan daftar periksa.",
+      {"ol": [
+        "Di menu **ICT**, centang model yang ingin dilihat di grafik. Setupnya digambar sebagai kotak dengan entri, stop, dan target.",
+        "Buka **Signals** di kanan: pilih model, rentang waktu (30 menit hingga 7 hari), nilai (semua, A, A+), dan apakah hanya setup **dengan bias harian** yang dihitung.",
+        "Klik sinyal untuk melompat ke sana di grafik. Nyalakan **notify** untuk suara dan notifikasi desktop pada setup A / A+ baru.",
+        "Jurnal (panel bawah) menunjukkan bagaimana setiap setup lama berakhir: TP1–TP3, stop, impas, atau tidak terisi, dengan hasil R."
+      ]},
+      {"table": {"head": ["Nilai", "Arti"], "rows": [
+        ["A+", "Setiap poin daftar periksa model terpenuhi, termasuk bias harian."],
+        ["A", "Kurang satu poin."],
+        ["B", "Setup valid yang kurang lebih banyak poin: untuk belajar, bukan untuk trading."]
+      ]}},
+      {"warn": "Belum ada model yang terbukti unggul. M11 (IFVG reversal) mati secara bawaan karena paling lemah dalam pengujian; Anda tetap bisa memilihnya. Hasil masa lalu tidak menjamin hasil masa depan."}
+    ]},
+    {"id": "drawing", "t": "Alat gambar", "b": [
+      {"ul": [
+        "Garis, Fibonacci (dengan level ICT 0.62 / 0.705 / 0.79 dan ekstensi), kanal, pitchfork, kipas Gann, XABCD / ABCD, head and shoulders, gelombang Elliott, bentuk, teks, dan catatan.",
+        "Alat ICT: kotak FVG dengan CE, order block dengan mean threshold, garis likuiditas (BSL / SSL), alat OTE, rentang transaksi, dan kotak killzone.",
+        "Pengukuran: posisi long / short dengan risiko-imbalan, rentang harga dan tanggal, rentang tanggal, VWAP berjangkar, dan **Fixed range volume profile**. Shift + klik di grafik untuk ukur cepat."
+      ]},
+      {"h": "Pengaturan gambar"},
+      "Klik dua kali sebuah gambar (atau tekan roda gigi di bilah kecilnya) untuk **Style**, **Text**, **Coordinates**, dan **Visibility**. Di **Visibility** Anda bisa menampilkan gambar hanya pada interval pilihan — misalnya FVG 1H hanya di grafik 1m–15m.",
+      {"tip": "Pilih garis atau kotak lalu tekan ⏰ di bilahnya untuk membuat peringatan darinya."}
+    ]},
+    {"id": "indicators", "t": "Indikator, profil volume, dan ICT Script", "b": [
+      {"ul": [
+        "**Indicators** di bilah atas: sekitar 30 indikator (moving average, VWAP, SuperTrend, Bollinger, RSI, MACD, ATR, volume, dan lainnya). Cari, tambah, dan di **On this chart** ubah pengaturan, warna, ketebalan, sembunyikan, atau hapus.",
+        "Indikator harga (moving average, VWAP …) pindah ke panel sendiri dengan **↓ Own pane** dan kembali dengan **↑ On price**; indikator panel (RSI, MACD, volume) naik dan turun dengan ▲ ▼.",
+        "**Profil volume:** VPVR (rentang terlihat), SVP (satu profil per sesi atau per hari), dan gambar rentang tetap, masing-masing dengan point of control (POC) dan value area.",
+        "**Apply to all charts** menyalin indikator grafik aktif ke semua grafik."
+      ]},
+      {"h": "ICT Script: indikator Anda sendiri"},
+      "Di **Indicators → My scripts → + New script** tulis beberapa baris, misalnya:",
+      "`fast = ema(close, 9)` · `plot(fast, \"EMA 9\")`",
+      {"ul": [
+        "Nilai: `open high low close volume hl2 hlc3 ohlc4`; `close[1]` adalah bar sebelumnya.",
+        "Fungsi: `sma ema rma wma rsi atr highest lowest stdev change abs max min`; hingga 6 baris `plot()`; `@pane` di baris pertama menggambarnya di panel sendiri.",
+        "Pemeriksaan di bawah editor menampilkan kesalahan beserta nomor baris. **Save and add to chart** menyimpannya di akun Anda."
+      ]}
+    ]},
+    {"id": "alerts", "t": "Peringatan dan WhatsApp", "b": [
+      "Buka **Alerts** di kanan. Peringatan bekerja selama terminal terbuka di salah satu perangkat Anda; peringatan WhatsApp dikirim oleh server.",
+      {"table": {"head": ["Peringatan", "Cara membuat"], "rows": [
+        ["Price", "Masukkan harga dan pilih **Crossing**, **Above**, atau **Below**. Alt+A memasang satu di harga terakhir."],
+        ["Trend line / zone", "Pilih garis tren, kotak, FVG, atau order block di grafik lalu tekan ⏰."],
+        ["Session", "Pilih sesi (killzone, jendela Silver Bullet, pembukaan New York) → **Daily session alert**. Berbunyi setiap hari."],
+        ["ICT event", "Di bawah **ICT event**: MSS, BOS, FVG baru, atau sapuan likuiditas, interval (1m–4H), dan arah. Berbunyi pada setiap peristiwa baru."]
+      ]}},
+      {"h": "Setup di WhatsApp"},
+      {"ol": [
+        "Di **Alerts → WhatsApp alerts** masukkan nomor Anda dalam format internasional, angka saja (misalnya `923001234567`).",
+        "Pilih nilai terendah, dan bila mau hanya beberapa model atau simbol, serta apakah hanya setup dengan bias yang dihitung.",
+        "Nyalakan **Auto notify**, simpan, lalu tekan **Test**. Setiap setup baru dikirim sekali; paket dengan penundaan mengirimnya setelah penundaan."
+      ]},
+      {"tip": "Nyalakan notifikasi desktop (tombol di tab Alerts) agar peringatan terdengar meski Anda di jendela lain."}
+    ]},
+    {"id": "trade", "t": "Paper trading", "b": [
+      "Berlatih tanpa uang sungguhan. Akun kertas dimulai dengan 10,000 USD (bisa direset dengan saldo berapa pun).",
+      {"ol": [
+        "Buka **Trade** di kanan, atau gunakan tombol **SELL** / **BUY** di grafik aktif dengan jumlah di antaranya.",
+        "Pilih **Market**, **Limit**, atau **Stop**, jumlah, dan opsional **Stop loss** serta **Take profit**. Risiko, imbalan, dan R terlihat sebelum dikirim.",
+        "Posisi dan order digambar di grafik. Seret garis SL, TP, atau order untuk memindahkannya.",
+        "Tutup dengan ✕ di **Positions**; transaksi selesai ada di **History** dengan P&L dan rasio menang."
+      ]},
+      {"info": "Server mengisi order pada bar 1 menit: order limit dan stop pada harganya, gap pada pembukaan, dan bila satu bar menyentuh stop dan target sekaligus, stop dihitung lebih dulu."}
+    ]},
+    {"id": "tester", "t": "Penguji strategi dan screener", "b": [
+      {"h": "Penguji strategi"},
+      {"ol": [
+        "Buka panel bawah (tombol jurnal di menu kanan, atau pengaturan → **Journal & stats panel**) dan pilih **Strategy tester**.",
+        "Pilih model, 30, 60, atau 90 hari, dan apakah bias harian diwajibkan, lalu **Run test**.",
+        "Anda melihat setup, yang terisi, rasio menang, R rata-rata, total R, profit factor, drawdown terbesar, kurva ekuitas, dan setiap transaksi (klik untuk melihatnya di grafik)."
+      ]},
+      {"h": "Screener"},
+      "**Screener** di bilah atas menampilkan semua simbol dalam satu tabel: bias harian, premium atau discount, sapuan high / low hari sebelumnya, FVG 15m dan 1H terdekat, killzone saat ini, dan setup hari ini. Klik baris untuk membuka grafiknya."
+    ]},
+    {"id": "market", "t": "Kalender, berita, dan asisten AI", "b": [
+      {"ul": [
+        "**Calendar:** peristiwa ekonomi minggu ini dengan filter dampak dan mata uang; klik untuk melihat waktunya di grafik. Berita berdampak tinggi juga tampil sebagai tanda di grafik dan label hitung mundur.",
+        "**News:** berita utama pasar terbaru.",
+        "**AI:** tanyakan tentang grafik aktif — bias, level kunci, likuiditas, gap terbuka, setup terbaru, dan waktunya. Ia menjawab dalam bahasa Inggris atau Urdu latin dari data mesin sendiri."
+      ]},
+      {"warn": "Model tidak membuka transaksi baru di sekitar berita berdampak tinggi (15 menit sebelum dan sesudah), dan pada hari FOMC posisi ditutup sebelum pukul 14:00 waktu New York."}
+    ]},
+    {"id": "community", "t": "Komunitas dan ICC Terminal", "b": [
+      {"ul": [
+        "**Community** (menu kanan): bagikan ide trading dengan gambar grafik Anda, sukai dan komentari ide, dan mengobrol di ruang. Ide yang sama ada di situs web.",
+        "Pertama kali, pilih nama panggilan dan setujui aturannya. Laporan diteruskan ke moderator.",
+        "**ICC** (menu kanan): membuka ICC Terminal di samping grafik Anda dengan login sendiri — menempel, layar penuh, atau di tab baru."
+      ]}
+    ]},
+    {"id": "mobile", "t": "Ponsel dan tablet", "b": [
+      {"ul": [
+        "Di ponsel alat ada di atas, grafik di tengah, dan menu (Watchlist, Signals, Trade, AI, Alerts …) di bawah; geser menu bawah ke samping untuk Community dan ICC.",
+        "Dengan 2–8 grafik, **▦ All** menampilkan semua grafik di layar, **▢ One** satu per satu dengan chip untuk berpindah.",
+        "Tablet dalam posisi tegak menampilkan hingga 8 grafik dalam dua kolom.",
+        "Cubit untuk zoom, seret untuk menggulir, tekan lama untuk crosshair; menggambar bisa dengan jari."
+      ]}
+    ]},
+    {"id": "account", "t": "Paket dan akun Anda", "b": [
+      {"ul": [
+        "Tombol akun di kanan atas menampilkan paket Anda, masa berlakunya, dan isinya (grafik per tata letak, indikator ICT, model, penundaan sinyal, peringatan, backtest).",
+        "**Upgrade or renew:** pilih paket dan bayar dengan salah satu metode yang ditampilkan (transfer bank / dompet dengan ID transaksi, atau kripto). Paket dimulai saat pembayaran dikonfirmasi.",
+        "**Devices:** akun Anda mencantumkan perangkat yang Anda pakai; setiap paket mengizinkan jumlah tertentu sekaligus.",
+        "**Security:** ganti kata sandi di sana; gunakan **Forgot password?** di halaman masuk jika lupa."
+      ]}
+    ]},
+    {"id": "shortcuts", "t": "Pintasan keyboard", "b": [
+      {"table": {"head": ["Tombol", "Fungsi"], "rows": [
+        ["A–Z", "Cari simbol"], ["0–9", "Interval (ketik angka)"], ["Alt+T / Alt+H / Alt+F / Alt+R", "Garis tren / garis horizontal / Fibonacci ICT / persegi panjang"],
+        ["Alt+A", "Peringatan di harga terakhir"], ["Alt+G", "Ke tanggal"], ["Alt+S", "Tangkapan layar"], ["Ctrl+Z / Ctrl+Y", "Batal / ulang"],
+        ["Del", "Hapus gambar terpilih"], ["Esc", "Batalkan alat atau tutup jendela"], ["Shift + click", "Ukur cepat"]
+      ]}}
+    ]},
+    {"id": "faq", "t": "Pertanyaan", "b": [
+      {"h": "Grafik kosong atau berhenti diperbarui."},
+      "Periksa internet Anda, lalu muat ulang halaman. Jika satu simbol tidak ada datanya, feed broker mungkin tutup (akhir pekan) atau sedang sibuk sebentar.",
+      {"h": "Saya melihat gembok pada model atau lapisan."},
+      "Paket Anda tidak mencakupnya. Buka tombol akun → **Upgrade or renew**.",
+      {"h": "Gambar saya hilang."},
+      "Gambar tersimpan bersama setiap grafik beberapa detik setelah digambar. Pastikan Anda masuk ke akun yang sama dan gambar tidak disembunyikan untuk interval ini (**Visibility**).",
+      {"h": "Apakah ia bertrading untuk saya?"},
+      "Hanya melalui jembatan MT5 (ICT Bridge EA) di akun MetaTrader 5 Anda sendiri, untuk model yang disetujui dan paket yang mencakupnya. Mulailah di akun demo."
+    ]},
+    {"id": "risk", "t": "Peringatan risiko", "b": [
+      "Trading CFD, forex, indeks, dan kripto dengan leverage berisiko tinggi kehilangan uang dengan cepat. ICT Terminal adalah alat analisis dan belajar, bukan nasihat keuangan. Model mengikuti aturan tetap dan banyak setup yang rugi; hasil masa lalu tidak menjamin masa depan. Hanya trading dengan uang yang sanggup Anda relakan."
+    ]}
+  ]
+}

@@ -174,6 +174,15 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
     if (tf && timeframeByLabel(tf).label === tf) setTf(tf)
     const c = q.get('community')
     if (c === 'ideas' || c === 'chat' || c === 'publish') setCommunity(c)
+    // deep links (guides, help pages): ?tab=alerts opens a side tab, ?open=screener a window or panel
+    const tab = q.get('tab')
+    if (tab && ['watchlist', 'signals', 'trade', 'assistant', 'alerts', 'calendar', 'news', 'objects', 'data'].includes(tab)) setSideTab(tab as SideTab)
+    const open = q.get('open') || ''
+    if (open === 'journal' || open === 'stats' || open === 'tester') { setBottomOpen(true); window.setTimeout(() => window.dispatchEvent(new CustomEvent('ict:bottom', { detail: open })), 50) }
+    else if (open === 'icc') setIccOpen(true)
+    else if (open === 'settings') setSettingsTab('symbol')
+    else if (open === 'account') openAccount('plan')
+    else if (['screener', 'indicators', 'templates', 'layout', 'ict'].includes(open)) window.setTimeout(() => window.dispatchEvent(new CustomEvent('ict:open', { detail: open })), 300)
     // keep ?popout=1 so a reload of the pop-out window stays a pop-out (and never saves over the layout)
     if (q.toString()) window.history.replaceState(null, '', window.location.pathname + (POPOUT ? '?popout=1' : ''))
     // eslint-disable-next-line react-hooks/exhaustive-deps
