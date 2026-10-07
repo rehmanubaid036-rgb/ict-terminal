@@ -12,6 +12,7 @@ import re
 import threading
 import time
 
+import numpy as np
 import pandas as pd
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.concurrency import run_in_threadpool
@@ -299,6 +300,58 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
                             "created_time": str(s.get("created_time")), "entry": s.get("entry")} for s in sigs[-5:]][::-1]
             r["a_setups"] = sum(1 for s in sigs if str(s.get("grade", "")).startswith("A"))
         return {"rows": rows}
+
+    # ---- strategy tester: one model on one symbol, run on demand (heavy: one at a time, cached) ---------
+    bt_cache: dict[tuple, tuple[float, dict]] = {}
+    bt_lock = threading.Lock()
+
+    @app.get("/api/v1/backtest")
+    def backtest(symbol: str, model: str, days: int = 60, bias: bool = True, a: dict = Depends(logged_in)):
+        """Runs ``model`` on the last ``days`` (30 / 60 / 90) of 1m data with the conservative simulator
+        (next-bar fills, stop first, spread paid). Needs the plan's backtest feature."""
+        from ictengine.backtest.simulator import run as bt_run, stats as bt_stats
+        from ictengine.symbols import SYMBOLS as SPECS
+
+        feature(a, "backtest", "Your plan does not include the strategy tester.")
+        f = a.get("features", {})
+        allowed = f.get("models") or []
+        if model not in MODELS or (allowed != "all" and model not in allowed):
+            raise HTTPException(400, "Choose one of your plan's models.")
+        days = 30 if days <= 30 else 60 if days <= 60 else 90
+        i = _info(symbol)
+        key = (i.ticker, model, days, bias, pd.Timestamp.now(tz="UTC").strftime("%Y-%m-%d"))
+        hit = bt_cache.get(key)
+        if hit and time.time() - hit[0] < 6 * 3600:
+            return hit[1]
+        if not bt_lock.acquire(blocking=False):
+            raise HTTPException(429, "Another test is running. Try again in a minute.")
+        try:
+            end = pd.Timestamp.now(tz="UTC")
+            start = end - pd.Timedelta(days=days)
+            df = provider.candles(i.ticker, start - pd.Timedelta(days=45), end)    # warm-up for the daily bias
+            if len(df) < 2000:
+                raise HTTPException(400, "Not enough data for this symbol.")
+            ctx = Context(i.symbol, df)
+            sigs = [s for s in MODELS[model].scan(ctx, require_bias=bias) if s.created_time >= start]
+            spread = SPECS[i.symbol].spread if i.symbol in SPECS else 0.0
+            trades = bt_run(sigs, df, spread=spread)
+            st = {k: (None if isinstance(v, float) and not np.isfinite(v) else v) for k, v in bt_stats(trades).items()}
+            rows = []
+            for tr in trades:
+                d = tr.signal.to_dict()
+                d["model_id"] = model
+                rows.append({"signal": d, "status": tr.status, "r": round(tr.r, 3),
+                             "fill_time": tr.fill_time.isoformat() if tr.fill_time is not None else None,
+                             "exit_time": tr.exit_time.isoformat() if tr.exit_time is not None else None,
+                             "fill_price": tr.fill_price})
+            out = {"symbol": i.ticker, "model": model, "days": days, "bias": bias, "stats": st, "trades": rows,
+                   "from": start.isoformat(), "to": end.isoformat()}
+            if len(bt_cache) > 100:
+                bt_cache.clear()
+            bt_cache[key] = (time.time(), out)
+            return out
+        finally:
+            bt_lock.release()
 
     @app.get("/api/v1/engine/status")
     def engine_status():

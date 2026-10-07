@@ -219,3 +219,14 @@ def test_paper_trading_flow(client):
     st = client.post(f"/api/v1/paper/{pos['id']}/close").json()
     closed = next(h for h in st["history"] if h["id"] == pos["id"])
     assert st["positions"] == [] and closed["exit_reason"] == "closed" and st["balance"] == 5000 and st["trades"] == 1
+
+
+def test_strategy_tester_needs_data_and_a_plan_model(client):
+    bad = client.get("/api/v1/backtest", params={"symbol": "AXI:XAUUSD", "model": "M99"})
+    assert bad.status_code == 400
+    # the fixture's two days of gold are older than the test window: it runs and finds no trades
+    r = client.get("/api/v1/backtest", params={"symbol": "AXI:XAUUSD", "model": "M1", "days": 25})
+    assert r.status_code == 200
+    body = r.json()
+    assert (body["days"], body["stats"]["signals"], body["trades"]) == (30, 0, [])
+    assert client.get("/api/v1/backtest", params={"symbol": "AXI:XAUUSD", "model": "M1", "days": 30}).json() == body   # cached

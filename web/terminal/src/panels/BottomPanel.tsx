@@ -7,6 +7,7 @@ import { modelTag } from '../constants'
 import { Empty, nyTime } from '../ui/common'
 import { Icon } from '../ui/icons'
 import { outcome, RESULT_LABEL, type Outcome } from './outcome'
+import { TesterView } from './Tester'
 
 interface Row { s: Signal; o: Outcome }
 const SPANS: [string, number][] = [['3 days', 3], ['7 days', 7], ['14 days', 14], ['30 days', 30]]
@@ -41,15 +42,15 @@ function useJournal(days: number, bias: boolean) {
 
 export function BottomPanel() {
   const t = useTerminal()
-  const [tab, setTab] = useState<'journal' | 'stats' | 'engine'>('journal')
+  const [tab, setTab] = useState<'journal' | 'stats' | 'tester' | 'engine'>('journal')
   return (
     <section className="bottom">
       <div className="bottom-tabs">
-        {(['journal', 'stats', 'engine'] as const).map(x => <button key={x} className={tab === x ? 'on' : ''} onClick={() => setTab(x)}>{x === 'journal' ? 'Setups journal' : x === 'stats' ? 'Model stats' : 'Engine status'}</button>)}
+        {(['journal', 'stats', 'tester', 'engine'] as const).map(x => <button key={x} className={tab === x ? 'on' : ''} onClick={() => setTab(x)}>{x === 'journal' ? 'Setups journal' : x === 'stats' ? 'Model stats' : x === 'tester' ? 'Strategy tester' : 'Engine status'}</button>)}
         <span className="grow" />
         <button className="icon-btn" title="Close" onClick={() => t.setBottomOpen(false)}><Icon name="close" size={16} /></button>
       </div>
-      <div className="bottom-body">{tab === 'journal' ? <JournalView /> : tab === 'stats' ? <StatsView /> : <EngineView />}</div>
+      <div className="bottom-body">{tab === 'journal' ? <JournalView /> : tab === 'stats' ? <StatsView /> : tab === 'tester' ? <TesterView /> : <EngineView />}</div>
     </section>
   )
 }

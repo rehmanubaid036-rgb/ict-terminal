@@ -121,6 +121,10 @@ export interface PaperOrder { id: number; ticker: string; side: 1 | -1; type: 'm
 export interface PaperState { balance: number; start_balance: number; equity: number; unrealized: number; positions: PaperOrder[]; orders: PaperOrder[]
   history: PaperOrder[]; trades: number; win_rate: number | null }
 
+export interface BacktestResult { symbol: string; model: string; days: number; bias: boolean; from: string; to: string
+  stats: { signals: number; filled: number; fill_rate?: number; wins?: number; losses?: number; win_rate?: number; avg_r?: number; total_r?: number; best_r?: number; worst_r?: number; profit_factor?: number | null; max_drawdown_r?: number }
+  trades: { signal: Signal; status: string; r: number; fill_time: string | null; exit_time: string | null; fill_price: number | null }[] }
+
 export interface CalendarEvent { time: number; currency: string; impact: string; title: string }
 
 export interface Signal {
@@ -206,6 +210,7 @@ export const api = {
     modify: (id: number, patch: { sl?: number | null; tp?: number | null; price?: number }) => post<PaperState>(`/api/v1/paper/${id}/modify`, patch),
     reset: (balance: number) => post<PaperState>('/api/v1/paper/reset', { balance }),
   },
+  backtest: (symbol: string, model: string, days: number, bias: boolean) => get<BacktestResult>('/api/v1/backtest', { symbol, model, days, bias }),
   screener: () => get<{ rows: ScreenerRow[] }>('/api/v1/screener'),
   news: () => get<{ items: { title: string; link: string; at: number; source: string }[] }>('/api/v1/news'),
   calendar: (from: number, to: number, impact: string) => get<{ events: CalendarEvent[] }>('/api/v1/calendar', { from, to, impact }),
