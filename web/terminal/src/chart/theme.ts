@@ -19,7 +19,7 @@ export function chartStyles(theme: Theme, chartType: string, s: ChartSettings = 
   return {
     grid: { show: s.grid !== 'none', horizontal: gl(s.grid === 'both' || s.grid === 'horz'), vertical: gl(s.grid === 'both' || s.grid === 'vert') } as any,
     candle: {
-      type: (chartType === 'heikin_ashi' ? 'candle_solid' : line ? 'area' : chartType) as any,
+      type: (chartType === 'heikin_ashi' || chartType === 'renko' || chartType === 'linebreak' ? 'candle_solid' : line ? 'area' : chartType) as any,
       bar: { upColor: up, downColor: down, noChangeColor: '#888888',
         upBorderColor: s.borders ? s.borderUp : up, downBorderColor: s.borders ? s.borderDown : down, noChangeBorderColor: '#888888',
         upWickColor: s.wicks ? s.wickUp : 'rgba(0,0,0,0)', downWickColor: s.wicks ? s.wickDown : 'rgba(0,0,0,0)', noChangeWickColor: s.wicks ? '#888888' : 'rgba(0,0,0,0)' },

@@ -34,6 +34,7 @@ export function ContextMenu({ x, y, onClose }: { x: number; y: number; onClose: 
       <div className="ctx-label">Price scale</div>
       <div className="ctx-chips">
         {(['normal', 'logarithm', 'percentage'] as const).map(m => <button key={m} className={a.axis === m ? 'on' : ''} onClick={run(() => t.updateActive({ axis: m }))}>{m === 'normal' ? 'Regular' : m === 'logarithm' ? 'Log' : 'Percent'}</button>)}
+        <button className={a.invert ? 'on' : ''} onClick={run(() => t.updateActive({ invert: !a.invert }))}>Invert</button>
       </div>
       <div className="menu-sep" />
       <button onClick={run(() => t.openSettings())}>Settings…</button>

@@ -64,6 +64,7 @@ export function ChartPanel(p: ChartPanelProps) {
   const [tip, setTip] = useState<{ x: number; e: CalendarEvent } | null>(null)
   const [, setClock] = useState(0)
   const [pop, setPop] = useState<{ s: Signal; x: number; y: number } | null>(null)
+  const measuring = useRef<(() => void) | null>(null)   // ends a Shift + click measure
   const [props_, setProps] = useState<string | null>(null)     // overlay id whose settings window is open
   useEffect(() => {
     const open = (e: Event) => { const d = (e as CustomEvent).detail; if (d?.chartId === conf.id) setProps(d.overlayId) }
@@ -156,11 +157,13 @@ export function ChartPanel(p: ChartPanelProps) {
     const chart = chartRef.current, feed = feedRef.current
     if (!chart || !feed) return
     const heikin = conf.chartType === 'heikin_ashi'
-    // setSymbol / setPeriod reload the data themselves; only a Heikin Ashi switch needs a reset
-    const onlyHeikin = feed.ticker === conf.ticker && feed.tf?.label === tf.label && feed.heikin !== heikin
+    const kind = conf.chartType === 'renko' ? 'renko' : conf.chartType === 'linebreak' ? 'linebreak' : heikin ? 'heikin' : 'normal'
+    // setSymbol / setPeriod reload the data themselves; only a change of bar kind (Heikin Ashi, Renko ...) needs a reset
+    const onlyHeikin = feed.ticker === conf.ticker && feed.tf?.label === tf.label && (feed.heikin !== heikin || feed.kind !== kind)
     feed.ticker = conf.ticker
     feed.tf = tf
     feed.heikin = heikin
+    feed.kind = kind
     if (feed.mode === 'replay') feed.stopReplay()
     chart.setSymbol({ ticker: conf.ticker, pricePrecision: st.precision >= 0 ? st.precision : digits, volumePrecision: 0 })
     chart.setPeriod(tf.period)
@@ -189,8 +192,8 @@ export function ChartPanel(p: ChartPanelProps) {
   }, [setKey, p.theme, conf.chartType, conf.ticker, tf.label, p.cursor, p.compact])
 
   useEffect(() => {
-    chartRef.current?.overrideYAxis({ paneId: 'candle_pane', name: conf.axis, position: st.scale })
-  }, [conf.axis, st.scale])
+    chartRef.current?.overrideYAxis({ paneId: 'candle_pane', name: conf.axis, position: st.scale, reverse: !!conf.invert })
+  }, [conf.axis, st.scale, conf.invert])
 
   // ---- compare symbols (SMT) --------------------------------------------------------------------
   const cmpKey = (conf.compare ?? []).join(',')
@@ -423,7 +426,29 @@ export function ChartPanel(p: ChartPanelProps) {
   const pick = (fn: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); p.onActivate(); window.setTimeout(fn, 0) }
   return (
     <div className={`chart-panel cursor-${p.cursor}${p.active ? ' active' : ''}${p.hidden ? ' hidden' : ''}`}
-      onMouseDown={p.onActivate} onTouchStart={p.onActivate}
+      onMouseDown={e => {
+        p.onActivate()
+        const chart = chartRef.current
+        if (!chart || !box.current) return
+        const r = box.current.getBoundingClientRect()
+        const at = (ev: { clientX: number; clientY: number }) => {
+          const pt = chart.convertFromPixel([{ x: ev.clientX - r.left, y: ev.clientY - r.top }], { paneId: 'candle_pane' }) as Array<{ timestamp?: number; value?: number }>
+          return pt[0]?.timestamp === undefined || pt[0]?.value === undefined ? null : { timestamp: pt[0].timestamp, value: pt[0].value }
+        }
+        // a measure in progress: this click ends it
+        if (measuring.current) { measuring.current(); return }
+        // Shift + click: quick measure (price, %, bars, time) that follows the mouse until the next click
+        if (!e.shiftKey || p.tool) return
+        const start = at(e)
+        if (!start) return
+        e.preventDefault()
+        snapshot(conf.id)
+        const id = chart.createOverlay({ name: 'priceRange', groupId: DRAWINGS, points: [start, start], ...drawingHooks(conf.id) })
+        if (typeof id !== 'string') return
+        const move = (ev: MouseEvent) => { const q = at(ev); if (q) chart.overrideOverlay({ id, points: [start, q] }) }
+        window.addEventListener('mousemove', move)
+        measuring.current = () => { window.removeEventListener('mousemove', move); measuring.current = null; notify() }
+      }} onTouchStart={p.onActivate}
       style={{ background: chartCssBackground(p.theme, st) }}
       onMouseMove={e => {
         const chart = chartRef.current

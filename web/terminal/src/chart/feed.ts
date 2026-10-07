@@ -45,10 +45,50 @@ export function heikinAshi(bars: KLineData[]): KLineData[] {
   return out
 }
 
+/** Renko: bricks of ``box`` (ATR 14 of the bars when 0); a brick gets the time of the bar that made it. */
+export function renko(bars: KLineData[], box = 0): KLineData[] {
+  if (bars.length < 2) return []
+  if (!box) {
+    let atr = 0
+    for (let i = 1; i < bars.length; i++) {
+      const b = bars[i], p = bars[i - 1]
+      const tr = Math.max(b.high - b.low, Math.abs(b.high - p.close), Math.abs(b.low - p.close))
+      atr = i < 15 ? atr + tr / 14 : (atr * 13 + tr) / 14
+    }
+    box = atr || Math.abs(bars[bars.length - 1].close) * 0.001
+  }
+  const out: KLineData[] = []
+  let top = Math.floor(bars[0].close / box) * box + box, bottom = top - box
+  for (const b of bars) {
+    let k = 0
+    while (b.close >= top + box) { out.push({ timestamp: b.timestamp + k++ * 1000, open: top, close: top + box, high: top + box, low: top, volume: b.volume }); bottom = top; top += box }
+    while (b.close <= bottom - box) { out.push({ timestamp: b.timestamp + k++ * 1000, open: bottom, close: bottom - box, high: bottom, low: bottom - box, volume: b.volume }); top = bottom; bottom -= box }
+  }
+  return out
+}
+
+/** Three line break: a new line only when the close breaks the extreme of the last three lines. */
+export function lineBreak(bars: KLineData[], n = 3): KLineData[] {
+  const out: KLineData[] = []
+  for (const b of bars) {
+    if (!out.length) { out.push({ ...b, open: b.open, close: b.close, high: Math.max(b.open, b.close), low: Math.min(b.open, b.close) }); continue }
+    const last = out[out.length - 1], recent = out.slice(-n)
+    const hi = Math.max(...recent.map(x => Math.max(x.open, x.close))), lo = Math.min(...recent.map(x => Math.min(x.open, x.close)))
+    const up = last.close >= last.open
+    if (b.close > (up ? last.close : hi)) out.push({ ...b, open: up ? last.close : last.open, close: b.close, high: b.close, low: up ? last.close : last.open })
+    else if (b.close < (up ? lo : last.close)) out.push({ ...b, open: up ? last.open : last.close, close: b.close, high: up ? last.open : last.close, low: b.close })
+  }
+  return out
+}
+
+export type BarKind = 'normal' | 'heikin' | 'renko' | 'linebreak'
+
 export class Feed {
   ticker = ''
   tf: Timeframe | null = null
   heikin = false
+  kind: BarKind = 'normal'              // renko / line break replace the time bars
+  private lastShown = 0                 // time of the last brick on the chart (renko / line break)
   raw: KLineData[] = []                 // bars at the chart's interval, oldest first
   mode: 'live' | 'replay' = 'live'
   replayBars: KLineData[] = []
@@ -62,8 +102,12 @@ export class Feed {
   onLoaded: () => void = () => {}
 
   private display(bars: KLineData[]): KLineData[] {
+    if (this.kind === 'renko') return renko(bars)
+    if (this.kind === 'linebreak') return lineBreak(bars)
     return this.heikin ? heikinAshi(bars) : bars
   }
+  /** Renko / line break have their own bar count: no paging back, new bars only add bricks. */
+  get priceBars() { return this.kind === 'renko' || this.kind === 'linebreak' }
 
   private async fetch(to: number, count: number, signal?: AbortSignal): Promise<KLineData[]> {
     const tf = this.tf!
@@ -90,10 +134,12 @@ export class Feed {
             this.initAbort?.abort()        // symbol / interval changed again: drop the old load
             const ac = new AbortController()
             this.initAbort = ac
-            const bars = await this.fetch(to, BARS, ac.signal)
+            const bars = await this.fetch(to, this.priceBars ? BARS * 4 : BARS, ac.signal)
             if (gen !== this.generation) return
             this.raw = bars
-            callback(this.display(bars), { forward: bars.length > 0, backward: false })
+            const shown = this.display(bars)
+            this.lastShown = shown[shown.length - 1]?.timestamp ?? 0
+            callback(shown, { forward: bars.length > 0 && !this.priceBars, backward: false })
             this.onLoaded()
           } else if (type === 'forward' && timestamp) {
             const older = (await this.fetch(Math.floor(timestamp / 1000), BARS)).filter(b => b.timestamp < timestamp)
@@ -135,6 +181,11 @@ export class Feed {
         if (!last || b.timestamp > last.timestamp) { this.raw.push(b); this.onNewBar() }
         else if (b.timestamp === last.timestamp) this.raw[this.raw.length - 1] = b
         else continue
+        if (this.priceBars) {
+          // only finished bricks / lines are drawn: add the new ones
+          for (const n of this.display(this.raw).filter(x => x.timestamp > this.lastShown)) { this.onBar?.(n); this.lastShown = n.timestamp }
+          continue
+        }
         const shown = this.display(this.raw.slice(-200))
         this.onBar?.(shown[shown.length - 1])
       }

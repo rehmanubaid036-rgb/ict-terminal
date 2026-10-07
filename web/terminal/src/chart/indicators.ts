@@ -128,8 +128,8 @@ export function registerIndicators() {
       ctx.save()
       for (let k = 0; k < rows; k++) {
         if (!tot[k]) continue
-        const y1 = yAxis.convertToPixel(lo + (k + 1) * step), y2 = yAxis.convertToPixel(lo + k * step)
-        const h = Math.max(1, y2 - y1 - 1)
+        const ya = yAxis.convertToPixel(lo + (k + 1) * step), yb = yAxis.convertToPixel(lo + k * step)
+        const y1 = Math.min(ya, yb), h = Math.max(1, Math.abs(yb - ya) - 1)   // works on an inverted scale too
         const inVa = k >= lowK && k <= highK
         const wu = (up[k] / max) * width, wd = (dn[k] / max) * width
         ctx.fillStyle = inVa ? 'rgba(38,166,154,0.42)' : 'rgba(38,166,154,0.2)'

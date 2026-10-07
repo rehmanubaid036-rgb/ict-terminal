@@ -64,6 +64,8 @@ export const CHART_TYPES = [
   { id: 'ohlc', label: 'Bars (OHLC)' },
   { id: 'line', label: 'Line' },
   { id: 'area', label: 'Area' },
+  { id: 'renko', label: 'Renko (ATR 14)' },
+  { id: 'linebreak', label: 'Line break (3 lines)' },
 ] as const
 export type ChartTypeId = (typeof CHART_TYPES)[number]['id']
 

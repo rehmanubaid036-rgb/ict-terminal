@@ -23,6 +23,13 @@ function alpha(hex: string, a: number): string {
   return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`
 }
 const fmt = (v: number | undefined, d: number) => (v === undefined ? '' : v.toFixed(d))
+/** Bar index of a point (drawings saved with times only have no dataIndex). */
+function barIndex(chart: Chart, p: { dataIndex?: number; timestamp?: number }): number {
+  if (p.dataIndex !== undefined) return p.dataIndex
+  const list = chart.getDataList(), t = p.timestamp ?? 0
+  const i = list.findIndex(b => b.timestamp >= t)
+  return i < 0 ? list.length : i
+}
 function digits(chart: Chart): number {
   return chart.getSymbol()?.pricePrecision ?? 2
 }
@@ -299,7 +306,7 @@ export function registerOverlays() {
       const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y), w = Math.abs(b.x - a.x), h = Math.abs(b.y - a.y)
       const out: OverlayFigure[] = [rect(x, y, w, h, alpha(color, 0.16), undefined, false), line({ x: (a.x + b.x) / 2, y: a.y }, { x: (a.x + b.x) / 2, y: b.y }, color), line({ x: a.x, y: (a.y + b.y) / 2 }, { x: b.x, y: (a.y + b.y) / 2 }, color)]
       if (p[0]?.value !== undefined && p[1]?.value !== undefined && p[0].timestamp && p[1].timestamp) {
-        const dv = p[1].value - p[0].value, bars = Math.abs((p[1].dataIndex ?? 0) - (p[0].dataIndex ?? 0))
+        const dv = p[1].value - p[0].value, bars = Math.abs(barIndex(chart, p[1]) - barIndex(chart, p[0]))
         const mins = Math.abs(p[1].timestamp - p[0].timestamp) / 60000
         const span = mins >= 1440 ? `${(mins / 1440).toFixed(1)}d` : mins >= 60 ? `${Math.floor(mins / 60)}h ${Math.round(mins % 60)}m` : `${Math.round(mins)}m`
         out.push(text(x + w / 2, up ? y - 4 : y + h + 4, `${dv >= 0 ? '+' : ''}${fmt(dv, d)} (${((dv / p[0].value) * 100).toFixed(2)}%)  ·  ${bars} bars, ${span}`, '#ffffff', { align: 'center', baseline: up ? 'bottom' : 'top', bg: color }))
