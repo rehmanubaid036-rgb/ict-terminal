@@ -332,6 +332,146 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
     def _owner(a: dict) -> str:
         return str(a.get("email") or a.get("user") or "")
 
+    # ---- paper trading (orders checked against 1m bars, see ictengine.paper) ---------------------
+    from ictengine import paper as pp
+
+    def _bars_1m(ticker: str, since: pd.Timestamp) -> pd.DataFrame:
+        now = pd.Timestamp.now(tz="UTC")
+        since = max(since, now - pd.Timedelta(days=30))
+        try:
+            return provider.candles(ticker, since, now + pd.Timedelta(minutes=1))
+        except Exception:      # a feed that is down: check again next time
+            return pd.DataFrame()
+
+    def _order(d: dict) -> "pp.PaperOrder":
+        ts = lambda v: pd.Timestamp(v) if v not in (None, "", "None", "NaT") else None   # noqa: E731
+        return pp.PaperOrder(id=int(d.get("id") or 0), ticker=d["ticker"], side=int(d["side"]), type=d["type"], qty=float(d["qty"]),
+                             price=d.get("price"), sl=d.get("sl"), tp=d.get("tp"), status=d["status"], created=ts(d["created"]),
+                             checked_until=ts(d["checked_until"]), fill_price=d.get("fill_price"), filled_at=ts(d.get("filled_at")),
+                             exit_price=d.get("exit_price"), closed_at=ts(d.get("closed_at")), exit_reason=d.get("exit_reason", ""),
+                             pnl=float(d.get("pnl") or 0))
+
+    def _plain(o: "pp.PaperOrder") -> dict:
+        from dataclasses import asdict
+        return {k: (v.isoformat() if isinstance(v, pd.Timestamp) else v) for k, v in asdict(o).items()}
+
+    def _last(ticker: str) -> float | None:
+        now = pd.Timestamp.now(tz="UTC")
+        try:
+            d = provider.bars(ticker, "1d", now - pd.Timedelta(days=60), now + pd.Timedelta(minutes=1))
+        except Exception:
+            return None
+        return float(d["close"].iloc[-1]) if len(d) else None
+
+    def _paper_state(user: str) -> dict:
+        acc = store.paper_account(user)
+        live = [_order(d) for d in store.paper_orders(user, (pp.WORKING, pp.OPEN))]
+        realized = 0.0
+        for t in {o.ticker for o in live}:
+            mine = [o for o in live if o.ticker == t]
+            bars = _bars_1m(t, min(o.checked_until for o in mine))
+            if not len(bars):
+                continue
+            for o in mine:
+                before = (o.status, o.checked_until)
+                pp.advance(o, bars)
+                if (o.status, o.checked_until) != before:
+                    store.paper_save(user, _plain(o))
+                if o.status == pp.CLOSED:
+                    realized += o.pnl
+        if realized:
+            store.paper_set_balance(user, acc["balance"] + realized)
+            acc = store.paper_account(user)
+        prices = {t: _last(t) for t in {o.ticker for o in live if o.status in (pp.WORKING, pp.OPEN)}}
+        open_ = [o for o in live if o.status == pp.OPEN]
+        upnl = sum(pp.unrealized(o, prices.get(o.ticker)) for o in open_)
+        history = store.paper_orders(user, (pp.CLOSED, pp.CANCELLED), limit=60)
+        closed = [h for h in history if h["status"] == pp.CLOSED]
+        wins = sum(1 for h in closed if (h.get("pnl") or 0) > 0)
+        return {"balance": acc["balance"], "start_balance": acc["start_balance"], "equity": acc["balance"] + upnl, "unrealized": upnl,
+                "positions": [{**_plain(o), "last": prices.get(o.ticker), "upnl": pp.unrealized(o, prices.get(o.ticker))} for o in open_],
+                "orders": [{**_plain(o), "last": prices.get(o.ticker)} for o in live if o.status == pp.WORKING],
+                "history": history, "trades": len(closed), "win_rate": wins / len(closed) if closed else None}
+
+    @app.get("/api/v1/paper")
+    def paper_get(a: dict = Depends(logged_in)):
+        return _paper_state(_owner(a))
+
+    @app.post("/api/v1/paper/order")
+    async def paper_order(request: Request, a: dict = Depends(logged_in)):
+        b = await request.json()
+        ticker = str(b.get("ticker", "")).upper()
+        _info(ticker)
+        num = lambda k: float(b[k]) if b.get(k) not in (None, "") else None   # noqa: E731
+        side, typ, qty = int(b.get("side") or 0), str(b.get("type") or "market"), float(b.get("qty") or 0)
+        price, sl, tp = num("price"), num("sl"), num("tp")
+        last = await run_in_threadpool(_last, ticker)
+        if last is None:
+            raise HTTPException(503, "No price for this symbol right now.")
+        problem = pp.validate(side, typ, qty, price, sl, tp, last)
+        if problem:
+            raise HTTPException(400, problem)
+        now = pd.Timestamp.now(tz="UTC").floor("min")
+        user = _owner(a)
+        if len(store.paper_orders(user, (pp.WORKING, pp.OPEN))) >= 50:
+            raise HTTPException(400, "Up to 50 open positions and orders.")
+        o = pp.PaperOrder(id=0, ticker=ticker, side=side, type=typ, qty=qty, price=last if typ == "market" else price, sl=sl, tp=tp,
+                          status=pp.OPEN if typ == "market" else pp.WORKING, created=now, checked_until=now,
+                          fill_price=last if typ == "market" else None, filled_at=now if typ == "market" else None)
+        store.paper_save(user, _plain(o))
+        return await run_in_threadpool(_paper_state, user)
+
+    def _mine(user: str, oid: int) -> "pp.PaperOrder":
+        for d in store.paper_orders(user, (pp.WORKING, pp.OPEN)):
+            if d["id"] == oid:
+                return _order(d)
+        raise HTTPException(404, "Order not found (it may have filled or closed).")
+
+    @app.post("/api/v1/paper/{oid}/close")
+    def paper_close(oid: int, a: dict = Depends(logged_in)):
+        user = _owner(a)
+        _paper_state(user)                 # fills / stops up to now first
+        o = _mine(user, oid)
+        if o.status == pp.WORKING:
+            o.status = pp.CANCELLED
+        else:
+            last = _last(o.ticker)
+            if last is None:
+                raise HTTPException(503, "No price for this symbol right now.")
+            pp._close(o, last, pd.Timestamp.now(tz="UTC"), "closed")
+            acc = store.paper_account(user)
+            store.paper_set_balance(user, acc["balance"] + o.pnl)
+        store.paper_save(user, _plain(o))
+        return _paper_state(user)
+
+    @app.post("/api/v1/paper/{oid}/modify")
+    async def paper_modify(oid: int, request: Request, a: dict = Depends(logged_in)):
+        b = await request.json()
+        user = _owner(a)
+        o = _mine(user, oid)
+        num = lambda k: (float(b[k]) if b.get(k) not in (None, "") else None) if k in b else getattr(o, k)   # noqa: E731
+        sl, tp, price = num("sl"), num("tp"), num("price") if o.status == pp.WORKING else o.price
+        last = await run_in_threadpool(_last, o.ticker) or (o.fill_price or o.price or 0)
+        if o.status == pp.WORKING:
+            problem = pp.validate(o.side, o.type, o.qty, price, sl, tp, last)
+        else:
+            problem = ("The stop loss must stay on the losing side." if sl is not None and o.side * (last - sl) <= 0 else
+                       "The take profit must stay on the winning side." if tp is not None and o.side * (tp - last) <= 0 else None)
+        if problem:
+            raise HTTPException(400, problem)
+        o.sl, o.tp, o.price = sl, tp, price if o.status == pp.WORKING else o.price
+        store.paper_save(user, _plain(o))
+        return await run_in_threadpool(_paper_state, user)
+
+    @app.post("/api/v1/paper/reset")
+    async def paper_reset(request: Request, a: dict = Depends(logged_in)):
+        b = await request.json()
+        start = float(b.get("balance") or 10_000)
+        if not 100 <= start <= 10_000_000:
+            raise HTTPException(400, "Start balance: 100 to 10,000,000.")
+        store.paper_reset(_owner(a), start)
+        return _paper_state(_owner(a))
+
     @app.get("/api/v1/layouts")
     def layouts_list(a: dict = Depends(logged_in)):
         return {"layouts": store.layouts(_owner(a))}

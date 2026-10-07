@@ -115,6 +115,12 @@ export interface ScreenerRow { symbol: string; time: string; price: number; chan
   swept_pdh: boolean; swept_pdl: boolean; windows: string[]; fvg_15m: ScreenerFvg | null; fvg_1h: ScreenerFvg | null
   setups: { model_id: string; direction: number; grade: string; created_time: string; entry: number }[]; a_setups: number; updated_at?: string }
 
+export interface PaperOrder { id: number; ticker: string; side: 1 | -1; type: 'market' | 'limit' | 'stop'; qty: number; price: number | null; sl: number | null; tp: number | null
+  status: 'working' | 'open' | 'closed' | 'cancelled'; created: string; fill_price: number | null; filled_at: string | null; exit_price: number | null
+  closed_at: string | null; exit_reason: string; pnl: number; last?: number | null; upnl?: number }
+export interface PaperState { balance: number; start_balance: number; equity: number; unrealized: number; positions: PaperOrder[]; orders: PaperOrder[]
+  history: PaperOrder[]; trades: number; win_rate: number | null }
+
 export interface CalendarEvent { time: number; currency: string; impact: string; title: string }
 
 export interface Signal {
@@ -192,6 +198,13 @@ export const api = {
     comment: (id: number, text: string) => post<{ comment: IdeaComment }>(`/api/v1/community/ideas/${id}/comment`, { text }),
     remove: (id: number) => post<{ deleted: boolean }>(`/api/v1/community/ideas/${id}/delete`, {}),
     reportIdea: (id: number) => post<{ reported: boolean }>(`/api/v1/community/ideas/${id}/report`, {}),
+  },
+  paper: {
+    get: () => get<PaperState>('/api/v1/paper'),
+    order: (o: { ticker: string; side: number; type: string; qty: number; price?: number; sl?: number; tp?: number }) => post<PaperState>('/api/v1/paper/order', o),
+    close: (id: number) => post<PaperState>(`/api/v1/paper/${id}/close`, {}),
+    modify: (id: number, patch: { sl?: number | null; tp?: number | null; price?: number }) => post<PaperState>(`/api/v1/paper/${id}/modify`, patch),
+    reset: (balance: number) => post<PaperState>('/api/v1/paper/reset', { balance }),
   },
   screener: () => get<{ rows: ScreenerRow[] }>('/api/v1/screener'),
   news: () => get<{ items: { title: string; link: string; at: number; source: string }[] }>('/api/v1/news'),

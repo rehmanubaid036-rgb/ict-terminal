@@ -813,3 +813,35 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 .scr-zone { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--panel2); text-transform: capitalize; }
 .scr-zone.discount { color: #26a69a; } .scr-zone.premium { color: #ef5350; }
 .scr-tag, .scr-setup { font-size: 11px; padding: 1px 6px; border-radius: 4px; margin-right: 4px; background: var(--panel2); }
+
+/* paper trading */
+.pp { display: flex; flex-direction: column; gap: 10px; }
+.pp .up { color: #26a69a; } .pp .down { color: #ef5350; }
+.pp-acc { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.pp-acc > div { background: var(--panel2); border-radius: 8px; padding: 6px 8px; display: flex; flex-direction: column; }
+.pp-acc small { color: var(--muted); font-size: 11px; }
+.pp-ticket { display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--line2); border-radius: 10px; padding: 10px; }
+.pp-sides { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.pp-sides button { padding: 8px; border-radius: 8px; border: 1px solid var(--line2); background: var(--panel2); color: var(--muted); font-weight: 800; cursor: pointer; }
+.pp-sides .buy.on { background: #26a69a; color: #fff; border-color: #26a69a; } .pp-sides .sell.on { background: #ef5350; color: #fff; border-color: #ef5350; }
+.pp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.pp-grid label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: var(--muted); }
+.pp-grid input { width: 100%; }
+.btn.pp-buy { background: #26a69a; color: #fff; } .btn.pp-sell { background: #ef5350; color: #fff; }
+.pp-list { display: flex; flex-direction: column; }
+.pp-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 7px 2px; border-bottom: 1px solid var(--line); font-size: 12.5px; }
+.pp-row.done { opacity: .85; }
+.pp-main { flex: 1; min-width: 0; cursor: pointer; display: flex; flex-direction: column; }
+.pp-main small { color: var(--muted); font-size: 11px; }
+.pp-pnl { font-variant-numeric: tabular-nums; font-weight: 700; }
+.pp-edit { width: 100%; display: flex; gap: 6px; }
+.pp-edit input { flex: 1; min-width: 0; }
+
+/* one-click paper trading on the chart */
+.pp-quick { position: absolute; z-index: 7; left: 8px; top: 44px; display: flex; align-items: stretch; gap: 0; border-radius: 6px; overflow: hidden; box-shadow: var(--shadow); opacity: .9; }
+.pp-quick:hover { opacity: 1; }
+.pp-quick button { border: 0; padding: 3px 10px; color: #fff; font: 700 11px var(--font); cursor: pointer; display: flex; flex-direction: column; align-items: center; line-height: 1.15; }
+.pp-quick button small { font-weight: 500; font-size: 10px; }
+.pp-quick .sell { background: #ef5350; } .pp-quick .buy { background: #26a69a; }
+.pp-quick input { width: 46px; border: 0; border-radius: 0; text-align: center; padding: 2px; background: var(--panel); font-size: 12px; }
+@media (max-width: 760px) { .pp-quick { top: 40px; } }

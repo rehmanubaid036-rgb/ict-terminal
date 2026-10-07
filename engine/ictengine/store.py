@@ -66,6 +66,20 @@ CREATE TABLE IF NOT EXISTS runner_status (
     seconds    REAL NOT NULL,
     error      TEXT
 );
+CREATE TABLE IF NOT EXISTS paper_accounts (   -- paper trading: one account per user
+    user          TEXT PRIMARY KEY,
+    balance       REAL NOT NULL,
+    start_balance REAL NOT NULL,
+    created_at    TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS paper_orders (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    user          TEXT NOT NULL,
+    data          TEXT NOT NULL,             -- JSON of ictengine.paper.PaperOrder
+    status        TEXT NOT NULL,
+    updated_at    TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS paper_orders_user ON paper_orders (user, status);
 CREATE TABLE IF NOT EXISTS screener (      -- one row per symbol, written by the runner each pass
     symbol     TEXT PRIMARY KEY,
     data       TEXT NOT NULL,
@@ -219,6 +233,52 @@ class Store:
     def status(self) -> list[dict]:
         with self._conn() as c:
             return [dict(r) for r in c.execute("SELECT * FROM runner_status ORDER BY symbol")]
+
+    # ---- paper trading -----------------------------------------------------------------------
+    def paper_account(self, user: str, start: float = 10_000.0) -> dict:
+        with self._conn() as c:
+            r = c.execute("SELECT * FROM paper_accounts WHERE user = ?", (user,)).fetchone()
+            if r is None:
+                c.execute("INSERT INTO paper_accounts (user, balance, start_balance, created_at) VALUES (?, ?, ?, ?)",
+                          (user, start, start, pd.Timestamp.now(tz="UTC").isoformat()))
+                return {"user": user, "balance": start, "start_balance": start}
+        return dict(r)
+
+    def paper_set_balance(self, user: str, balance: float, start: float | None = None):
+        with self._conn() as c:
+            if start is None:
+                c.execute("UPDATE paper_accounts SET balance = ? WHERE user = ?", (balance, user))
+            else:
+                c.execute("UPDATE paper_accounts SET balance = ?, start_balance = ?, created_at = ? WHERE user = ?",
+                          (balance, start, pd.Timestamp.now(tz="UTC").isoformat(), user))
+
+    def paper_orders(self, user: str, statuses: tuple[str, ...] | None = None, limit: int = 200) -> list[dict]:
+        q, args = "SELECT id, data FROM paper_orders WHERE user = ?", [user]
+        if statuses:
+            q += f" AND status IN ({','.join('?' * len(statuses))})"
+            args += list(statuses)
+        q += " ORDER BY id DESC LIMIT ?"
+        args.append(limit)
+        with self._conn() as c:
+            return [{**json.loads(r["data"]), "id": r["id"]} for r in c.execute(q, args)]
+
+    def paper_save(self, user: str, order: dict) -> int:
+        """Inserts (no id) or updates an order; returns its id."""
+        now = pd.Timestamp.now(tz="UTC").isoformat()
+        data = json.dumps({k: v for k, v in order.items() if k != "id"}, default=str)
+        with self._conn() as c:
+            if order.get("id"):
+                c.execute("UPDATE paper_orders SET data = ?, status = ?, updated_at = ? WHERE id = ? AND user = ?",
+                          (data, order["status"], now, order["id"], user))
+                return int(order["id"])
+            cur = c.execute("INSERT INTO paper_orders (user, data, status, updated_at) VALUES (?, ?, ?, ?)", (user, data, order["status"], now))
+            return int(cur.lastrowid)
+
+    def paper_reset(self, user: str, start: float):
+        with self._conn() as c:
+            c.execute("DELETE FROM paper_orders WHERE user = ?", (user,))
+        self.paper_account(user, start)
+        self.paper_set_balance(user, start, start)
 
     # ---- screener ----------------------------------------------------------------------------
     def set_screener(self, symbol: str, row: dict):

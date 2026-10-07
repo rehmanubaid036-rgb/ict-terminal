@@ -110,7 +110,10 @@ export function ChartSettingsDialog({ tab: first, onClose }: { tab: SettingsTab;
       {head('Model signals')}
       {check('sigLines', 'Entry, stop and target lines of the chosen signal')}
       {check('sigLabels', 'Price labels on those lines', undefined, true)}
-      <p className="cs-note">Pick a signal in the Signals tab to draw it. Order placing comes with the broker link (EA).</p>
+      {head('Paper trading')}
+      {check('tradeButtons', 'Buy / sell buttons on the chart')}
+      {check('tradeLines', 'Positions and orders on the chart (drag stop loss / take profit to change them)')}
+      <p className="cs-note">Pick a signal in the Signals tab to draw it. Paper trading is in the Trade tab; real orders go through the broker link (EA).</p>
     </>,
     alerts: <>
       {check('alertLines', 'Alert lines', color('alertColor', '#f5a623', !s.alertLines))}

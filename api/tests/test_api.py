@@ -199,3 +199,23 @@ def test_screener_rows_come_from_the_store(client, store):
     r = next(x for x in rows if x["symbol"] == "XAUUSD")
     assert (r["bias"], r["zone"], r["swept_pdl"]) == (1, "discount", True)
     assert "setups" in r and "a_setups" in r
+
+
+def test_paper_trading_flow(client):
+    client.post("/api/v1/paper/reset", json={"balance": 5000})
+    st = client.get("/api/v1/paper").json()
+    assert (st["balance"], st["positions"], st["orders"]) == (5000, [], [])
+    bad = client.post("/api/v1/paper/order", json={"ticker": "AXI:XAUUSD", "side": 1, "type": "market", "qty": 1, "sl": 999999})
+    assert bad.status_code == 400
+    st = client.post("/api/v1/paper/order", json={"ticker": "AXI:XAUUSD", "side": 1, "type": "market", "qty": 2}).json()
+    pos = st["positions"][0]
+    assert pos["side"] == 1 and pos["qty"] == 2 and pos["fill_price"] == pos["last"]
+    st = client.post("/api/v1/paper/order", json={"ticker": "AXI:XAUUSD", "side": 1, "type": "limit", "qty": 1, "price": pos["last"] - 50}).json()
+    assert len(st["orders"]) == 1
+    st = client.post(f"/api/v1/paper/{st['orders'][0]['id']}/close").json()      # cancel the working order
+    assert st["orders"] == [] and st["history"][0]["status"] == "cancelled"
+    st = client.post(f"/api/v1/paper/{pos['id']}/modify", json={"sl": pos["last"] - 10, "tp": pos["last"] + 20}).json()
+    assert st["positions"][0]["sl"] == pos["last"] - 10
+    st = client.post(f"/api/v1/paper/{pos['id']}/close").json()
+    closed = next(h for h in st["history"] if h["id"] == pos["id"])
+    assert st["positions"] == [] and closed["exit_reason"] == "closed" and st["balance"] == 5000 and st["trades"] == 1

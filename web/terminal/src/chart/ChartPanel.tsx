@@ -15,6 +15,7 @@ import { closeSignal, isClosed } from './closed'
 import type { CalendarEvent } from '../api'
 import { DRAWINGS, register, unregister, getEntry, snapshot, notify, drawingHooks, removeSelected, onRegistryChange, applyTfVisibility } from './registry'
 import { DrawingDialog } from '../ui/DrawingDialog'
+import { paperModify, paperOrder, usePaper } from '../panels/Paper'
 
 const ICT = 'ict'
 const LINE_DEFAULTS = ['#FF9600', '#935EBD', '#2196F3', '#E11D74', '#01C5C4']   // klinecharts' indicator line colours
@@ -224,6 +225,39 @@ export function ChartPanel(p: ChartPanelProps) {
     return () => { gone = true; window.clearTimeout(t0); window.clearInterval(every); chart.unsubscribeAction('onVisibleRangeChange', onRange) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cmpKey, conf.ticker, tf.label])
+
+  // ---- paper trading: positions / orders as lines; stop loss, take profit and order prices drag ----------
+  const paper = usePaper()
+  const paperKey = JSON.stringify((paper?.positions ?? []).concat(paper?.orders ?? []).filter(o => o.ticker === conf.ticker)
+    .map(o => [o.id, o.status, o.price, o.sl, o.tp, o.fill_price, Math.round((o.upnl ?? 0) * 100)]))
+  useEffect(() => {
+    const chart = chartRef.current
+    if (!chart) return
+    chart.removeOverlay({ groupId: 'paper' })
+    if (!st.tradeLines || !paper) return
+    const list = paper.positions.concat(paper.orders).filter(o => o.ticker === conf.ticker)
+    const t = chart.getDataList().at(-1)?.timestamp ?? Date.now()
+    const money = (v: number) => `${v < 0 ? '-' : '+'}$${Math.abs(v).toFixed(2)}`
+    for (const o of list) {
+      const dir = o.side > 0 ? 'BUY' : 'SELL'
+      const lines: [string, number | null, string, string, boolean][] = o.status === 'open'
+        ? [['entry', o.fill_price, '#2962ff', `${dir} ${o.qty}  ${money(o.upnl ?? 0)}`, false]]
+        : [['price', o.price, '#8b5cf6', `${dir} ${o.type.toUpperCase()} ${o.qty}`, true]]
+      lines.push(['sl', o.sl, '#ef5350', 'SL', true], ['tp', o.tp, '#26a69a', 'TP', true])
+      for (const [kind, v, color, label, drag] of lines) {
+        if (v == null) continue
+        chart.createOverlay({ name: 'tradeLine', groupId: 'paper', lock: !drag, points: [{ timestamp: t, value: v }], extendData: { color, label: `${label}  ${v.toFixed(digits)}` },
+          onPressedMoveEnd: e => {
+            const nv = e.overlay.points[0]?.value
+            if (nv === undefined) return
+            const rounded = Number(nv.toFixed(digits))
+            void paperModify(o.id, kind === 'sl' ? { sl: rounded } : kind === 'tp' ? { tp: rounded } : { price: rounded })
+          } })
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paperKey, st.tradeLines, conf.ticker, digits])
+  const [ppQty, setPpQty] = useState(() => { try { return localStorage.getItem('ict.paperQty') || '1' } catch { return '1' } })
 
   // ---- events layer: session breaks, economic events, alert lines --------------------------------
   useEffect(() => {
@@ -480,6 +514,15 @@ export function ChartPanel(p: ChartPanelProps) {
         {st.titleMode !== 'ticker' && <button className="title-hit" title="Change interval" style={{ left: 10 + tfX - 3, top: 4, width: tfW + 6, height: titleSize + 6 }}
           onMouseDown={e => e.stopPropagation()} onClick={pick(() => openIntervalBox(''))} aria-label={`Change interval (${tf.label})`} />}
       </>}
+      {st.tradeButtons && p.active && !p.compact && (
+        <div className="pp-quick" onMouseDown={e => e.stopPropagation()}>
+          <button className="sell" title="Sell at market (paper)" onClick={() => void paperOrder({ ticker: conf.ticker, side: -1, type: 'market', qty: Number(ppQty) || 1 })}>
+            SELL<small>{feed?.lastClose()?.toFixed(digits) ?? ''}</small></button>
+          <input value={ppQty} inputMode="decimal" title="Quantity" onChange={e => { setPpQty(e.target.value); try { localStorage.setItem('ict.paperQty', e.target.value) } catch { /* ignore */ } }} />
+          <button className="buy" title="Buy at market (paper)" onClick={() => void paperOrder({ ticker: conf.ticker, side: 1, type: 'market', qty: Number(ppQty) || 1 })}>
+            BUY<small>{feed?.lastClose()?.toFixed(digits) ?? ''}</small></button>
+        </div>
+      )}
       {st.watermark && <div className="chart-watermark">{symName}<small>{tf.label}</small></div>}
       <div ref={box} className="chart-canvas" />
       {pop && <SignalPop {...pop} onClose={() => setPop(null)} onShow={() => { p.onSignal(pop.s); setPop(null) }}

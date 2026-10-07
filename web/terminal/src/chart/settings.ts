@@ -26,6 +26,7 @@ export interface ChartSettings {
   watermark: boolean
   // Trading
   sigLines: boolean; sigLabels: boolean
+  tradeButtons: boolean; tradeLines: boolean
   // Alerts
   alertLines: boolean; alertColor: string; alertSound: boolean; alertToastSec: number
   // Events
@@ -45,7 +46,7 @@ export const DEFAULT_SETTINGS: ChartSettings = {
   lastLine: true, lastLabel: true, highLow: true, countdown: true, scale: 'right',
   grid: 'both', gridColor: '', gridStyle: 'dashed', crossColor: '', crossStyle: 'dashed',
   bgType: 'solid', bg: '', bg2: '', textColor: '', textSize: 11, axisColor: '', watermark: false,
-  sigLines: true, sigLabels: true,
+  sigLines: true, sigLabels: true, tradeButtons: true, tradeLines: true,
   alertLines: true, alertColor: '#f5a623', alertSound: true, alertToastSec: 8,
   ideas: true, ideasGrade: 'all',
   sessionBreaks: false, breakColor: '#4a5a80', breakStyle: 'dashed',
