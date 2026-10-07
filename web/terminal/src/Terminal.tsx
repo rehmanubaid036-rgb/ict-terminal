@@ -28,6 +28,8 @@ import { Toasts, toast, useIsPhone, setAlertToastSeconds } from './ui/common'
 import { useHotkeys } from './hotkeys'
 
 registerOverlays()
+// a chart opened in its own window (right-click > Open in a new window): one chart, never saved over the main layout
+export const POPOUT = new URLSearchParams(window.location.search).get('popout') === '1'
 registerIndicators()
 registerEvents()
 registerCompare()
@@ -162,7 +164,8 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
     if (tf && timeframeByLabel(tf).label === tf) setTf(tf)
     const c = q.get('community')
     if (c === 'ideas' || c === 'chat' || c === 'publish') setCommunity(c)
-    if (q.toString()) window.history.replaceState(null, '', window.location.pathname)
+    // keep ?popout=1 so a reload of the pop-out window stays a pop-out (and never saves over the layout)
+    if (q.toString()) window.history.replaceState(null, '', window.location.pathname + (POPOUT ? '?popout=1' : ''))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready])
 
@@ -180,6 +183,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
         const saved = await api.layout(AUTOSAVE)
         const r = parse(saved.data, maxCharts)
         next = r.state; drawings = r.drawings
+        if (POPOUT) { next.layout = '1'; next.active = 0 }      // the pop-out shows one chart
       } catch { /* first visit */ }
       try {
         const def = (await api.config()).default_symbol
@@ -208,7 +212,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
   // ---- autosave -------------------------------------------------------------------------------
   const lastSaved = useRef('')
   useEffect(() => {
-    if (!ready) return
+    if (!ready || POPOUT) return
     const save = () => {
       const data = serialize(stateRef.current, drawingsOf)
       const s = JSON.stringify(data)
@@ -416,7 +420,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
   }
 
   const logout = async () => {
-    try { await api.saveLayout(AUTOSAVE, serialize(stateRef.current, drawingsOf)) } catch { /* ignore */ }
+    if (!POPOUT) { try { await api.saveLayout(AUTOSAVE, serialize(stateRef.current, drawingsOf)) } catch { /* ignore */ } }
     try { await api.logout() } catch { /* ignore */ }
     onLogout()
   }
@@ -496,7 +500,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
 
   return (
     <Ctx.Provider value={t}>
-      <div className={`app${phone ? ' phone' : ''}${sideTab ? ' side-open' : ''}`}>
+      <div className={`app${POPOUT ? ' popout' : ''}${phone ? ' phone' : ''}${sideTab ? ' side-open' : ''}`}>
         <TopBar />
         <div className="workspace">
           <Toolbar />

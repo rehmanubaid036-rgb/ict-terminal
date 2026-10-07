@@ -853,3 +853,5 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 .t-equity polyline { fill: none; stroke-width: 2; vector-effect: non-scaling-stroke; }
 .t-equity .t-up { stroke: #26a69a; } .t-equity .t-down { stroke: #ef5350; }
 .t-equity .t-zero { stroke: var(--line2); stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; }
+
+.popout-tag { font-size: 10px; font-weight: 700; color: #0a1020; background: var(--accent); border-radius: 4px; padding: 2px 6px; margin-right: 4px; }

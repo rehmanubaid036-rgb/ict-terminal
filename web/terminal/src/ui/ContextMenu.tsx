@@ -37,6 +37,7 @@ export function ContextMenu({ x, y, onClose }: { x: number; y: number; onClose: 
         <button className={a.invert ? 'on' : ''} onClick={run(() => t.updateActive({ invert: !a.invert }))}>Invert</button>
       </div>
       <div className="menu-sep" />
+      <button onClick={run(() => window.open(`/terminal/?symbol=${encodeURIComponent(a.ticker)}&tf=${encodeURIComponent(a.tf)}&popout=1`, `ict-chart-${Date.now()}`, 'width=1200,height=760'))}>Open this chart in a new window</button>
       <button onClick={run(() => t.openSettings())}>Settings…</button>
       <button onClick={run(reopenAll)}>Show closed model trades again</button>
       <button onClick={run(t.screenshot)}>Save a picture of the chart</button>

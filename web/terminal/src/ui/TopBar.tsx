@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useTerminal } from '../Terminal'
+import { useTerminal, POPOUT } from '../Terminal'
 import type { IndicatorConf } from '../state'
 import { api, type SearchItem } from '../api'
 import { CHART_TYPES, FAVORITE_TFS, INDICATORS, LAYOUTS, TIMEFRAMES, parseTimeframe, timeframeByLabel, type LayoutId, WOLF_MODELS } from '../constants'
@@ -40,6 +40,7 @@ export function TopBar() {
 
   return (
     <header className="topbar">
+      {POPOUT && <span className="popout-tag" title="This window shows one chart and does not change your saved layout">Pop-out</span>}
       <a className="brand" href="/" title="ICT Terminal home"><img src="/terminal/favicon.svg" alt="" /><span><b>ICT</b> Terminal</span></a>
       <button className="symbol-btn" onClick={() => setSearch('')} title="Symbol search (type any letter)">
         <Icon name="search" size={15} /><b>{a.ticker.split(':')[1] ?? a.ticker}</b><small>{a.ticker.split(':')[0]}</small>
