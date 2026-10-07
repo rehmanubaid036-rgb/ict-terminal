@@ -167,22 +167,37 @@ export const TOOL_GROUPS: ToolGroup[] = [
     { id: 'ictDealingRange', label: 'Dealing Range (premium / discount)', icon: 'range' },
     { id: 'ictKillzone', label: 'Killzone / session box', icon: 'kz' },
   ] },
+  { id: 'patterns', label: 'Pitchfork, Gann & patterns', tools: [
+    { id: 'pitchfork', label: 'Pitchfork', icon: 'pitchfork' },
+    { id: 'gannFan', label: 'Gann Fan', icon: 'gann' },
+    { id: 'xabcd', label: 'XABCD Pattern', icon: 'pattern' },
+    { id: 'abcd', label: 'ABCD Pattern', icon: 'pattern' },
+    { id: 'headShoulders', label: 'Head and Shoulders', icon: 'pattern' },
+    { id: 'elliottImpulse', label: 'Elliott Impulse Wave (12345)', icon: 'wave' },
+    { id: 'elliottCorrection', label: 'Elliott Correction Wave (ABC)', icon: 'wave' },
+    { id: 'regression', label: 'Regression Trend', icon: 'channel' },
+  ] },
   { id: 'shapes', label: 'Shapes', tools: [
     { id: 'rectangle', label: 'Rectangle', icon: 'rect', hotkey: 'Alt+R' },
     { id: 'circleShape', label: 'Circle', icon: 'circle' },
     { id: 'triangle', label: 'Triangle', icon: 'triangle' },
     { id: 'brush', label: 'Brush', icon: 'brush' },
+    { id: 'curve', label: 'Curve', icon: 'curve' },
   ] },
   { id: 'measure', label: 'Forecasting & measure', tools: [
     { id: 'longPosition', label: 'Long Position', icon: 'long' },
     { id: 'shortPosition', label: 'Short Position', icon: 'short' },
     { id: 'priceRange', label: 'Price & date range', icon: 'measure' },
+    { id: 'dateRange', label: 'Date range', icon: 'measure' },
     { id: 'anchoredVwap', label: 'Anchored VWAP', icon: 'trend' },
   ] },
   { id: 'text', label: 'Annotations', tools: [
     { id: 'textLabel', label: 'Text', icon: 'text' },
     { id: 'simpleAnnotation', label: 'Callout', icon: 'callout' },
     { id: 'simpleTag', label: 'Price Label', icon: 'tag' },
+    { id: 'note', label: 'Note', icon: 'callout' },
+    { id: 'arrowUp', label: 'Arrow Mark Up', icon: 'long' },
+    { id: 'arrowDown', label: 'Arrow Mark Down', icon: 'short' },
   ] },
 ]
 export const ALL_TOOLS = TOOL_GROUPS.flatMap(g => g.tools)

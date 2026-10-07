@@ -146,6 +146,6 @@ export function allIds() { return [...entries.keys()] }
 ;(window as unknown as { __ictCount: () => number }).__ictCount = () =>
   [...entries.values()].reduce((n, e) => n + e.chart.getOverlays({ groupId: DRAWINGS }).length, 0)
 ;(window as unknown as { __ictOverlays: () => unknown[] }).__ictOverlays = () =>
-  [...entries.values()].flatMap(e => e.chart.getOverlays({ groupId: DRAWINGS }).map(o => ({ name: o.name, step: o.currentStep, total: o.totalStep, pts: o.points.length })))
+  [...entries.values()].flatMap(e => e.chart.getOverlays({ groupId: DRAWINGS }).map(o => ({ name: o.name, step: o.currentStep, total: o.totalStep, pts: o.points.length, visible: o.visible, ext: o.extendData, p0: o.points[0] })))
 ;(window as unknown as { __ictIndicators: () => unknown[] }).__ictIndicators = () =>
   [...entries.values()].flatMap(e => e.chart.getIndicators().map(i => ({ name: i.name, pane: i.paneId, series: ((i.extendData as any)?.series ?? []).map((s: any) => [s.ticker, Object.keys(s.close ?? {}).length]) })))

@@ -21,7 +21,7 @@ const LINE_DEFAULTS = ['#FF9600', '#935EBD', '#2196F3', '#E11D74', '#01C5C4']   
 const SIGNAL = 'signal'
 const LINE_TOOLS = new Set(['segment', 'rayLine', 'straightLine', 'horizontalStraightLine', 'horizontalRayLine', 'horizontalSegment', 'verticalStraightLine',
   'verticalRayLine', 'verticalSegment', 'priceLine', 'parallelStraightLine', 'priceChannelLine', 'fibonacciLine', 'simpleAnnotation', 'simpleTag', 'brush'])
-const TEXT_TOOLS = new Set(['textLabel', 'ictKillzone', 'ictFvgBox', 'ictObBox', 'ictLiquidity'])
+const TEXT_TOOLS = new Set(['textLabel', 'note', 'ictKillzone', 'ictFvgBox', 'ictObBox', 'ictLiquidity'])
 
 export interface ChartPanelProps {
   conf: ChartConf
@@ -356,7 +356,7 @@ export function ChartPanel(p: ChartPanelProps) {
     const name = p.tool
     snapshot(conf.id)
     const extendData: DrawStyle = {}
-    if (TEXT_TOOLS.has(name) && name === 'textLabel') {
+    if (name === 'textLabel' || name === 'note') {
       const t = window.prompt('Text:', '')
       if (!t) { props.current.onToolDone(); return }
       extendData.text = t

@@ -10,6 +10,7 @@ import { drawingsOf, getChart, getEntry, notify, setDrawingHooks, setPending, sn
 import { chartBackground, type Theme } from './chart/theme'
 import { registerEvents, loadCalendar } from './chart/events'
 import { registerCompare } from './chart/compare'
+import { registerMoreTools } from './chart/tools2'
 import type { ChartSettings } from './chart/settings'
 import { ChartSettingsDialog, type SettingsTab } from './ui/ChartSettingsDialog'
 import { FavBar, type CursorKind } from './ui/FavBar'
@@ -30,6 +31,7 @@ registerOverlays()
 registerIndicators()
 registerEvents()
 registerCompare()
+registerMoreTools()
 
 export interface TerminalApi {
   access: Access

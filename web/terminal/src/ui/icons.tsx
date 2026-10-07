@@ -4,6 +4,11 @@ import type { ReactNode } from 'react'
 const P: Record<string, ReactNode> = {
   cursor: <path d="M12 3v18M3 12h18" />,
   community: <><circle cx="9" cy="8" r="3" /><path d="M3 19c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5" /><circle cx="17" cy="9" r="2.4" /><path d="M16 13.6c2.8-.3 5 1.6 5 4.4" /></>,
+  pitchfork: <><path d="M4 12h6M10 12 20 5M10 12l10 7M10 12h10" /><circle cx="4" cy="12" r="1.6" /></>,
+  gann: <><path d="M4 20 20 4M4 20l16-8M4 20l8-16M4 20h16" /></>,
+  pattern: <><path d="m3 16 5-9 4 6 4-8 5 11" /></>,
+  wave: <><path d="m3 17 4-8 3 4 5-9 3 5 3-3" /></>,
+  curve: <path d="M4 18C8 4 16 4 20 18" />,
   dotCursor: <circle cx="12" cy="12" r="3.2" fill="currentColor" />,
   arrowCursor: <path d="M6 3v15l4-4 3 7 2.5-1-3-7h6Z" />,
   star: <path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z" />,
