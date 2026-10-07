@@ -1,8 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { Crosshair, OverlayMode } from 'klinecharts'
 import { api, errorText, type Access, type ModelInfo, type Signal } from './api'
-import { layoutCharts, LAYOUTS, PRICESCALE, timeframeByLabel, type LayoutId, DEFAULT_SYMBOLS, ONE_MINUTE_MODELS } from './constants'
-import { AUTOSAVE, defaultState, parse, serialize, type ChartConf, type PriceAlert, type SignalsPrefs, type Sync, type TerminalState } from './state'
+import { layoutCharts, LAYOUTS, PRICESCALE, timeframeByLabel, type LayoutId, DEFAULT_SYMBOLS, ONE_MINUTE_MODELS, SESSION_ALERTS } from './constants'
+import { AUTOSAVE, defaultState, parse, serialize, type AlertLogEntry, type ChartConf, type PriceAlert, type SignalsPrefs, type Sync, type TerminalState } from './state'
 import { ChartPanel } from './chart/ChartPanel'
 import { registerOverlays } from './chart/overlays'
 import { registerIndicators } from './chart/indicators'
@@ -57,6 +57,7 @@ export interface TerminalApi {
   setSync: (patch: Partial<Sync>) => void
   setWatchlist: (w: string[]) => void
   addAlert: (a: Omit<PriceAlert, 'id' | 'created' | 'active'>) => void
+  clearAlertLog: () => void
   updateAlert: (id: string, patch: Partial<PriceAlert>) => void
   removeAlert: (id: string) => void
   setSignalsPrefs: (p: Partial<SignalsPrefs>) => void
@@ -293,36 +294,76 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
     return () => window.clearInterval(t)
   }, [ready, state.chart.newsNotify])
 
-  // ---- price alerts ----------------------------------------------------------------------------
+  // ---- alerts: price, trend line, box, session start -------------------------------------------
   const lastPrices = useRef<Record<string, number>>({})
+  const logAlert = (text: string) => {
+    toast(`⏰ Alert: ${text}`, 'alert')
+    if (stateRef.current.chart.alertSound) beep()
+    try { if (Notification.permission === 'granted') new Notification('ICT Terminal alert', { body: text, icon: '/terminal/favicon.svg' }) } catch { /* ignore */ }
+  }
   useEffect(() => {
     if (!ready) return
+    const nyDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' })
+    const nyHm = new Intl.DateTimeFormat('en-GB', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
     const check = async () => {
       // a plan with an alert limit only watches that many (alerts made before a downgrade stay listed)
       const cap = (f.alerts_limit ?? 0) > 0 ? f.alerts_limit! : Infinity
       const live = stateRef.current.alerts.filter(a => a.active).slice(0, cap)
       if (!live.length) return
-      const tickers = [...new Set(live.map(a => a.ticker))]
-      try {
-        const q = await api.quotes(tickers)
-        const fired: string[] = []
-        for (const r of q.quotes) {
-          if (r.price === null) continue
-          const prev = lastPrices.current[r.symbol]
-          lastPrices.current[r.symbol] = r.price
-          for (const a of live.filter(x => x.ticker === r.symbol)) {
-            const hit = a.condition === 'above' ? r.price >= a.price : a.condition === 'below' ? r.price <= a.price
-              : prev !== undefined && ((prev < a.price && r.price >= a.price) || (prev > a.price && r.price <= a.price))
-            if (!hit) continue
-            fired.push(a.id)
-            const msg = `${a.ticker.split(':')[1]} ${a.condition === 'crossing' ? 'crossed' : a.condition === 'above' ? 'is above' : 'is below'} ${a.price}${a.note ? ` — ${a.note}` : ''}`
-            toast(`⏰ Alert: ${msg}`, 'alert')
-            if (stateRef.current.chart.alertSound) beep()
-            try { if (Notification.permission === 'granted') new Notification('ICT Terminal alert', { body: msg, icon: '/terminal/favicon.svg' }) } catch { /* ignore */ }
+      const now = Date.now(), today = nyDay.format(now), hm = nyHm.format(now)
+      const fired: string[] = [], log: AlertLogEntry[] = [], sessionDone: Record<string, string> = {}
+      // session starts (no prices needed); they stay active and fire again the next day
+      for (const a of live.filter(x => x.kind === 'session')) {
+        const w = SESSION_ALERTS.find(x => x.key === a.session)
+        if (!w || a.lastFired === today || hm !== w.at) continue
+        sessionDone[a.id] = today
+        const text = `${w.label} has started${a.note ? ` — ${a.note}` : ''}`
+        logAlert(text); log.push({ at: now, text })
+      }
+      const priced = live.filter(x => x.kind !== 'session')
+      if (priced.length) {
+        try {
+          const q = await api.quotes([...new Set(priced.map(a => a.ticker))])
+          for (const r of q.quotes) {
+            if (r.price === null) continue
+            const prev = lastPrices.current[r.symbol], prevAt = lastPrices.current[r.symbol + '@'] ?? now
+            lastPrices.current[r.symbol] = r.price
+            lastPrices.current[r.symbol + '@'] = now
+            for (const a of priced.filter(x => x.ticker === r.symbol)) {
+              const sym = a.ticker.split(':')[1]
+              let hit = false, text = ''
+              if (a.kind === 'line' && a.line) {
+                // the line's value now and at the previous quote; a segment ends at its second point
+                const { a: p1, b: p2, ray } = a.line
+                const at = (t: number) => p1.v + ((p2.v - p1.v) * (t - p1.t)) / ((p2.t - p1.t) || 1)
+                if (!ray && now > Math.max(p1.t, p2.t)) continue
+                const lv = at(now), lp = at(prevAt)
+                hit = prev !== undefined && ((prev < lp && r.price >= lv) || (prev > lp && r.price <= lv))
+                text = `${sym} crossed the trend line (${lv.toFixed(2)})`
+              } else if (a.kind === 'box' && a.box) {
+                const inside = (p: number) => p <= a.box!.top && p >= a.box!.bottom
+                hit = prev !== undefined && !inside(prev) && inside(r.price)
+                text = `${sym} entered the zone ${a.box.bottom}–${a.box.top}`
+              } else {
+                hit = a.condition === 'above' ? r.price >= a.price : a.condition === 'below' ? r.price <= a.price
+                  : prev !== undefined && ((prev < a.price && r.price >= a.price) || (prev > a.price && r.price <= a.price))
+                text = `${sym} ${a.condition === 'crossing' ? 'crossed' : a.condition === 'above' ? 'is above' : 'is below'} ${a.price}`
+              }
+              if (!hit) continue
+              fired.push(a.id)
+              text += a.note ? ` — ${a.note}` : ''
+              logAlert(text); log.push({ at: now, text })
+            }
           }
-        }
-        if (fired.length) setState(s => ({ ...s, alerts: s.alerts.map(a => (fired.includes(a.id) ? { ...a, active: false, triggeredAt: Date.now() } : a)) }))
-      } catch { /* quotes down: try again */ }
+        } catch { /* quotes down: try again */ }
+      }
+      if (fired.length || log.length || Object.keys(sessionDone).length) {
+        setState(s => ({
+          ...s,
+          alerts: s.alerts.map(a => (fired.includes(a.id) ? { ...a, active: false, triggeredAt: now } : sessionDone[a.id] ? { ...a, lastFired: sessionDone[a.id], triggeredAt: now } : a)),
+          alertLog: [...log.reverse(), ...s.alertLog].slice(0, 100),
+        }))
+      }
     }
     const t = window.setInterval(check, 5000)
     check()
@@ -400,10 +441,11 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
       if (limit > 0 && live >= limit) { toast(`Your plan allows ${limit} active alerts.`, 'info'); return }
       try { if (Notification.permission === 'default') void Notification.requestPermission() } catch { /* ignore */ }
       setState(s => ({ ...s, alerts: [{ ...a, id: Math.random().toString(36).slice(2), created: Date.now(), active: true }, ...s.alerts] }))
-      toast(`Alert set: ${a.ticker.split(':')[1]} ${a.condition} ${a.price}`)
+      toast(a.kind === 'session' ? 'Session alert set (every day).' : a.kind === 'line' ? 'Trend line alert set.' : a.kind === 'box' ? 'Zone alert set.' : `Alert set: ${a.ticker.split(':')[1]} ${a.condition} ${a.price}`)
     },
     updateAlert: (id, patch) => setState(s => ({ ...s, alerts: s.alerts.map(a => (a.id === id ? { ...a, ...patch } : a)) })),
     removeAlert: id => setState(s => ({ ...s, alerts: s.alerts.filter(a => a.id !== id) })),
+    clearAlertLog: () => setState(s => ({ ...s, alertLog: [] })),
     setSignalsPrefs: p => setState(s => ({ ...s, signals: { ...s.signals, ...p } })),
     tool, setTool, magnet, setMagnet, stayInDrawing, setStayInDrawing,
     showSignal: sig => {
@@ -440,7 +482,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
             <div className={layoutClass}>
               {charts.map((c, i) => (
                 <ChartPanel key={c.id} conf={c} theme={theme} settings={state.chart} cursor={cursor} compact={phone && !single && visible > 2}
-                  alerts={state.alerts.filter(a => a.active && a.ticker === c.ticker)} active={i === Math.min(state.active, visible - 1)}
+                  alerts={state.alerts.filter(a => a.active && a.ticker === c.ticker && (!a.kind || a.kind === 'price'))} active={i === Math.min(state.active, visible - 1)}
                   hidden={single && visible > 1 && i !== Math.min(state.active, visible - 1)}
                   tool={tool} magnet={magnet} signal={signals[c.id] ?? null} showClose={visible > 1 && !phone}
                   onActivate={() => t.setActive(i)}
@@ -459,6 +501,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
                     })
                   }}
                   onSignal={sig => setSignals(m => ({ ...m, [c.id]: sig }))}
+                  onAlertShape={a => t.addAlert({ ticker: c.ticker, ...a })}
                   onAlert={price => t.addAlert({ ticker: c.ticker, condition: 'crossing', price: Number(price.toFixed(Math.round(Math.log10(c.pricescale)))), note: '' })}
                 />
               ))}

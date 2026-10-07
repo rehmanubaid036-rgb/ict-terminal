@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Overlay } from 'klinecharts'
 import { useTerminal } from '../Terminal'
 import { api, errorText, type AlertSettings, type Quote, type SearchItem, type Signal } from '../api'
-import { ICT_LAYERS, toolDef, INDICATORS, modelTag } from '../constants'
+import { ICT_LAYERS, toolDef, INDICATORS, modelTag, SESSION_ALERTS } from '../constants'
 import { Icon } from '../ui/icons'
 import { Empty, Switch, fmtPrice, nyTime, toast, useIsPhone } from '../ui/common'
 import { DRAWINGS, getChart, getEntry, notify, onRegistryChange, snapshot } from '../chart/registry'
@@ -325,6 +325,8 @@ function Alerts() {
   const [price, setPrice] = useState(last ? last.toFixed(d) : '')
   const [cond, setCond] = useState<'crossing' | 'above' | 'below'>('crossing')
   const [note, setNote] = useState('')
+  const [sess, setSess] = useState(SESSION_ALERTS[3].key)
+  const [tab, setTab] = useState<'list' | 'log'>('list')
   const [perm, setPerm] = useState(() => { try { return Notification.permission } catch { return 'denied' } })
   const create = () => {
     const p = Number(price)
@@ -345,20 +347,35 @@ function Alerts() {
         </div>
         <input value={note} onChange={e => setNote(e.target.value)} placeholder="Message (optional)" maxLength={120} />
         <button className="btn primary block" onClick={create}>Create alert</button>
-        <div className="note">Tip: select a horizontal line and press ⏰, or press Alt+A, to set an alert at that price.</div>
+        <div className="note">Tip: select a horizontal line, a trend line or a box (FVG / OB / rectangle) and press ⏰. Alt+A sets an alert at the last price.</div>
+        <div className="af-row">
+          <select value={sess} onChange={e => setSess(e.target.value)}>{SESSION_ALERTS.map(w => <option key={w.key} value={w.key}>{w.label}</option>)}</select>
+          <button className="btn ghost sm" onClick={() => t.addAlert({ ticker: t.active.ticker, condition: 'crossing', price: 0, note: '', kind: 'session', session: sess })}>Daily session alert</button>
+        </div>
         {perm !== 'granted' && <button className="btn ghost sm" onClick={async () => { try { setPerm(await Notification.requestPermission()) } catch { /* ignore */ } }}>Turn on desktop notifications</button>}
       </div>
-      <div className="alert-list">
+      <div className="seg"><button className={tab === 'list' ? 'on' : ''} onClick={() => setTab('list')}>Alerts ({list.length})</button><button className={tab === 'log' ? 'on' : ''} onClick={() => setTab('log')}>History ({t.state.alertLog.length})</button></div>
+      {tab === 'log' ? (
+        <div className="alert-list">
+          {!t.state.alertLog.length ? <Empty>No alert has fired yet.</Empty> : <>
+            {t.state.alertLog.map((x, i) => <div key={i} className="alert-row done"><div>{x.text}<small>{new Date(x.at).toLocaleString()}</small></div></div>)}
+            <button className="btn ghost sm" onClick={t.clearAlertLog}>Clear history</button>
+          </>}
+        </div>
+      ) : <div className="alert-list">
         {!list.length && <Empty>No alerts yet. Alerts stay on your account and work while the terminal is open.</Empty>}
         {list.map(a => (
           <div key={a.id} className={`alert-row${a.active ? '' : ' done'}`}>
-            <div><b>{a.ticker.split(':')[1]}</b> {a.condition} <b>{a.price}</b>{a.note && <small>{a.note}</small>}
-              <small>{a.active ? 'Active' : a.triggeredAt ? `Triggered ${new Date(a.triggeredAt).toLocaleString()}` : 'Paused'}</small></div>
+            <div>{a.kind === 'session' ? <><b>Session</b> {SESSION_ALERTS.find(w => w.key === a.session)?.label ?? a.session} <small>every day</small></>
+              : a.kind === 'line' ? <><b>{a.ticker.split(':')[1]}</b> crosses trend line</>
+              : a.kind === 'box' ? <><b>{a.ticker.split(':')[1]}</b> enters <b>{a.box?.bottom}–{a.box?.top}</b></>
+              : <><b>{a.ticker.split(':')[1]}</b> {a.condition} <b>{a.price}</b></>}{a.note && <small>{a.note}</small>}
+              <small>{a.active ? (a.kind === 'session' && a.triggeredAt ? `Active · last ${new Date(a.triggeredAt).toLocaleString()}` : 'Active') : a.triggeredAt ? `Triggered ${new Date(a.triggeredAt).toLocaleString()}` : 'Paused'}</small></div>
             <button className="icon-btn" title={a.active ? 'Pause' : 'Restart'} onClick={() => t.updateAlert(a.id, { active: !a.active, triggeredAt: undefined })}><Icon name={a.active ? 'pause' : 'play'} size={15} /></button>
             <button className="icon-btn" title="Delete" onClick={() => t.removeAlert(a.id)}><Icon name="trash" size={15} /></button>
           </div>
         ))}
-      </div>
+      </div>}
     </div>
   )
 }

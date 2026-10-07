@@ -44,6 +44,7 @@ export interface ChartPanelProps {
   onMenu: (x: number, y: number) => void
   onClose: () => void
   onAlert: (price: number) => void
+  onAlertShape: (a: Omit<PriceAlert, 'id' | 'created' | 'active' | 'ticker'>) => void
   onSignal: (s: Signal | null) => void
   onLoaded?: () => void
 }
@@ -503,6 +504,15 @@ export function ChartPanel(p: ChartPanelProps) {
         <button className={`dash${selStyle.dashed ? ' on' : ''}`} title="Dashed" onClick={() => style({ dashed: !selStyle.dashed })}>┄</button>
         {selected && TEXT_TOOLS.has(selected.name) && <button title="Edit text" onClick={() => { const t = window.prompt('Text:', selStyle.text ?? ''); if (t !== null) style({ text: t }) }}>T</button>}
         <span className="sep" />
+        {selected && /^(segment|rayLine|straightLine|arrowLine)$/.test(selected.name) && selected.points.length >= 2 && <button title="Alert when price crosses this trend line" onClick={() => {
+          const [a, b] = selected.points
+          p.onAlertShape({ kind: 'line', condition: 'crossing', price: Number((b.value ?? 0).toFixed(digits)), note: '', line: { a: { t: a.timestamp!, v: a.value! }, b: { t: b.timestamp!, v: b.value! }, ray: selected.name !== 'segment' } })
+        }}>⏰</button>}
+        {selected && /^(rectangle|ictFvgBox|ictObBox|ictDealingRange)$/.test(selected.name) && selected.points.length >= 2 && <button title="Alert when price enters this zone" onClick={() => {
+          const vs = selected.points.map(q => q.value ?? 0).slice(0, 2)
+          const top = Number(Math.max(...vs).toFixed(digits)), bottom = Number(Math.min(...vs).toFixed(digits))
+          p.onAlertShape({ kind: 'box', condition: 'enter', price: top, note: '', box: { top, bottom } })
+        }}>⏰</button>}
         {isHorizontal && <button title="Add an alert at this price" onClick={() => { const v = selected?.points[0]?.value; if (v !== undefined) p.onAlert(v) }}>⏰</button>}
         <button title="Settings (double-click the drawing)" onClick={() => { if (selected) setProps(selected.id) }}>⚙</button>
         <button title={selected?.lock ? 'Unlock' : 'Lock'} onClick={() => { if (selected) { chartRef.current?.overrideOverlay({ id: selected.id, lock: !selected.lock }); notify() } }}>{selected?.lock ? '🔒' : '🔓'}</button>

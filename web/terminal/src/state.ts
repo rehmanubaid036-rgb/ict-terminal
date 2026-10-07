@@ -21,16 +21,23 @@ export interface ChartConf {
   invert?: boolean             // price scale upside down
 }
 
+export interface AlertPoint { t: number; v: number }
 export interface PriceAlert {
   id: string
   ticker: string
-  condition: 'crossing' | 'above' | 'below'
+  condition: 'crossing' | 'above' | 'below' | 'enter'
   price: number
   note: string
   active: boolean
   triggeredAt?: number
   created: number
+  kind?: 'price' | 'line' | 'box' | 'session'     // price (default), a trend line, a box (FVG / OB / rectangle), a session start
+  line?: { a: AlertPoint; b: AlertPoint; ray: boolean }
+  box?: { top: number; bottom: number }
+  session?: string                                 // key of SESSION_ALERTS; fires every day
+  lastFired?: string                               // NY date of the last session alert
 }
+export interface AlertLogEntry { at: number; text: string }
 
 export interface Sync { symbol: boolean; interval: boolean; crosshair: boolean; drawings: boolean }
 
@@ -65,6 +72,7 @@ export interface TerminalState {
   watchlist: string[]
   alerts: PriceAlert[]
   signals: SignalsPrefs
+  alertLog: AlertLogEntry[]
 }
 
 export const AUTOSAVE = '__autosave__'
@@ -83,13 +91,14 @@ export function defaultState(): TerminalState {
     sync: { symbol: false, interval: false, crosshair: true, drawings: false }, watchlist: [], alerts: [],
     signals: { ...DEFAULT_SIGNALS },
     chart: { ...DEFAULT_SETTINGS },
+    alertLog: [],
   }
 }
 
 /** What goes to /api/v1/layouts. Drawings come from the live charts. */
 export function serialize(s: TerminalState, drawingsOf: (id: number) => Drawing[]) {
   return {
-    v: 2, layout: s.layout, active: s.active, sync: s.sync, watchlist: s.watchlist, alerts: s.alerts, signals: s.signals, chart: s.chart,
+    v: 2, layout: s.layout, active: s.active, sync: s.sync, watchlist: s.watchlist, alerts: s.alerts, signals: s.signals, chart: s.chart, alertLog: s.alertLog,
     charts: s.charts.map(c => ({ ...c, drawings: drawingsOf(c.id) })),
   }
 }
@@ -138,6 +147,7 @@ export function parse(data: any, maxCharts: number): { state: TerminalState; dra
     active: Math.min(Math.max(0, Number(data?.active) | 0), 7),
     watchlist: Array.isArray(data?.watchlist) ? data.watchlist.filter((x: unknown) => typeof x === 'string').slice(0, 50) : [],
     alerts: Array.isArray(data?.alerts) ? data.alerts.filter((a: any) => typeof a?.ticker === 'string' && Number.isFinite(a?.price)).slice(0, 200) : [],
+    alertLog: Array.isArray(data?.alertLog) ? data.alertLog.filter((x: any) => Number.isFinite(x?.at) && typeof x?.text === 'string').slice(0, 100) : [],
     signals: parseSignals(data?.signals),
     chart: parseSettings(data?.chart),
   }

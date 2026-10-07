@@ -205,6 +205,19 @@ export const TOOL_GROUPS: ToolGroup[] = [
 export const ALL_TOOLS = TOOL_GROUPS.flatMap(g => g.tools)
 export const toolDef = (id: string) => ALL_TOOLS.find(t => t.id === id)
 
+// session-start alerts (New York time): a reminder every day when the window opens
+export const SESSION_ALERTS: { key: string; label: string; at: string }[] = [
+  { key: 'asia_kz', label: 'Asian killzone (20:00)', at: '20:00' },
+  { key: 'london_kz', label: 'London killzone (02:00)', at: '02:00' },
+  { key: 'london_sb', label: 'London Silver Bullet (03:00)', at: '03:00' },
+  { key: 'ny_am_kz', label: 'New York AM killzone (07:00)', at: '07:00' },
+  { key: 'ny_open', label: 'New York open (09:30)', at: '09:30' },
+  { key: 'ny_am_sb', label: 'NY AM Silver Bullet (10:00)', at: '10:00' },
+  { key: 'london_close', label: 'London close killzone (10:00)', at: '10:00' },
+  { key: 'ny_pm_sb', label: 'NY PM Silver Bullet (14:00)', at: '14:00' },
+  { key: 'wolf_asia', label: 'Wolf Asia window (19:00)', at: '19:00' },
+]
+
 export const DRAW_COLORS = ['#2962ff', '#2dd4bf', '#26a69a', '#ef5350', '#f59e0b', '#8b5cf6', '#ec4899', '#e3e8f4', '#94a3b8']
 
 export const DEFAULT_SYMBOLS = ['AXI:XAUUSD', 'AXI:NAS100', 'AXI:US500', 'AXI:BTCUSD', 'AXI:EURUSD', 'AXI:GBPUSD', 'AXI:XAGUSD']
