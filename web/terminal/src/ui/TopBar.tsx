@@ -36,12 +36,35 @@ export function TopBar() {
     return () => { window.removeEventListener('ict:symbol', s); window.removeEventListener('ict:interval', i) }
   }, [])
 
+  // the bar is wider than small screens: the mouse wheel scrolls it sideways, and arrows show what is hidden
+  const bar = useRef<HTMLElement>(null)
+  const [edge, setEdge] = useState({ left: false, right: false })
+  useEffect(() => {
+    const el = bar.current
+    if (!el) return
+    const update = () => setEdge({ left: el.scrollLeft > 2, right: el.scrollLeft + el.clientWidth < el.scrollWidth - 2 })
+    const wheel = (e: WheelEvent) => {
+      if (el.scrollWidth <= el.clientWidth || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return
+      e.preventDefault()
+      el.scrollLeft += e.deltaY
+    }
+    update()
+    el.addEventListener('scroll', update, { passive: true })
+    el.addEventListener('wheel', wheel, { passive: false })
+    window.addEventListener('resize', update)
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => { el.removeEventListener('scroll', update); el.removeEventListener('wheel', wheel); window.removeEventListener('resize', update); ro.disconnect() }
+  }, [])
+  const nudge = (dir: number) => bar.current?.scrollBy({ left: dir * Math.max(200, (bar.current?.clientWidth ?? 600) * 0.6), behavior: 'smooth' })
+
   const toggle = (m: Menu) => setMenu(x => (x === m ? null : m))
   const close = () => setMenu(null)
   const favs = phone ? [] : FAVORITE_TFS
 
   return (
-    <header className="topbar">
+    <header className="topbar" ref={bar}>
+      {edge.left && <button className="tb-arrow left" aria-label="Scroll the menu left" onClick={() => nudge(-1)}>‹</button>}
       {POPOUT && <span className="popout-tag" title="This window shows one chart and does not change your saved layout">Pop-out</span>}
       <a className="brand" href="/" title="ICT Terminal home"><img src="/terminal/favicon.svg" alt="" /><span><b>ICT</b> Terminal</span></a>
       <button className="symbol-btn" onClick={() => setSearch('')} title="Symbol search (type any letter)">
@@ -62,8 +85,6 @@ export function TopBar() {
       <button ref={refs.ict} className={`tb-btn text${a.ict.length + ictModels.length ? ' lit' : ''}${menu === 'ict' ? ' on' : ''}`} title="ICT: indicators and models, one click on / off" onClick={() => toggle('ict')}><Icon name="ict" /><span>ICT</span>{a.ict.length + ictModels.length > 0 && <em>{a.ict.length + ictModels.length}</em>}</button>
       <button ref={refs.wolf} className={`tb-btn text wolf-btn${wolfModels.length ? ' lit' : ''}`} title="Wolf Models: your custom models" onClick={() => toggle('wolf')}><Icon name="target" /><span>Wolf Models</span>{wolfModels.length > 0 && <em>{wolfModels.length}</em>}</button>
       <button className="tb-btn text" title="ICT Screener: bias, sweeps, FVGs and setups of every symbol" onClick={() => setScreener(true)}><Icon name="screener" /><span>Screener</span></button>
-      <button className="tb-btn text" title="Community: ideas and chat" onClick={t.openCommunity}><Icon name="community" /><span>Community</span></button>
-      <button className={`tb-btn icc-btn${t.iccOpen ? ' on' : ''}`} title="ICC Terminal: open it beside the charts" onClick={() => t.setIccOpen(!t.iccOpen)}><b>ICC</b></button>
       <span className="divider" />
       <button className="tb-btn" title="Create alert (Alt+A)" onClick={() => t.setSideTab('alerts')}><Icon name="bell" /></button>
       <button className={`tb-btn${t.replay.on ? ' lit' : ''}`} title="Bar replay" onClick={() => (t.replay.on ? t.stopReplay() : t.startReplay())}><Icon name="replay" /></button>
@@ -78,9 +99,12 @@ export function TopBar() {
         <button className="tb-btn" title="Full screen" onClick={() => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.())}><Icon name="full" /></button>
       </>}
       <button ref={refs.more} className="tb-btn" title="Settings" onClick={() => toggle('more')}><Icon name="gear" /></button>
-      <button className="account-pill" onClick={() => t.openAccount('plan')} title={`${t.access.email ?? ''} · expires ${t.access.expiry ?? '-'}`}>
-        <Icon name="user" size={15} />{!phone && <span>{t.access.plan ?? 'Account'}</span>}
-      </button>
+      <div className="tb-end">
+        {edge.right && <button className="tb-arrow" aria-label="Scroll the menu right" onClick={() => nudge(1)}>›</button>}
+        <button className="account-pill" onClick={() => t.openAccount('plan')} title={`${t.access.email ?? ''} · expires ${t.access.expiry ?? '-'}`}>
+          <Icon name="user" size={15} />{!phone && <span>{t.access.plan ?? 'Account'}</span>}
+        </button>
+      </div>
 
       {menu === 'tf' && (
         <Popover anchor={refs.tf} onClose={close} className="menu-list" title="Interval">

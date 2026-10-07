@@ -872,3 +872,25 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 /* chart templates menu */
 .tpl-menu { min-width: 280px; max-width: 340px; }
 .tpl-star { color: #f5b301; margin-right: 6px; }
+
+/* top bar: scroll arrows; Community / ICC live in the right rail */
+.topbar { position: relative; }
+.tb-arrow { position: sticky; left: 0; z-index: 3; flex: none; width: 26px; height: 32px; border-radius: 7px; font: 700 20px/1 var(--font); color: var(--text);
+  background: var(--panel); border: 1px solid var(--line2); box-shadow: 8px 0 10px var(--bar); }
+.tb-arrow:hover { background: var(--hover); }
+.tb-end { position: sticky; right: 0; z-index: 2; flex: none; display: flex; align-items: center; gap: 6px; padding-left: 6px; background: var(--bar); box-shadow: -16px 0 12px 2px var(--bar); }
+.tb-end .tb-arrow { position: static; box-shadow: none; }
+.tb-end .account-pill { position: static; box-shadow: none; }
+.rail-sep { width: 24px; height: 1px; background: var(--line); margin: 4px 0; flex: none; }
+.rail .rail-icc b { font: 800 10px var(--font); letter-spacing: .04em; padding: 3px 5px; border-radius: 5px; color: #0a1020; background: linear-gradient(135deg, #f5a623, #fcd34d); }
+.rail .rail-icc.on b { box-shadow: 0 0 0 2px var(--accent); }
+@media (max-width: 760px) {
+  .rail { overflow-x: auto; justify-content: flex-start; scrollbar-width: none; }
+  .rail::-webkit-scrollbar { display: none; }
+  .rail button { flex: 1 0 58px; }
+  .rail-sep { width: 1px; height: 30px; margin: 9px 2px; }
+  .topbar { -webkit-mask-image: none; mask-image: none; }
+  .tb-arrow { width: 24px; }
+  .pp-quick { top: auto; bottom: 30px; left: 50%; transform: translateX(-50%); }
+  .rail { -webkit-mask-image: linear-gradient(to right, #000 90%, transparent); mask-image: linear-gradient(to right, #000 90%, transparent); }
+}

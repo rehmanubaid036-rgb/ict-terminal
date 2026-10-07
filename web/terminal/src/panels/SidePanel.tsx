@@ -60,6 +60,9 @@ export function SidePanel() {
           </button>
         ))}
         {!phone && <button className={t.bottomOpen ? 'on' : ''} title="Journal & stats" onClick={() => t.setBottomOpen(!t.bottomOpen)}><Icon name="journal" size={20} /></button>}
+        <span className="rail-sep" />
+        <button title="Community: ideas and chat" onClick={t.openCommunity}><Icon name="community" size={20} />{phone && <span>Community</span>}</button>
+        <button className={`rail-icc${t.iccOpen ? ' on' : ''}`} title="ICC Terminal: open it beside the charts" onClick={() => t.setIccOpen(!t.iccOpen)}><b>ICC</b>{phone && <span>ICC</span>}</button>
       </div>
     </aside>
   )
@@ -200,7 +203,8 @@ function Signals() {
   // the tab's choices live in the terminal state, so they are saved with the layout (every device)
   const prefs = t.state.signals
   const allowedIds = t.models.filter(m => t.allowed(m.id)).map(m => m.id)
-  const picked = (prefs.models ?? allowedIds).filter(id => allowedIds.includes(id))
+  // no choice yet: every allowed model except the ones that are off by default (M11)
+  const picked = (prefs.models ?? allowedIds.filter(id => t.models.find(m => m.id === id)?.default_on !== false)).filter(id => allowedIds.includes(id))
   const setPicked = (fn: (p: string[]) => string[]) => t.setSignalsPrefs({ models: fn(picked) })
   const { bias, span, grade, notify: notify_ } = prefs
   const setBias = (v: boolean) => t.setSignalsPrefs({ bias: v })

@@ -97,7 +97,7 @@ export interface Access {
 export interface SymbolInfoApi { ticker: string; name: string; description: string; type: string; exchange: string; pricescale: number; session?: string }
 export interface SearchItem { symbol: string; full_name: string; description: string; exchange: string; ticker: string; type: string }
 export interface Bars { s: string; t?: number[]; o?: number[]; h?: number[]; l?: number[]; c?: number[]; v?: number[] }
-export interface ModelInfo { id: string; name: string; source: string; allowed: boolean }
+export interface ModelInfo { id: string; name: string; source: string; allowed: boolean; default_on?: boolean }
 export interface Quote { symbol: string; price: number | null; change: number | null; change_pct: number | null; time?: number }
 // ---- community ---------------------------------------------------------------------------------
 export interface CommunityStatus { enabled: boolean; rules: string; rooms: { key: string; name: string }[]; nickname: string; rules_accepted: boolean; banned: boolean; ban_reason: string; muted_until: string | null; write_in_seconds: number }
