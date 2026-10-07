@@ -377,9 +377,12 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
                 continue
             last = float(d["close"].iloc[-1])
             prev = float(d["close"].iloc[-2]) if len(d) > 1 else float(d["open"].iloc[-1])
+            today = d.iloc[-1]
             out.append({"symbol": t, "price": last, "change": last - prev,
                         "change_pct": (last - prev) / prev * 100 if prev else None,
-                        "time": int(d.index[-1].timestamp())})
+                        "time": int(d.index[-1].timestamp()),
+                        "high": float(today["high"]), "low": float(today["low"]),
+                        "volume": float(today["volume"]) if "volume" in d.columns else None})
         return {"quotes": out}
 
     # ---- saved terminal layouts (charts, indicators, ICT layers, drawings) per user -----------

@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Overlay } from 'klinecharts'
 import { useTerminal } from '../Terminal'
 import { api, errorText, type AlertSettings, type Quote, type SearchItem, type Signal } from '../api'
-import { ICT_LAYERS, toolDef, INDICATORS, modelTag, SESSION_ALERTS } from '../constants'
+import { ICT_LAYERS, toolDef, INDICATORS, modelTag, SESSION_ALERTS, ICT_ALERT_EVENTS, ICT_ALERT_TFS } from '../constants'
+import { WL_COLS, type IctEvent, type WlCol } from '../state'
 import { Icon } from '../ui/icons'
 import { Empty, Switch, fmtPrice, nyTime, toast, useIsPhone } from '../ui/common'
 import { DRAWINGS, getChart, getEntry, notify, onRegistryChange, snapshot } from '../chart/registry'
@@ -71,9 +72,24 @@ export function SidePanel() {
 // ---- watchlist --------------------------------------------------------------------------------
 const FLAG_COLORS = ['#ef5350', '#f59e0b', '#26a69a', '#2962ff', '#8b5cf6', '#ec4899']
 const isSection = (x: string) => x.startsWith('###')
+const WL_COL: Record<WlCol, { label: string; title: string; w: number }> = {
+  chg: { label: 'Chg', title: 'Change since the previous daily close', w: 64 },
+  chgp: { label: 'Chg%', title: 'Change in percent', w: 58 },
+  high: { label: 'High', title: "Today's high", w: 74 },
+  low: { label: 'Low', title: "Today's low", w: 74 },
+  vol: { label: 'Vol', title: "Today's volume (ticks on MT5 feeds)", w: 56 },
+  range: { label: 'Range', title: "Where the price is in today's range (low to high)", w: 54 },
+}
+const compact = (v: number) => (v >= 1e9 ? `${(v / 1e9).toFixed(1)}B` : v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : v >= 1e3 ? `${(v / 1e3).toFixed(1)}K` : v.toFixed(0))
+const dec = (p: number | null | undefined) => (Math.abs(p ?? 0) >= 100 ? 2 : Math.abs(p ?? 0) >= 10 ? 3 : 5)
 
 function Watchlist() {
   const t = useTerminal()
+  const cols = t.state.wlCols
+  const grid = { gridTemplateColumns: `minmax(70px,1fr) 84px ${cols.map(c => `${WL_COL[c].w}px`).join(' ')} 30px` }
+  // more columns widen the panel (desktop): symbol + last + the columns + the row buttons
+  const need = 24 + 80 + 84 + cols.reduce((n, c) => n + WL_COL[c].w, 0) + 30
+  useEffect(() => { document.documentElement.style.setProperty('--wl-w', `${Math.max(300, need)}px`) }, [need])
   const [quotes, setQuotes] = useState<Record<string, Quote>>({})
   const [flash, setFlash] = useState<Record<string, 'up' | 'down'>>({})
   const [q, setQ] = useState('')
@@ -152,6 +168,12 @@ function Watchlist() {
           <button onClick={() => { const n = window.prompt('New watchlist name:', '')?.trim().slice(0, 40); if (n) { t.openList(n); setMenu(false) } }}>+ New list</button>
           <button onClick={() => { const n = window.prompt('Rename the list to:', t.state.listName)?.trim().slice(0, 40); if (n) t.renameList(t.state.listName, n); setMenu(false) }}>Rename</button>
           <button onClick={() => { const n = window.prompt('Section name (shown as a header):', '')?.trim().slice(0, 40); if (n) t.setWatchlist([...list, `###${n}`]); setMenu(false) }}>+ Add a section</button>
+          <div className="menu-sep" />
+          <div className="ctx-label">Columns</div>
+          <div className="wl-cols">{WL_COLS.map(c => (
+            <label key={c} className="mini-check" title={WL_COL[c].title}><input type="checkbox" checked={cols.includes(c)}
+              onChange={() => t.setWlCols(cols.includes(c) ? cols.filter(x => x !== c) : WL_COLS.filter(x => x === c || cols.includes(x)))} /> {WL_COL[c].label}</label>))}</div>
+          <div className="menu-sep" />
           <button onClick={() => { file.current?.click(); setMenu(false) }}>Import list (.txt)</button>
           <button onClick={() => { exportList(); setMenu(false) }}>Export list (.txt)</button>
           {names.length > 1 && <button className="danger" onClick={() => { if (window.confirm(`Delete the list "${t.state.listName}"?`)) t.deleteList(t.state.listName); setMenu(false) }}>Delete this list</button>}
@@ -164,8 +186,8 @@ function Watchlist() {
           onKeyDown={e => { if (e.key === 'Enter' && q.startsWith('###') && q.length > 3) { t.setWatchlist([...list, q.slice(0, 43)]); setQ('') } }} />
         {found.length > 0 && <div className="wl-drop">{found.slice(0, 10).map(s => <button key={s.symbol} onClick={() => add(s.symbol)}><b>{s.symbol.split(':')[1]}</b><span>{s.description}</span></button>)}</div>}
       </div>
-      <div className="wl-head"><span>Symbol</span><span>Last</span><span>Chg</span><span>Chg%</span></div>
       <div className="wl-rows">
+        <div className="wl-head" style={grid}><span>Symbol</span><span>Last</span>{cols.map(c => <span key={c} title={WL_COL[c].title}>{WL_COL[c].label}</span>)}<span /></div>
         {shown.map(s => {
           if (isSection(s)) return (
             <div key={s} className="wl-section"><span>{s.slice(3)}</span>
@@ -173,14 +195,21 @@ function Watchlist() {
           )
           const x = quotes[s], up = (x?.change ?? 0) >= 0, flag = t.state.flags[s]
           return (
-            <div key={s} className={`wl-row${s === t.active.ticker ? ' on' : ''}`} onClick={() => { t.setTicker(s); if (window.innerWidth <= 760) t.setSideTab(null) }}>
+            <div key={s} className={`wl-row${s === t.active.ticker ? ' on' : ''}`} style={grid} onClick={() => { t.setTicker(s); if (window.innerWidth <= 760) t.setSideTab(null) }}>
               <span className="wl-sym"><button className="wl-flag" style={flag ? { background: flag } : undefined} title="Flag" onClick={e => { e.stopPropagation(); setFlagFor(f => (f === s ? null : s)) }} />
                 <span><b>{s.split(':')[1]}</b><small>{s.split(':')[0]}</small></span>
                 {flagFor === s && <span className="wl-flags" onClick={e => e.stopPropagation()}>{FLAG_COLORS.map(c => <button key={c} style={{ background: c }} onClick={() => { t.setFlag(s, c); setFlagFor(null) }} />)}<button className="none" title="No flag" onClick={() => { t.setFlag(s, null); setFlagFor(null) }}>✕</button></span>}
               </span>
               <span className={`wl-price ${flash[s] ?? ''}`}>{fmtPrice(x?.price)}</span>
-              <span className={`wl-chg ${x?.change == null ? '' : up ? 'up' : 'down'}`}>{x?.change == null ? '' : `${up ? '+' : ''}${x.change.toFixed(Math.abs(x.price ?? 0) >= 100 ? 2 : Math.abs(x.price ?? 0) >= 10 ? 3 : 5)}`}</span>
-              <span className={`wl-chg ${x?.change_pct == null ? '' : up ? 'up' : 'down'}`}>{x?.change_pct == null ? '' : `${up ? '+' : ''}${x.change_pct.toFixed(2)}%`}</span>
+              {cols.map(c => {
+                if (c === 'chg') return <span key={c} className={`wl-chg ${x?.change == null ? '' : up ? 'up' : 'down'}`}>{x?.change == null ? '' : `${up ? '+' : ''}${x.change.toFixed(dec(x.price))}`}</span>
+                if (c === 'chgp') return <span key={c} className={`wl-chg ${x?.change_pct == null ? '' : up ? 'up' : 'down'}`}>{x?.change_pct == null ? '' : `${up ? '+' : ''}${x.change_pct.toFixed(2)}%`}</span>
+                if (c === 'high' || c === 'low') { const v = x?.[c]; return <span key={c} className="wl-chg">{v == null ? '' : v.toFixed(dec(v))}</span> }
+                if (c === 'vol') return <span key={c} className="wl-chg">{x?.volume == null ? '' : compact(x.volume)}</span>
+                const lo = x?.low, hi = x?.high, pr = x?.price
+                const pos = lo != null && hi != null && pr != null && hi > lo ? Math.max(0, Math.min(1, (pr - lo) / (hi - lo))) : null
+                return <span key={c} className="wl-range" title={pos == null ? '' : `${Math.round(pos * 100)}% of today's range`}>{pos != null && <i style={{ left: `${pos * 100}%` }} />}</span>
+              })}
               <span className="wl-actions">
                 <button title="Move up" onClick={e => { e.stopPropagation(); move(s, -1) }}>↑</button>
                 <button title="Remove" onClick={e => { e.stopPropagation(); t.setWatchlist(list.filter(y => y !== s)) }}>✕</button>
@@ -395,6 +424,9 @@ function Alerts() {
   const [cond, setCond] = useState<'crossing' | 'above' | 'below'>('crossing')
   const [note, setNote] = useState('')
   const [sess, setSess] = useState(SESSION_ALERTS[3].key)
+  const [ev, setEv] = useState<IctEvent>('mss')
+  const [evTf, setEvTf] = useState(() => (ICT_ALERT_TFS.includes(t.active.tf) ? t.active.tf : '5m'))
+  const [evDir, setEvDir] = useState<0 | 1 | -1>(0)
   const [tab, setTab] = useState<'list' | 'log'>('list')
   const [perm, setPerm] = useState(() => { try { return Notification.permission } catch { return 'denied' } })
   const create = () => {
@@ -421,6 +453,18 @@ function Alerts() {
           <select value={sess} onChange={e => setSess(e.target.value)}>{SESSION_ALERTS.map(w => <option key={w.key} value={w.key}>{w.label}</option>)}</select>
           <button className="btn ghost sm" onClick={() => t.addAlert({ ticker: t.active.ticker, condition: 'crossing', price: 0, note: '', kind: 'session', session: sess })}>Daily session alert</button>
         </div>
+        <div className="af-sep">ICT event on {t.active.ticker.split(':')[1]}</div>
+        {t.access.features.ict_indicators ? <>
+          <div className="af-row">
+            <select value={ev} onChange={e => setEv(e.target.value as IctEvent)}>{ICT_ALERT_EVENTS.map(x => <option key={x.key} value={x.key}>{x.label}</option>)}</select>
+          </div>
+          <div className="af-row">
+            <select value={evTf} onChange={e => setEvTf(e.target.value)} title="Interval">{ICT_ALERT_TFS.map(x => <option key={x} value={x}>{x}</option>)}</select>
+            <select value={evDir} onChange={e => setEvDir(Number(e.target.value) as 0 | 1 | -1)} title="Direction">
+              <option value={0}>Both ways</option><option value={1}>Bullish only</option><option value={-1}>Bearish only</option></select>
+            <button className="btn ghost sm" onClick={() => t.addAlert({ ticker: t.active.ticker, condition: 'crossing', price: 0, note: note.trim(), kind: 'ict', ict: { event: ev, tf: evTf, dir: evDir } })}>Add</button>
+          </div>
+        </> : <div className="note">ICT event alerts need a plan with ICT indicators.</div>}
         {perm !== 'granted' && <button className="btn ghost sm" onClick={async () => { try { setPerm(await Notification.requestPermission()) } catch { /* ignore */ } }}>Turn on desktop notifications</button>}
       </div>
       <div className="seg"><button className={tab === 'list' ? 'on' : ''} onClick={() => setTab('list')}>Alerts ({list.length})</button><button className={tab === 'log' ? 'on' : ''} onClick={() => setTab('log')}>History ({t.state.alertLog.length})</button></div>
@@ -438,8 +482,9 @@ function Alerts() {
             <div>{a.kind === 'session' ? <><b>Session</b> {SESSION_ALERTS.find(w => w.key === a.session)?.label ?? a.session} <small>every day</small></>
               : a.kind === 'line' ? <><b>{a.ticker.split(':')[1]}</b> crosses trend line</>
               : a.kind === 'box' ? <><b>{a.ticker.split(':')[1]}</b> enters <b>{a.box?.bottom}–{a.box?.top}</b></>
+              : a.kind === 'ict' && a.ict ? <><b>{a.ticker.split(':')[1]} {a.ict.tf}</b> {ICT_ALERT_EVENTS.find(x => x.key === a.ict!.event)?.label}{a.ict.dir ? (a.ict.dir > 0 ? ' · bullish' : ' · bearish') : ''} <small>every time</small></>
               : <><b>{a.ticker.split(':')[1]}</b> {a.condition} <b>{a.price}</b></>}{a.note && <small>{a.note}</small>}
-              <small>{a.active ? (a.kind === 'session' && a.triggeredAt ? `Active · last ${new Date(a.triggeredAt).toLocaleString()}` : 'Active') : a.triggeredAt ? `Triggered ${new Date(a.triggeredAt).toLocaleString()}` : 'Paused'}</small></div>
+              <small>{a.active ? ((a.kind === 'session' || a.kind === 'ict') && a.triggeredAt ? `Active · last ${new Date(a.triggeredAt).toLocaleString()}` : 'Active') : a.triggeredAt ? `Triggered ${new Date(a.triggeredAt).toLocaleString()}` : 'Paused'}</small></div>
             <button className="icon-btn" title={a.active ? 'Pause' : 'Restart'} onClick={() => t.updateAlert(a.id, { active: !a.active, triggeredAt: undefined })}><Icon name={a.active ? 'pause' : 'play'} size={15} /></button>
             <button className="icon-btn" title="Delete" onClick={() => t.removeAlert(a.id)}><Icon name="trash" size={15} /></button>
           </div>

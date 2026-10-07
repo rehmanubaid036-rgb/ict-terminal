@@ -1,5 +1,6 @@
 // Candles for one chart: history from /udf/history, live updates every few seconds, bars built
 // here for custom intervals and the monthly chart, Heikin Ashi, and bar replay.
+import { rangeBars } from './charttypes'
 import type { DataLoader, KLineData } from 'klinecharts'
 import { api, isAbort, type Bars } from '../api'
 import type { Timeframe } from '../constants'
@@ -81,7 +82,7 @@ export function lineBreak(bars: KLineData[], n = 3): KLineData[] {
   return out
 }
 
-export type BarKind = 'normal' | 'heikin' | 'renko' | 'linebreak'
+export type BarKind = 'normal' | 'heikin' | 'renko' | 'linebreak' | 'range'
 
 export class Feed {
   ticker = ''
@@ -104,10 +105,11 @@ export class Feed {
   private display(bars: KLineData[]): KLineData[] {
     if (this.kind === 'renko') return renko(bars)
     if (this.kind === 'linebreak') return lineBreak(bars)
+    if (this.kind === 'range') return rangeBars(bars)
     return this.heikin ? heikinAshi(bars) : bars
   }
   /** Renko / line break have their own bar count: no paging back, new bars only add bricks. */
-  get priceBars() { return this.kind === 'renko' || this.kind === 'linebreak' }
+  get priceBars() { return this.kind === 'renko' || this.kind === 'linebreak' || this.kind === 'range' }
 
   private async fetch(to: number, count: number, signal?: AbortSignal): Promise<KLineData[]> {
     const tf = this.tf!

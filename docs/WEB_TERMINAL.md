@@ -74,6 +74,14 @@ It covers what was built, how to build and test it, and what is still open.
 | Auth | Log in, create account, password reset by code (same token keys as before, so users stay logged in) |
 | Trading tools | Paper trading (Trade tab, one-click buy / sell on the chart, draggable SL / TP lines; server `/api/v1/paper*`), strategy tester (`/api/v1/backtest`, one model, 30 / 60 / 90 days, equity curve), screener, economic calendar and news tabs, pop-out chart window (`?popout=1`) |
 | ICT Script | Your own indicators in a small formula language (`src/chart/script.ts`): series variables, `x[n]` history, sma / ema / rma / wma / rsi / atr / highest / lowest / stdev / change / abs / max / min, up to 6 `plot()` lines, `@pane`. Parsed and evaluated by the terminal (no JavaScript eval); saved in the layout as `scripts`; Indicators dialog > My scripts |
+| ICT event alerts | Alerts tab > ICT event: MSS, BOS, new FVG or liquidity sweep on a symbol + interval (1m-4H), either or one direction. Checked every 30 s from `/api/v1/ict/overlays`; fires on every new event (the alert keeps `ict.seen`), plan with ICT indicators only |
+| Volume profiles | Visible range (VPVR), Session Volume Profile `SVP` (Asia / London / New York or per day, POC + value area) and the Fixed range volume profile drawing (POC, VAH, VAL) - `src/chart/volprofile.ts` |
+| Price scale | Right-click the price scale: Auto (fit), Lock range, Lock price / bar, Regular / Log / Percent, Invert, scale left / right. The lock is saved with the chart (`scaleLock`, a KLineChart `createRange`) |
+| Layouts | 1-8 charts (1, 2 side / stacked, 3, 4, 5, 6, 7, 8); the plan's "Charts per layout" (admin, 1-8) limits them; tablets in portrait show 5-8 charts in two columns, phones 2 x 4; indicator panes size to the chart |
+| Chart types | Candles, hollow, Heikin Ashi, bars, line, area, Renko, line break, range bars, baseline, columns (`src/chart/charttypes.ts`) |
+| Indicator panes | Price-based indicators (MA, EMA, BOLL, VWAP, price scripts) move into a pane of their own and back; oscillator panes move up / down |
+| Watchlist columns | List menu > Columns: Chg, Chg%, today's High, Low, Volume and a day-range bar (`/api/v1/quotes` returns high / low / volume) |
+| Templates | Top bar Templates: shared chart setups; the default one greets new users; admins save / set default (`/api/v1/templates`, `maketemplate.bat`) |
 | Other | Dark / light theme, keyboard shortcuts (letters = symbol search, digits = interval, Alt+T/H/J/V/F/R tools, Alt+A alert, Alt+S screenshot, Ctrl+Z/Y, Del, Esc), screenshot, full screen, phone layout (tool sheets, bottom tab bar, bottom sheets, one chart at a time with chips) |
 
 Not built yet (plan items): MT5 positions/orders panel and trade panel (no read API for EA data),

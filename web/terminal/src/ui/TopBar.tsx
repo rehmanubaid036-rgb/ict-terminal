@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTerminal, POPOUT } from '../Terminal'
 import type { IndicatorConf } from '../state'
 import { api, type SearchItem } from '../api'
-import { CHART_TYPES, FAVORITE_TFS, INDICATORS, LAYOUTS, TIMEFRAMES, parseTimeframe, timeframeByLabel, type LayoutId, WOLF_MODELS } from '../constants'
+import { CHART_TYPES, FAVORITE_TFS, INDICATORS, PRICE_ONLY, indicatorDef, LAYOUTS, TIMEFRAMES, parseTimeframe, timeframeByLabel, type LayoutId, WOLF_MODELS } from '../constants'
 import { IctPanel, ModelSection } from '../panels/IctPanel'
 import { Screener } from './Screener'
 import { ScriptEditor } from './ScriptEditor'
@@ -317,6 +317,31 @@ function IndicatorsDialog({ onClose }: { onClose: () => void }) {
                   if (e.key === 'Escape') { e.stopPropagation(); setEdit(null) }
                 }} onBlur={() => setEdit(null)} />
               ) : <button className="link" onClick={() => setEdit(i.name)}>Settings {params(i.name) && <small>({params(i.name)})</small>}</button>}
+              {!PRICE_ONLY.has(i.name) && (() => {
+                // price-based indicators (MA, EMA, BOLL, VWAP, price scripts) move between the price chart and a
+                // pane of their own; oscillators (RSI, MACD, VOL ...) keep their own scale and move up / down
+                const src = scripts.find(s => scriptIndicatorName(s.id) === i.name)?.src
+                const priceBased = src !== undefined ? !/^\s*@pane\s*$/m.test(src) : !!indicatorDef(i.name)?.overlay
+                if (priceBased) {
+                  const main = i.pane ? i.pane === 'main' : true
+                  return <button className="link ind-pane" title={main ? 'Move into a pane of its own' : 'Move back onto the price chart'}
+                    onClick={() => setInd(i.name, { pane: main ? 'own' : 'main' })}>{main ? '↓ Own pane' : '↑ On price'}</button>
+                }
+                const move = (dir: -1 | 1) => t.updateActive(c => {
+                  const list = [...c.indicators]
+                  const k = list.findIndex(x => x.name === i.name)
+                  const isPane = (x: IndicatorConf) => { const sc = scripts.find(s => scriptIndicatorName(s.id) === x.name)?.src
+                    const pb = sc !== undefined ? !/^\s*@pane\s*$/m.test(sc) : !!indicatorDef(x.name)?.overlay
+                    return pb ? x.pane === 'own' : true }
+                  let j = k + dir
+                  while (j >= 0 && j < list.length && !isPane(list[j])) j += dir      // swap with the next pane, not a line on the price chart
+                  if (j < 0 || j >= list.length) return {}
+                  ;[list[k], list[j]] = [list[j], list[k]]
+                  return { indicators: list }
+                })
+                return <span className="ind-move"><button className="icon-btn" title="Move the pane up" onClick={() => move(-1)}>▲</button>
+                  <button className="icon-btn" title="Move the pane down" onClick={() => move(1)}>▼</button></span>
+              })()}
               <button className="icon-btn" title={i.hidden ? 'Show' : 'Hide'} onClick={() => setInd(i.name, { hidden: !i.hidden })}><Icon name={i.hidden ? 'eyeOff' : 'eye'} size={15} /></button>
               <label className="cs-color ind-color" title="Line colour"><i style={{ background: i.color ?? '#2962ff' }} />
                 <input type="color" value={i.color ?? '#2962ff'} onChange={e => setInd(i.name, { color: e.target.value })} /></label>

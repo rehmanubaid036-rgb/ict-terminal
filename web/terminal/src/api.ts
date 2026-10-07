@@ -98,7 +98,7 @@ export interface SymbolInfoApi { ticker: string; name: string; description: stri
 export interface SearchItem { symbol: string; full_name: string; description: string; exchange: string; ticker: string; type: string }
 export interface Bars { s: string; t?: number[]; o?: number[]; h?: number[]; l?: number[]; c?: number[]; v?: number[] }
 export interface ModelInfo { id: string; name: string; source: string; allowed: boolean; default_on?: boolean }
-export interface Quote { symbol: string; price: number | null; change: number | null; change_pct: number | null; time?: number }
+export interface Quote { symbol: string; price: number | null; change: number | null; change_pct: number | null; time?: number; high?: number; low?: number; volume?: number | null }
 // ---- community ---------------------------------------------------------------------------------
 export interface CommunityStatus { enabled: boolean; rules: string; rooms: { key: string; name: string }[]; nickname: string; rules_accepted: boolean; banned: boolean; ban_reason: string; muted_until: string | null; write_in_seconds: number }
 export interface ChatMsg { id: number; room: string; nick: string; text: string; at: string; mine: boolean; staff: boolean }

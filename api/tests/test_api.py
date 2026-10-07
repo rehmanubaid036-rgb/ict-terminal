@@ -152,6 +152,9 @@ def test_quote_change_is_against_the_previous_daily_close(store):
     q = c.get("/api/v1/quotes", params={"symbols": "axi:xauusd"}).json()["quotes"][0]
     assert q["price"] == pytest.approx(110.0)
     assert q["change"] > 0 and q["change_pct"] == pytest.approx(q["change"] / (q["price"] - q["change"]) * 100)
+    # today's high / low / volume for the watchlist columns
+    assert q["low"] < q["price"] <= q["high"] == pytest.approx(110.1)
+    assert q["volume"] > 0
 
 
 def test_calendar_events(client, monkeypatch):

@@ -3,9 +3,11 @@ import { DEFAULT_SETTINGS, parseSettings, type ChartSettings } from './chart/set
 import type { SavedScript } from './chart/script'
 import { CHART_TYPES, ICT_IDS, LAYOUTS, PRICESCALE, timeframeByLabel, type ChartTypeId, type LayoutId } from './constants'
 
-export interface IndicatorConf { name: string; params?: number[]; color?: string; width?: number; hidden?: boolean }
+export interface IndicatorConf { name: string; params?: number[]; color?: string; width?: number; hidden?: boolean; pane?: 'main' | 'own' }  // pane 'own': a price-based indicator moved into its own pane
 export interface Drawing { name: string; points: { timestamp: number; value: number }[]; extendData?: unknown; styles?: unknown; lock?: boolean; visible?: boolean }
 export type AxisMode = 'normal' | 'logarithm' | 'percentage'
+
+export type ScaleLock = { mode: 'range'; from: number; to: number } | { mode: 'ratio'; perBar: number }
 
 export interface ChartConf {
   id: number
@@ -20,6 +22,7 @@ export interface ChartConf {
   axis: AxisMode
   compare?: string[]           // other symbols drawn on this chart (SMT)
   invert?: boolean             // price scale upside down
+  scaleLock?: ScaleLock | null  // price scale not fitted to the data: a fixed range, or a fixed price per bar
 }
 
 export interface AlertPoint { t: number; v: number }
@@ -32,12 +35,15 @@ export interface PriceAlert {
   active: boolean
   triggeredAt?: number
   created: number
-  kind?: 'price' | 'line' | 'box' | 'session'     // price (default), a trend line, a box (FVG / OB / rectangle), a session start
+  kind?: 'price' | 'line' | 'box' | 'session' | 'ict'   // price (default), a trend line, a box (FVG / OB / rectangle), a session start,
+                                                        // an ICT event (MSS / BOS / new FVG / liquidity sweep)
   line?: { a: AlertPoint; b: AlertPoint; ray: boolean }
   box?: { top: number; bottom: number }
   session?: string                                 // key of SESSION_ALERTS; fires every day
   lastFired?: string                               // NY date of the last session alert
+  ict?: { event: IctEvent; tf: string; dir: 0 | 1 | -1; seen?: number }   // seen: unix seconds of the newest event already told
 }
+export type IctEvent = 'mss' | 'bos' | 'fvg' | 'sweep'
 export interface AlertLogEntry { at: number; text: string }
 
 export interface Sync { symbol: boolean; interval: boolean; crosshair: boolean; drawings: boolean }
@@ -78,7 +84,11 @@ export interface TerminalState {
   signals: SignalsPrefs
   alertLog: AlertLogEntry[]
   scripts: SavedScript[]              // the user's own indicators (ICT Script)
+  wlCols: WlCol[]                     // watchlist columns after Symbol / Last
 }
+
+export const WL_COLS = ['chg', 'chgp', 'high', 'low', 'vol', 'range'] as const
+export type WlCol = (typeof WL_COLS)[number]
 
 export const AUTOSAVE = '__autosave__'
 export const MAX_SLOTS = 8
@@ -98,15 +108,22 @@ export function defaultState(): TerminalState {
     chart: { ...DEFAULT_SETTINGS },
     alertLog: [],
     scripts: [],
+    wlCols: ['chg', 'chgp'],
   }
 }
 
 /** What goes to /api/v1/layouts. Drawings come from the live charts. */
 export function serialize(s: TerminalState, drawingsOf: (id: number) => Drawing[]) {
   return {
-    v: 2, layout: s.layout, active: s.active, sync: s.sync, watchlist: s.watchlist, lists: { ...s.lists, [s.listName]: s.watchlist }, listName: s.listName, flags: s.flags, alerts: s.alerts, signals: s.signals, chart: s.chart, alertLog: s.alertLog, scripts: s.scripts,
+    v: 2, layout: s.layout, active: s.active, sync: s.sync, watchlist: s.watchlist, lists: { ...s.lists, [s.listName]: s.watchlist }, listName: s.listName, flags: s.flags, alerts: s.alerts, signals: s.signals, chart: s.chart, alertLog: s.alertLog, scripts: s.scripts, wlCols: s.wlCols,
     charts: s.charts.map(c => ({ ...c, drawings: drawingsOf(c.id) })),
   }
+}
+
+function validLock(x: any): ScaleLock | null {
+  if (x?.mode === 'range' && Number.isFinite(x.from) && Number.isFinite(x.to) && x.to > x.from) return { mode: 'range', from: x.from, to: x.to }
+  if (x?.mode === 'ratio' && Number.isFinite(x.perBar) && x.perBar > 0) return { mode: 'ratio', perBar: x.perBar }
+  return null
 }
 
 const validDrawing = (d: any): d is Drawing =>
@@ -142,6 +159,7 @@ export function parse(data: any, maxCharts: number): { state: TerminalState; dra
       requireBias: !!c.requireBias,
       axis: ['normal', 'logarithm', 'percentage'].includes(c.axis) ? c.axis : 'normal',
       invert: !!c.invert,
+      scaleLock: validLock(c.scaleLock),
       compare: Array.isArray(c.compare) ? c.compare.filter((x: unknown) => typeof x === 'string').slice(0, 4) : [],
     } as ChartConf
   })
@@ -159,6 +177,7 @@ export function parse(data: any, maxCharts: number): { state: TerminalState; dra
     alerts: Array.isArray(data?.alerts) ? data.alerts.filter((a: any) => typeof a?.ticker === 'string' && Number.isFinite(a?.price)).slice(0, 200) : [],
     alertLog: Array.isArray(data?.alertLog) ? data.alertLog.filter((x: any) => Number.isFinite(x?.at) && typeof x?.text === 'string').slice(0, 100) : [],
     signals: parseSignals(data?.signals),
+    wlCols: Array.isArray(data?.wlCols) ? data.wlCols.filter((x: any) => (WL_COLS as readonly string[]).includes(x)).slice(0, 6) : ['chg', 'chgp'],
     scripts: Array.isArray(data?.scripts) ? data.scripts.filter((x: any) => typeof x?.id === 'string' && /^[a-z0-9]{1,12}$/.test(x.id) && typeof x?.name === 'string' && typeof x?.src === 'string' && x.src.length <= 8000)
       .slice(0, 30).map((x: any) => ({ id: x.id, name: String(x.name).slice(0, 30), src: x.src })) : [],
     chart: parseSettings(data?.chart),

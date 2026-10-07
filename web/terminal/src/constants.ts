@@ -66,10 +66,15 @@ export const CHART_TYPES = [
   { id: 'area', label: 'Area' },
   { id: 'renko', label: 'Renko (ATR 14)' },
   { id: 'linebreak', label: 'Line break (3 lines)' },
+  { id: 'range', label: 'Range bars (ATR / 2)' },
+  { id: 'baseline', label: 'Baseline' },
+  { id: 'columns', label: 'Columns' },
 ] as const
 export type ChartTypeId = (typeof CHART_TYPES)[number]['id']
 
 // ---- standard indicators --------------------------------------------------------------------
+/** Indicators drawn by price on the candles (volume profiles): they cannot move to a pane of their own. */
+export const PRICE_ONLY = new Set(['VPVR', 'SVP'])
 export interface IndicatorDef { name: string; title: string; overlay: boolean; group: string; params?: number[] }
 export const INDICATORS: IndicatorDef[] = [
   { name: 'MA', title: 'Moving Average', overlay: true, group: 'Trend' },
@@ -77,6 +82,7 @@ export const INDICATORS: IndicatorDef[] = [
   { name: 'SMA', title: 'Smoothed Moving Average', overlay: true, group: 'Trend' },
   { name: 'VWAP', title: 'VWAP (NY 18:00 session)', overlay: true, group: 'Volume' },
   { name: 'VPVR', title: 'Volume Profile (visible range, POC, value area)', overlay: true, group: 'Volume' },
+  { name: 'SVP', title: 'Session Volume Profile (Asia / London / New York; settings: rows, 0 = per day)', overlay: true, group: 'Volume' },
   { name: 'BOLL', title: 'Bollinger Bands', overlay: true, group: 'Volatility' },
   { name: 'DONCHIAN', title: 'Donchian Channels', overlay: true, group: 'Volatility' },
   { name: 'SUPERTREND', title: 'SuperTrend', overlay: true, group: 'Trend' },
@@ -194,6 +200,7 @@ export const TOOL_GROUPS: ToolGroup[] = [
     { id: 'priceRange', label: 'Price & date range', icon: 'measure' },
     { id: 'dateRange', label: 'Date range', icon: 'measure' },
     { id: 'anchoredVwap', label: 'Anchored VWAP', icon: 'trend' },
+    { id: 'fixedRangeVp', label: 'Fixed range volume profile', icon: 'data' },
   ] },
   { id: 'text', label: 'Annotations', tools: [
     { id: 'textLabel', label: 'Text', icon: 'text' },
@@ -231,6 +238,15 @@ export const PRICESCALE: Record<string, number> = {
 const MODEL_TAGS: Record<string, string> = { M17: 'M17 Wolf' }
 export const modelTag = (id: string) => MODEL_TAGS[id] ?? id
 // models that read the 1-minute chart only: their setups are drawn on 1m charts
+/** ICT event alerts: what the engine's overlays report, and which overlay layer carries it. */
+export const ICT_ALERT_EVENTS: { key: 'mss' | 'bos' | 'fvg' | 'sweep'; label: string; layer: string }[] = [
+  { key: 'mss', label: 'Market structure shift (MSS)', layer: 'structure' },
+  { key: 'bos', label: 'Break of structure (BOS)', layer: 'structure' },
+  { key: 'fvg', label: 'New fair value gap (FVG)', layer: 'fvg' },
+  { key: 'sweep', label: 'Liquidity sweep (BSL / SSL)', layer: 'liquidity' },
+]
+export const ICT_ALERT_TFS = ['1m', '5m', '15m', '1H', '4H']
+
 export const ONE_MINUTE_MODELS = new Set(['M17'])
 // the user's own (custom) models: listed under the Wolf Models button, not under Models
 export const WOLF_MODELS = new Set(['M17'])

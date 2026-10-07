@@ -13,17 +13,19 @@ export function chartStyles(theme: Theme, chartType: string, s: ChartSettings = 
   const cross = s.crossColor || (dark ? '#5d6b8a' : '#9aa3b5')
   const up = s.bodyUp, down = s.bodyDown
   const line = chartType === 'line'
+  const drawn = chartType === 'baseline' || chartType === 'columns'   // drawn by the chart-style layer over invisible candles
   const gl = (show: boolean) => ({ show, color: grid, style: klineStyle(s.gridStyle), dashedValue: s.gridStyle === 'dotted' ? [1, 3] : [2, 3] })
   const legend = [...(s.ohlc ? [{ title: 'O ', value: '{open}' }, { title: 'H ', value: '{high}' }, { title: 'L ', value: '{low}' }, { title: 'C ', value: '{close}' }] : []),
     ...(s.barChange ? [{ title: '', value: '{change}' }] : []), ...(s.volume ? [{ title: 'Vol ', value: '{volume}' }] : [])]
   return {
     grid: { show: s.grid !== 'none', horizontal: gl(s.grid === 'both' || s.grid === 'horz'), vertical: gl(s.grid === 'both' || s.grid === 'vert') } as any,
     candle: {
-      type: (chartType === 'heikin_ashi' || chartType === 'renko' || chartType === 'linebreak' ? 'candle_solid' : line ? 'area' : chartType) as any,
+      type: (chartType === 'heikin_ashi' || chartType === 'renko' || chartType === 'linebreak' || chartType === 'range' ? 'candle_solid'
+        : line || drawn ? 'area' : chartType) as any,
       bar: { upColor: up, downColor: down, noChangeColor: '#888888',
         upBorderColor: s.borders ? s.borderUp : up, downBorderColor: s.borders ? s.borderDown : down, noChangeBorderColor: '#888888',
         upWickColor: s.wicks ? s.wickUp : 'rgba(0,0,0,0)', downWickColor: s.wicks ? s.wickDown : 'rgba(0,0,0,0)', noChangeWickColor: s.wicks ? '#888888' : 'rgba(0,0,0,0)' },
-      area: { lineSize: 2, lineColor: '#2962ff', value: 'close', backgroundColor: line ? [{ offset: 0, color: 'rgba(41,98,255,0)' }, { offset: 1, color: 'rgba(41,98,255,0)' }]
+      area: { lineSize: drawn ? 0 : 2, lineColor: drawn ? 'rgba(0,0,0,0)' : '#2962ff', value: 'close', backgroundColor: line || drawn ? [{ offset: 0, color: 'rgba(41,98,255,0)' }, { offset: 1, color: 'rgba(41,98,255,0)' }]
         : [{ offset: 0, color: 'rgba(41,98,255,0.01)' }, { offset: 1, color: 'rgba(41,98,255,0.22)' }] },
       priceMark: {
         high: { show: s.highLow, color: text, textFamily: FONT }, low: { show: s.highLow, color: text, textFamily: FONT },

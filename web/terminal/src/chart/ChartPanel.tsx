@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { init, dispose, type Chart, type Crosshair, type Overlay, type OverlayMode } from 'klinecharts'
 import { api, errorText, isAbort, type Signal } from '../api'
-import { timeframeByLabel, indicatorDef, DRAW_COLORS, ONE_MINUTE_MODELS, modelTag } from '../constants'
+import { timeframeByLabel, indicatorDef, PRICE_ONLY, DRAW_COLORS, ONE_MINUTE_MODELS, modelTag } from '../constants'
 import type { ChartConf, PriceAlert } from '../state'
 import { Feed } from './feed'
 import { engineOverlays, signalBoxes, signalLines, biasOf, type Bias, type DrawStyle } from './overlays'
@@ -17,6 +17,7 @@ import { DRAWINGS, register, unregister, getEntry, snapshot, notify, drawingHook
 import { DrawingDialog } from '../ui/DrawingDialog'
 import { paperModify, paperOrder, usePaper } from '../panels/Paper'
 import { registerScript, type SavedScript } from './script'
+import { CHART_STYLE } from './charttypes'
 
 const ICT = 'ict'
 const LINE_DEFAULTS = ['#FF9600', '#935EBD', '#2196F3', '#E11D74', '#01C5C4']   // klinecharts' indicator line colours
@@ -44,7 +45,7 @@ export interface ChartPanelProps {
   onToolDone: () => void
   onError: (msg: string) => void
   onCrosshair: (id: number, c: Crosshair | null) => void
-  onMenu: (x: number, y: number) => void
+  onMenu: (x: number, y: number, onAxis?: boolean) => void
   onClose: () => void
   onAlert: (price: number) => void
   onAlertShape: (a: Omit<PriceAlert, 'id' | 'created' | 'active' | 'ticker'>) => void
@@ -134,7 +135,7 @@ export function ChartPanel(p: ChartPanelProps) {
     feed.onNewBar = () => refreshOverlays.current(0)
     feed.onLoaded = () => { props.current.onLoaded?.(); refreshOverlays.current(0) }
     chart.setDataLoader(feed.loader())
-    for (const name of [EVENTS, COMPARE]) if (!chart.getIndicators({ name }).length) chart.createIndicator({ name, paneId: 'candle_pane' }, true)
+    for (const name of [CHART_STYLE, EVENTS, COMPARE]) if (!chart.getIndicators({ name }).length) chart.createIndicator({ name, paneId: 'candle_pane' }, true)
     register(conf.id, chart, feed)
     const onCross = (c: unknown) => props.current.onCrosshair(conf.id, (c as Crosshair) ?? null)
     chart.subscribeAction('onCrosshairChange', onCross)
@@ -161,7 +162,7 @@ export function ChartPanel(p: ChartPanelProps) {
     const chart = chartRef.current, feed = feedRef.current
     if (!chart || !feed) return
     const heikin = conf.chartType === 'heikin_ashi'
-    const kind = conf.chartType === 'renko' ? 'renko' : conf.chartType === 'linebreak' ? 'linebreak' : heikin ? 'heikin' : 'normal'
+    const kind = conf.chartType === 'renko' ? 'renko' : conf.chartType === 'linebreak' ? 'linebreak' : conf.chartType === 'range' ? 'range' : heikin ? 'heikin' : 'normal'
     // setSymbol / setPeriod reload the data themselves; only a change of bar kind (Heikin Ashi, Renko ...) needs a reset
     const onlyHeikin = feed.ticker === conf.ticker && feed.tf?.label === tf.label && (feed.heikin !== heikin || feed.kind !== kind)
     feed.ticker = conf.ticker
@@ -175,6 +176,11 @@ export function ChartPanel(p: ChartPanelProps) {
     applyTfVisibility(conf.id, tf.label)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conf.ticker, tf.label, conf.chartType, digits, st.precision])
+
+  // baseline / columns are drawn by the chart-style layer in the up / down colours
+  useEffect(() => {
+    chartRef.current?.overrideIndicator({ name: CHART_STYLE, paneId: 'candle_pane', extendData: { type: conf.chartType, up: st.bodyUp, down: st.bodyDown } })
+  }, [conf.chartType, st.bodyUp, st.bodyDown])
 
   // ---- chart settings (styles, status line, scale, time zone) -----------------------------------
   const setKey = JSON.stringify(st)
@@ -196,8 +202,22 @@ export function ChartPanel(p: ChartPanelProps) {
   }, [setKey, p.theme, conf.chartType, conf.ticker, tf.label, p.cursor, p.compact])
 
   useEffect(() => {
-    chartRef.current?.overrideYAxis({ paneId: 'candle_pane', name: conf.axis, position: st.scale, reverse: !!conf.invert })
-  }, [conf.axis, st.scale, conf.invert])
+    // a locked scale (regular axis only): the saved range, or the saved price per bar around the data's middle
+    const lock = conf.axis === 'normal' ? conf.scaleLock ?? null : null
+    chartRef.current?.overrideYAxis({ paneId: 'candle_pane', name: conf.axis, position: st.scale, reverse: !!conf.invert,
+      createRange: ({ chart, defaultRange }) => {
+        if (!lock) return defaultRange
+        let from: number, to: number
+        if (lock.mode === 'range') { from = lock.from; to = lock.to } else {
+          const r = chart.getVisibleRange(), bars = Math.max(2, r.to - r.from)
+          const mid = (defaultRange.from + defaultRange.to) / 2, span = lock.perBar * bars
+          from = mid - span / 2; to = mid + span / 2
+        }
+        const range = to - from
+        return { ...defaultRange, from, to, range, realFrom: from, realTo: to, realRange: range, displayFrom: from, displayTo: to, displayRange: range }
+      } })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conf.axis, st.scale, conf.invert, JSON.stringify(conf.scaleLock ?? null)])
 
   // ---- compare symbols (SMT) --------------------------------------------------------------------
   const cmpKey = (conf.compare ?? []).join(',')
@@ -283,7 +303,7 @@ export function ChartPanel(p: ChartPanelProps) {
   useEffect(() => {
     const chart = chartRef.current
     if (!chart) return
-    for (const i of chart.getIndicators()) if (i.name !== EVENTS && i.name !== COMPARE) chart.removeIndicator({ id: i.id })
+    for (const i of chart.getIndicators()) if (i.name !== EVENTS && i.name !== COMPARE && i.name !== CHART_STYLE) chart.removeIndicator({ id: i.id })
     for (const ind of conf.indicators) {
       let def = indicatorDef(ind.name)
       if (ind.name.startsWith('SCRIPT_')) {
@@ -295,7 +315,9 @@ export function ChartPanel(p: ChartPanelProps) {
       const value = { name: ind.name, ...(ind.params?.length ? { calcParams: ind.params } : {}), visible: !ind.hidden,
         // the colour is the first line's (EMA 6, MACD DIF ...); the others keep the chart's default colours
         ...(ind.color || ind.width ? { styles: { lines: LINE_DEFAULTS.map((c, k) => ({ color: k === 0 ? (ind.color ?? c) : c, size: ind.width ?? 1, style: 'solid', smooth: false, dashedValue: [2, 2] })) } } : {}) } as any
-      if (def?.overlay) chart.createIndicator({ ...value, paneId: 'candle_pane' }, true)
+      // a price-based indicator may be moved into a pane of its own (oscillators never go on the price scale)
+      const onMain = !!def?.overlay && (ind.pane !== 'own' || PRICE_ONLY.has(ind.name))
+      if (onMain) chart.createIndicator({ ...value, paneId: 'candle_pane' }, true)
       else {
         chart.createIndicator({ ...value, paneId: `pane_${ind.name}` })
       }
@@ -530,7 +552,10 @@ export function ChartPanel(p: ChartPanelProps) {
       onContextMenu={e => {
         if ((e.target as HTMLElement).closest('.draw-bar, .bias-box')) return
         e.preventDefault()
-        p.onMenu(e.clientX, e.clientY)
+        // a right-click on the price scale opens the scale menu
+        const r = e.currentTarget.getBoundingClientRect(), ax = chartRef.current?.getSize('candle_pane', 'yAxis')
+        const x = e.clientX - r.left, y = e.clientY - r.top
+        p.onMenu(e.clientX, e.clientY, !!ax && x >= ax.left && x <= ax.left + ax.width && y >= ax.top && y <= ax.top + ax.height)
       }}>
       <div className="chart-tags">
         {loading && <span className="loading" title="Loading ICT layers">ICT…</span>}

@@ -1,9 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { scriptIndicatorName, type SavedScript } from './chart/script'
 import type { Crosshair, OverlayMode } from 'klinecharts'
-import { api, errorText, type Access, type ModelInfo, type Signal } from './api'
-import { layoutCharts, LAYOUTS, PRICESCALE, timeframeByLabel, type LayoutId, DEFAULT_SYMBOLS, ONE_MINUTE_MODELS, SESSION_ALERTS } from './constants'
-import { AUTOSAVE, defaultState, parse, serialize, type AlertLogEntry, type ChartConf, type PriceAlert, type SignalsPrefs, type Sync, type TerminalState } from './state'
+import { api, errorText, type Access, type ModelInfo, type OverlayObject, type Signal } from './api'
+import { layoutCharts, LAYOUTS, PRICESCALE, timeframeByLabel, type LayoutId, DEFAULT_SYMBOLS, ONE_MINUTE_MODELS, SESSION_ALERTS, ICT_ALERT_EVENTS } from './constants'
+import { AUTOSAVE, defaultState, parse, serialize, type AlertLogEntry, type ChartConf, type PriceAlert, type SignalsPrefs, type Sync, type TerminalState, type WlCol } from './state'
 import { ChartPanel } from './chart/ChartPanel'
 import { registerOverlays } from './chart/overlays'
 import { registerIndicators } from './chart/indicators'
@@ -12,6 +12,8 @@ import { chartBackground, type Theme } from './chart/theme'
 import { registerEvents, loadCalendar } from './chart/events'
 import { registerCompare } from './chart/compare'
 import { registerMoreTools } from './chart/tools2'
+import { registerVolumeProfiles } from './chart/volprofile'
+import { registerChartTypes } from './chart/charttypes'
 import type { ChartSettings } from './chart/settings'
 import { ChartSettingsDialog, type SettingsTab } from './ui/ChartSettingsDialog'
 import { FavBar, type CursorKind } from './ui/FavBar'
@@ -35,6 +37,8 @@ registerIndicators()
 registerEvents()
 registerCompare()
 registerMoreTools()
+registerVolumeProfiles()
+registerChartTypes()
 
 export interface TerminalApi {
   access: Access
@@ -63,6 +67,7 @@ export interface TerminalApi {
   deleteList: (name: string) => void
   renameList: (from: string, to: string) => void
   setFlag: (symbol: string, color: string | null) => void
+  setWlCols: (cols: WlCol[]) => void
   addAlert: (a: Omit<PriceAlert, 'id' | 'created' | 'active'>) => void
   clearAlertLog: () => void
   saveScript: (s: SavedScript) => void
@@ -130,7 +135,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
   const [sideTab, setSideTab] = useState<SideTab | null>(() => (window.innerWidth > 1100 ? 'watchlist' : null))
   const [bottomOpen, setBottomOpen] = useState(false)
   const [account, setAccount] = useState<string | null>(null)
-  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
+  const [menu, setMenu] = useState<{ x: number; y: number; axis?: boolean } | null>(null)
   const [replay, setReplayState] = useState({ on: false, playing: false, speed: 1 })
   const [maximized, setMaximized] = useState(false)
   const [settingsTab, setSettingsTab] = useState<SettingsTab | null>(null)
@@ -343,7 +348,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
         const text = `${w.label} has started${a.note ? ` — ${a.note}` : ''}`
         logAlert(text); log.push({ at: now, text })
       }
-      const priced = live.filter(x => x.kind !== 'session')
+      const priced = live.filter(x => x.kind !== 'session' && x.kind !== 'ict')
       if (priced.length) {
         try {
           const q = await api.quotes([...new Set(priced.map(a => a.ticker))])
@@ -391,6 +396,64 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
     const t = window.setInterval(check, 5000)
     check()
     return () => window.clearInterval(t)
+  }, [ready])
+
+  // ---- ICT event alerts: new MSS / BOS / FVG / sweeps in the engine's overlays, checked every 30 s ----
+  useEffect(() => {
+    if (!ready) return
+    const check = async () => {
+      if (!f.ict_indicators || document.hidden) return
+      const cap = (f.alerts_limit ?? 0) > 0 ? f.alerts_limit! : Infinity
+      const live = stateRef.current.alerts.filter(a => a.active).slice(0, cap).filter(a => a.kind === 'ict' && a.ict)
+      if (!live.length) return
+      const now = Math.floor(Date.now() / 1000)
+      const seenNow: Record<string, number> = {}, log: AlertLogEntry[] = []
+      // one overlay request per symbol + interval, shared by its alerts
+      const groups = new Map<string, typeof live>()
+      for (const a of live) { const k = `${a.ticker}|${a.ict!.tf}`; groups.set(k, [...(groups.get(k) ?? []), a]) }
+      for (const [k, list] of groups) {
+        const [ticker, tfl] = k.split('|')
+        const tfo = timeframeByLabel(tfl)
+        const layers = [...new Set(list.map(a => ICT_ALERT_EVENTS.find(e => e.key === a.ict!.event)!.layer))]
+        let objs: OverlayObject[] = []
+        try { objs = (await api.overlays(ticker, tfo.resolution, now - 300 * tfo.seconds, now, layers)).objects } catch { continue }
+        for (const a of list) {
+          const { event, dir } = a.ict!
+          const seen = a.ict!.seen ?? Math.floor(a.created / 1000)
+          // event time = when the bar that completes it closes
+          const hits: { at: number; text: string }[] = []
+          for (const o of objs) {
+            let at = 0, d = 0, what = ''
+            if ((event === 'mss' || event === 'bos') && o.kind === 'structure' && String(o.text).toLowerCase() === event) {
+              at = Number(o.t2) + tfo.seconds; d = Number(o.direction); what = `${String(o.text)}${o.displacement ? ' with displacement' : ''} ${d > 0 ? 'up' : 'down'} at ${Number(o.price).toFixed(2)}`
+            } else if (event === 'fvg' && o.kind === 'fvg') {
+              at = Number(o.t1) + 2 * tfo.seconds; d = Number(o.direction); what = `new ${d > 0 ? 'bullish FVG (BISI)' : 'bearish FVG (SIBI)'} ${Number(o.bottom).toFixed(2)}–${Number(o.top).toFixed(2)}`
+            } else if (event === 'sweep' && o.kind === 'liquidity' && o.status === 'sweep') {
+              at = Number(o.t2) + tfo.seconds; d = o.side === 'ssl' ? 1 : -1; what = `${String(o.side).toUpperCase()} swept at ${Number(o.price).toFixed(2)}`
+            } else continue
+            if (at <= seen || at > now + 60 || (dir && d !== dir)) continue
+            hits.push({ at, text: what })
+          }
+          if (!hits.length) continue
+          hits.sort((x, y) => x.at - y.at)
+          seenNow[a.id] = hits[hits.length - 1].at
+          const sym = a.ticker.split(':')[1]
+          const text = `${sym} ${tfl}: ${hits.slice(-3).map(h => h.text).join('; ')}${hits.length > 3 ? ` (+${hits.length - 3} more)` : ''}${a.note ? ` — ${a.note}` : ''}`
+          logAlert(text); log.push({ at: Date.now(), text })
+        }
+      }
+      if (Object.keys(seenNow).length) {
+        setState(s => ({
+          ...s,
+          alerts: s.alerts.map(a => (seenNow[a.id] && a.ict ? { ...a, ict: { ...a.ict, seen: seenNow[a.id] }, triggeredAt: Date.now() } : a)),
+          alertLog: [...log.reverse(), ...s.alertLog].slice(0, 100),
+        }))
+      }
+    }
+    const t = window.setInterval(check, 30_000)
+    const first = window.setTimeout(check, 3000)
+    return () => { window.clearInterval(t); window.clearTimeout(first) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready])
 
   // ---- replay ---------------------------------------------------------------------------------
@@ -487,6 +550,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
       delete lists[from]
       return { ...s, lists, listName: s.listName === from ? to : s.listName }
     }),
+    setWlCols: cols => setState(s => ({ ...s, wlCols: cols })),
     setFlag: (sym, color) => setState(s => { const flags = { ...s.flags }; if (color) flags[sym] = color; else delete flags[sym]; return { ...s, flags } }),
     addAlert: a => {
       const limit = f.alerts_limit ?? 0
@@ -494,7 +558,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
       if (limit > 0 && live >= limit) { toast(`Your plan allows ${limit} active alerts.`, 'info'); return }
       try { if (Notification.permission === 'default') void Notification.requestPermission() } catch { /* ignore */ }
       setState(s => ({ ...s, alerts: [{ ...a, id: Math.random().toString(36).slice(2), created: Date.now(), active: true }, ...s.alerts] }))
-      toast(a.kind === 'session' ? 'Session alert set (every day).' : a.kind === 'line' ? 'Trend line alert set.' : a.kind === 'box' ? 'Zone alert set.' : `Alert set: ${a.ticker.split(':')[1]} ${a.condition} ${a.price}`)
+      toast(a.kind === 'ict' ? 'ICT event alert set. It fires on every new event while the terminal is open.' : a.kind === 'session' ? 'Session alert set (every day).' : a.kind === 'line' ? 'Trend line alert set.' : a.kind === 'box' ? 'Zone alert set.' : `Alert set: ${a.ticker.split(':')[1]} ${a.condition} ${a.price}`)
     },
     updateAlert: (id, patch) => setState(s => ({ ...s, alerts: s.alerts.map(a => (a.id === id ? { ...a, ...patch } : a)) })),
     removeAlert: id => setState(s => ({ ...s, alerts: s.alerts.filter(a => a.id !== id) })),
@@ -545,7 +609,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
                   onToolDone={() => (stayInDrawing ? setDrawSeq(n => n + 1) : setTool(null))} drawSeq={drawSeq}
                   onError={m => toast(m, 'error')}
                   onCrosshair={onCrosshair}
-                  onMenu={(x, y) => { t.setActive(i); setMenu({ x, y }) }}
+                  onMenu={(x, y, axis) => { t.setActive(i); setMenu({ x, y, axis }) }}
                   onClose={() => {
                     // remove this chart from the layout: move it to the end and shrink the layout
                     const order = LAYOUTS.map(l => l.id).filter(id => layoutCharts(id) === visible - 1)
@@ -578,7 +642,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
           <SidePanel />
           {iccOpen && <IccWindow phone={phone} onClose={() => setIccOpen(false)} />}
         </div>
-        {menu && <ContextMenu x={menu.x} y={menu.y} onClose={() => setMenu(null)} />}
+        {menu && <ContextMenu x={menu.x} y={menu.y} axis={menu.axis} onClose={() => setMenu(null)} />}
         {account && <AccountDialog tab={account} onClose={() => setAccount(null)} onAccess={onAccess} />}
         {!phone && <FavBar />}
         {gotoOpen && <GoToDate chartId={active.id} onClose={() => setGotoOpen(false)} />}

@@ -160,7 +160,10 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 .ind-row em { font-style: normal; font-size: 11px; color: var(--muted); }
 .ind-row i { font-style: normal; color: var(--accent); font-weight: 700; text-align: center; }
 .ind-row.added { background: var(--accent-soft); }
-.ind-row.on { grid-template-columns: 92px 1fr auto 28px; }
+.ind-row.on { display: flex; flex-wrap: wrap; gap: 6px 10px; }
+.ind-row.on > b { width: 82px; flex: none; }
+.ind-row.on > span { flex: 1 1 160px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ind-row.on .ind-width { width: 70px; }
 .param-input { width: 120px; padding: 3px 6px; }
 
 /* ---- left toolbar ---------------------------------------------------------------------------- */
@@ -263,10 +266,10 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 .wl-drop button { width: 100%; display: flex; gap: 8px; text-align: left; padding: 7px 8px; border-radius: 6px; }
 .wl-drop button:hover { background: var(--hover); }
 .wl-drop span { color: var(--muted); }
-.wl-head { display: grid; grid-template-columns: 1fr 90px 64px 34px; padding: 6px 12px; font-size: 11px; color: var(--muted); border-bottom: 1px solid var(--line); }
+.wl-head { display: grid; grid-template-columns: minmax(70px,1fr) 84px 64px 58px 30px; gap: 0; padding: 6px 12px; font-size: 11px; color: var(--muted); border-bottom: 1px solid var(--line); }
 .wl-head span:not(:first-child) { text-align: right; }
 .wl-rows { overflow: auto; flex: 1; }
-.wl-row { display: grid; grid-template-columns: 1fr 90px 64px 34px; align-items: center; padding: 7px 12px; cursor: pointer; border-bottom: 1px solid color-mix(in srgb, var(--line) 50%, transparent); }
+.wl-row { display: grid; grid-template-columns: minmax(70px,1fr) 84px 64px 58px 30px; align-items: center; padding: 7px 12px; cursor: pointer; border-bottom: 1px solid color-mix(in srgb, var(--line) 50%, transparent); }
 .wl-row:hover { background: var(--hover); }
 .wl-row.on { background: var(--accent-soft); }
 .wl-sym { display: flex; flex-direction: column; line-height: 1.2; }
@@ -787,7 +790,6 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 .wl-menu button:hover { background: var(--hover); }
 .wl-menu button.on { color: var(--accent); }
 .wl-menu button.danger { color: var(--down); }
-.wl-head, .wl-row { grid-template-columns: 1fr 80px 62px 58px 30px !important; }
 .wl-section { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px 4px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
 .wl-section:hover .wl-actions { opacity: 1; }
 .wl-sym { flex-direction: row !important; align-items: center; gap: 6px; position: relative; }
@@ -915,3 +917,19 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
   .grid.phone-all.grid-5 > .chart-panel, .grid.phone-all.grid-5 > .chart-panel:nth-child(-n+2) { grid-column: auto; }
   .grid.phone-all.grid-5 > .chart-panel:first-child, .grid.phone-all.grid-7 > .chart-panel:first-child { grid-column: 1 / span 2; grid-row: auto; }
 }
+
+.af-sep { margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 12px; font-weight: 600; color: var(--muted); }
+
+.ind-pane { font-size: 11px; white-space: nowrap; }
+.ind-move { display: inline-flex; gap: 0; }
+.ind-move .icon-btn { width: 24px; font-size: 10px; }
+
+/* watchlist columns */
+.wl-cols { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px 8px; padding: 2px 8px 6px; }
+.wl-range { position: relative; height: 4px; margin: 0 4px; border-radius: 2px; background: linear-gradient(90deg, rgba(239,83,80,.55), rgba(38,166,154,.55)); align-self: center; }
+.wl-range i { position: absolute; top: -3px; width: 3px; height: 10px; margin-left: -1.5px; border-radius: 1px; background: var(--text); }
+@media (min-width: 761px) { .side-body:has(.wl-head) { width: min(640px, var(--wl-w, 300px)); } }
+
+/* the column header scrolls sideways with the rows and stays on top */
+.wl-rows > .wl-head { position: sticky; top: 0; z-index: 2; background: var(--panel); min-width: max-content; }
+.wl-rows > .wl-row { min-width: max-content; }
