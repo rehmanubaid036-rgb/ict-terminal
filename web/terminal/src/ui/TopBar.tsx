@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTerminal } from '../Terminal'
+import type { IndicatorConf } from '../state'
 import { api, type SearchItem } from '../api'
 import { CHART_TYPES, FAVORITE_TFS, INDICATORS, LAYOUTS, TIMEFRAMES, parseTimeframe, timeframeByLabel, type LayoutId, WOLF_MODELS } from '../constants'
 import { IctPanel, ModelSection } from '../panels/IctPanel'
@@ -228,6 +229,7 @@ function IndicatorsDialog({ onClose }: { onClose: () => void }) {
   const on = new Set(a.indicators.map(i => i.name))
   const list = INDICATORS.filter(i => !q || (i.name + ' ' + i.title).toLowerCase().includes(q.toLowerCase()))
   const toggle = (name: string) => t.updateActive(c => ({ indicators: c.indicators.some(i => i.name === name) ? c.indicators.filter(i => i.name !== name) : [...c.indicators, { name }] }))
+  const setInd = (name: string, patch: Partial<IndicatorConf>) => t.updateActive(c => ({ indicators: c.indicators.map(x => (x.name === name ? { ...x, ...patch } : x)) }))
   const params = (name: string) => {
     const ind = getEntry(a.id)?.chart.getIndicators({ name })[0]
     return (a.indicators.find(i => i.name === name)?.params ?? (ind?.calcParams as number[] | undefined) ?? []).join(', ')
@@ -251,6 +253,10 @@ function IndicatorsDialog({ onClose }: { onClose: () => void }) {
                   if (e.key === 'Escape') { e.stopPropagation(); setEdit(null) }
                 }} onBlur={() => setEdit(null)} />
               ) : <button className="link" onClick={() => setEdit(i.name)}>Settings {params(i.name) && <small>({params(i.name)})</small>}</button>}
+              <button className="icon-btn" title={i.hidden ? 'Show' : 'Hide'} onClick={() => setInd(i.name, { hidden: !i.hidden })}><Icon name={i.hidden ? 'eyeOff' : 'eye'} size={15} /></button>
+              <label className="cs-color ind-color" title="Line colour"><i style={{ background: i.color ?? '#2962ff' }} />
+                <input type="color" value={i.color ?? '#2962ff'} onChange={e => setInd(i.name, { color: e.target.value })} /></label>
+              <select className="ind-width" value={i.width ?? 1} title="Line width" onChange={e => setInd(i.name, { width: Number(e.target.value) })}>{[1, 2, 3, 4].map(w => <option key={w} value={w}>{w}px</option>)}</select>
               <button className="icon-btn" onClick={() => toggle(i.name)} title="Remove"><Icon name="trash" size={15} /></button>
             </div>
           ))}

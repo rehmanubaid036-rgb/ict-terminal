@@ -17,6 +17,7 @@ import { DRAWINGS, register, unregister, getEntry, snapshot, notify, drawingHook
 import { DrawingDialog } from '../ui/DrawingDialog'
 
 const ICT = 'ict'
+const LINE_DEFAULTS = ['#FF9600', '#935EBD', '#2196F3', '#E11D74', '#01C5C4']   // klinecharts' indicator line colours
 const SIGNAL = 'signal'
 const LINE_TOOLS = new Set(['segment', 'rayLine', 'straightLine', 'horizontalStraightLine', 'horizontalRayLine', 'horizontalSegment', 'verticalStraightLine',
   'verticalRayLine', 'verticalSegment', 'priceLine', 'parallelStraightLine', 'priceChannelLine', 'fibonacciLine', 'simpleAnnotation', 'simpleTag', 'brush'])
@@ -244,7 +245,9 @@ export function ChartPanel(p: ChartPanelProps) {
     for (const i of chart.getIndicators()) if (i.name !== EVENTS && i.name !== COMPARE) chart.removeIndicator({ id: i.id })
     for (const ind of conf.indicators) {
       const def = indicatorDef(ind.name)
-      const value = { name: ind.name, ...(ind.params?.length ? { calcParams: ind.params } : {}) }
+      const value = { name: ind.name, ...(ind.params?.length ? { calcParams: ind.params } : {}), visible: !ind.hidden,
+        // the colour is the first line's (EMA 6, MACD DIF ...); the others keep the chart's default colours
+        ...(ind.color || ind.width ? { styles: { lines: LINE_DEFAULTS.map((c, k) => ({ color: k === 0 ? (ind.color ?? c) : c, size: ind.width ?? 1, style: 'solid', smooth: false, dashedValue: [2, 2] })) } } : {}) } as any
       if (def?.overlay) chart.createIndicator({ ...value, paneId: 'candle_pane' }, true)
       else {
         chart.createIndicator({ ...value, paneId: `pane_${ind.name}` })

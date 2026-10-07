@@ -750,3 +750,7 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 .cmp-row { display: flex; align-items: center; gap: 8px; }
 .cmp-row i { width: 14px; height: 3px; border-radius: 2px; }
 .cmp-row span { flex: 1; font-weight: 600; }
+
+.ind-row .ind-color { width: 26px; height: 26px; }
+.ind-row .ind-color i { width: 14px; height: 14px; }
+.ind-width { width: auto !important; padding: 3px 4px; font-size: 12px; }

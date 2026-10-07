@@ -2,7 +2,7 @@ import { DEFAULT_SETTINGS, parseSettings, type ChartSettings } from './chart/set
 // Terminal state and its saved form (the account's "__autosave__" layout, plus named layouts).
 import { CHART_TYPES, ICT_IDS, LAYOUTS, PRICESCALE, timeframeByLabel, type ChartTypeId, type LayoutId } from './constants'
 
-export interface IndicatorConf { name: string; params?: number[] }
+export interface IndicatorConf { name: string; params?: number[]; color?: string; width?: number; hidden?: boolean }
 export interface Drawing { name: string; points: { timestamp: number; value: number }[]; extendData?: unknown; styles?: unknown; lock?: boolean; visible?: boolean }
 export type AxisMode = 'normal' | 'logarithm' | 'percentage'
 
