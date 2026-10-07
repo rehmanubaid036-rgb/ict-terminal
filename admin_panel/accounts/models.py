@@ -18,6 +18,9 @@ def generate_license_key():
     return "IQT-" + "-".join(groups)
 
 
+AI_PROVIDERS = [("none", "Off (template answers only)"), ("anthropic", "Anthropic Claude"), ("openai", "OpenAI"),
+                ("gemini", "Google Gemini"), ("openrouter", "OpenRouter"), ("groq", "Groq")]
+
 class Plan(models.Model):
     name = models.CharField(max_length=80, unique=True)
     slug = models.SlugField(max_length=80, unique=True)
@@ -198,6 +201,11 @@ class SiteSettings(models.Model):
     whatsapp_template = models.CharField("Message template name", max_length=60, default="ict_signal",
                                          help_text="An approved template with 8 variables, see the help text below.")
     whatsapp_template_lang = models.CharField("Template language", max_length=10, default="en")
+    ai_provider = models.CharField("AI provider", max_length=20, default="none", choices=AI_PROVIDERS,
+                                   help_text="The model that words the chart assistant's answers (it only rewrites the engine's facts).")
+    ai_model = models.CharField("AI model", max_length=80, blank=True,
+                                help_text="Empty = the provider's default (e.g. claude-haiku-4-5, gpt-4o-mini, gemini-2.0-flash).")
+    ai_api_key = models.CharField("AI API key", max_length=300, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -936,3 +944,20 @@ class AlertDelivery(models.Model):
         constraints = [models.UniqueConstraint(fields=["user", "signal_key", "channel"], name="alert_once")]
         verbose_name = "Signal alert sent"
         verbose_name_plural = "Signal alerts sent"
+
+
+class AIPrefs(models.Model):
+    """A user's own AI key for the chart assistant (instead of the site's)."""
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="ai_prefs")
+    enabled = models.BooleanField(default=False, help_text="Use this key for the user's assistant answers")
+    provider = models.CharField(max_length=20, default="anthropic", choices=AI_PROVIDERS)
+    model = models.CharField(max_length=80, blank=True)
+    api_key = models.CharField(max_length=300, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "AI key of a user"
+        verbose_name_plural = "AI keys of users"
+
+    def __str__(self):
+        return f"{self.user} · {self.provider}"

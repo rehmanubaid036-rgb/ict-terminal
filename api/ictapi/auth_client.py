@@ -45,6 +45,27 @@ class AuthClient:
             h["X-Client-IP"] = client_ip
         return h
 
+    def ai_config(self, email: str = "") -> dict:
+        """{site: {provider, model, api_key} | None, user: ... | None} from the admin panel, cached a
+        minute per user; {} when the panel cannot be reached (the assistant then uses templates)."""
+        key = ("ai", (email or "").lower())
+        now = time.time()
+        with self._lock:
+            hit = self._cache.get(key)
+        if hit and now - hit[0] < self.CACHE_SECONDS:
+            return dict(hit[1])
+        try:
+            r = self.http.post(f"{self.panel_url}/api/v1/internal/ai", timeout=self.TIMEOUT,
+                               headers=self._service_headers(), json={"email": email or ""})
+            r.raise_for_status()
+            data = r.json()
+            out = {"site": data.get("site"), "user": data.get("user")}
+        except (requests.RequestException, ValueError, AttributeError):
+            return {}
+        with self._lock:
+            self._cache[key] = (now, out)
+        return dict(out)
+
     def verify(self, token: str = "", device_id: str = "", device_name: str = "", platform: str = "",
                client_ip: str = "") -> dict:
         """Access dict (user, plan, expiry, is_vip, features, ...) for a login token."""

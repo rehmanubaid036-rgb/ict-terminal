@@ -98,6 +98,8 @@ export interface SymbolInfoApi { ticker: string; name: string; description: stri
 export interface SearchItem { symbol: string; full_name: string; description: string; exchange: string; ticker: string; type: string }
 export interface Bars { s: string; t?: number[]; o?: number[]; h?: number[]; l?: number[]; c?: number[]; v?: number[] }
 export interface ModelInfo { id: string; name: string; source: string; allowed: boolean; default_on?: boolean }
+export interface AskAnswer { text: string; intent: string; data: Record<string, any>; llm: boolean; llm_by?: string }
+export interface AiSettings { enabled: boolean; provider: string; model: string; has_key: boolean; providers: { id: string; name: string }[] }
 export interface Quote { symbol: string; price: number | null; change: number | null; change_pct: number | null; time?: number; high?: number; low?: number; volume?: number | null }
 // ---- community ---------------------------------------------------------------------------------
 export interface CommunityStatus { enabled: boolean; rules: string; rooms: { key: string; name: string }[]; nickname: string; rules_accepted: boolean; banned: boolean; ban_reason: string; muted_until: string | null; write_in_seconds: number }
@@ -215,7 +217,9 @@ export const api = {
   news: () => get<{ items: { title: string; link: string; at: number; source: string }[] }>('/api/v1/news'),
   calendar: (from: number, to: number, impact: string) => get<{ events: CalendarEvent[] }>('/api/v1/calendar', { from, to, impact }),
   engineStatus: () => get<{ symbols: any[] }>('/api/v1/engine/status'),
-  ask: (symbol: string, question: string, lang: string) => post<{ text: string }>('/api/v1/agent/ask', { symbol, question, lang }),
+  ask: (symbol: string, question: string, lang: string) => post<AskAnswer>('/api/v1/agent/ask', { symbol, question, lang }),
+  aiSettings: () => get<{ settings: AiSettings }>('/api/v1/ai/settings'),
+  saveAiSettings: (s: Partial<AiSettings> & { api_key?: string }) => post<{ settings: AiSettings }>('/api/v1/ai/settings', s),
 
   layouts: () => get<{ layouts: { name: string; updated_at: string }[] }>('/api/v1/layouts'),
   layout: (name: string) => get<{ name: string; data: any }>(`/api/v1/layouts/${encodeURIComponent(name)}`),

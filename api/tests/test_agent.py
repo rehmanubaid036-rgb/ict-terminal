@@ -19,6 +19,10 @@ USERS = {
 class Auth(AuthClient):
     def __init__(self):
         super().__init__(panel_url="http://x", secret="s")
+        self.cfg = {}
+
+    def ai_config(self, email=""):
+        return dict(self.cfg)
 
     def verify(self, token="", *a, **k):
         return dict(USERS.get(token, {"status": "guest", "features": {}}))
@@ -112,3 +116,43 @@ def test_llm_client_openai_compatible():
     assert "Roman Urdu" in kw["json"]["messages"][0]["content"] and "facts" in kw["json"]["messages"][1]["content"]
     assert LLM(base_url="", api_key="", model="").rephrase("q", "f") is None           # disabled
     assert LLM(base_url="http://x", api_key="k", model="m", session=_S(_R({}, 500))).rephrase("q", "f") is None
+
+
+def test_llm_client_anthropic():
+    s = _S(_R({"content": [{"type": "text", "text": " Claude answer. "}]}))
+    llm = LLM.from_config({"provider": "anthropic", "api_key": "sk-ant-x", "model": ""}, session=s)
+    assert llm.model.startswith("claude-") and llm.rephrase("q", "facts") == "Claude answer."
+    url, kw = s.sent
+    assert url == "https://api.anthropic.com/v1/messages"
+    assert kw["headers"]["x-api-key"] == "sk-ant-x" and "anthropic-version" in kw["headers"]
+    assert "FACTS" in kw["json"]["system"] or "facts" in kw["json"]["messages"][0]["content"]
+    assert LLM.from_config({"provider": "none", "api_key": "k"}) is None
+    assert LLM.from_config({"provider": "gemini", "api_key": ""}) is None
+    g = LLM.from_config({"provider": "gemini", "api_key": "k"})
+    assert "generativelanguage" in g.base_url and g.model == "gemini-2.0-flash"
+
+
+def test_site_and_own_keys(gold, tmp_path, monkeypatch):
+    """The admin panel's model words the answers within the plan limit; the user's own key has no limit."""
+    import ictapi.main as m
+    from ictengine.store import Store
+    used = []
+
+    class Tagged(FakeLLM):
+        def __init__(self, tag):
+            super().__init__(reply=f"by {tag}")
+            self.provider = tag
+
+    monkeypatch.setattr(m.LLM, "from_config", staticmethod(lambda cfg, session=None: Tagged(cfg["provider"]) if cfg else None))
+    auth = Auth()
+    c = TestClient(create_app(FrameProvider({"AXI:XAUUSD": gold}), Store(tmp_path / "b.db"), auth=auth,
+                              require_auth=True, llm=LLM(base_url="", api_key="", model="")))
+    auth.cfg = {"site": {"provider": "openai", "api_key": "k"}, "user": None}
+    r = ask(c, "pro", "levels").json()
+    assert r["llm"] and r["text"] == "by openai" and r["llm_by"] == "openai"
+    ask(c, "pro", "fvg")
+    assert ask(c, "pro", "levels").json()["llm"] is False          # the site model counts against the plan (2 a day)
+    auth.cfg = {"site": {"provider": "openai", "api_key": "k"}, "user": {"provider": "anthropic", "api_key": "u"}}
+    r = ask(c, "pro", "levels").json()
+    assert r["llm"] and r["llm_by"] == "anthropic"                   # own key: no daily limit
+    assert ask(c, "free", "levels").json()["llm_by"] == "anthropic"  # even on a plan without AI messages

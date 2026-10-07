@@ -1540,3 +1540,44 @@ class SignalAlertTests(TestCase):
                                                                      "min_grade": "A+"}), content_type="application/json", headers=h).json()
         self.assertEqual((ok_["settings"]["whatsapp_number"], ok_["settings"]["models"], ok_["settings"]["min_grade"]),
                          ("923007654321", "M1,M5", "A+"))
+
+
+@override_settings(INTERNAL_API_SECRET=SECRET)
+class AIAssistantSettingsTests(TestCase):
+    """The site's AI model and a user's own key for the chart assistant."""
+
+    def setUp(self):
+        cache.clear()
+        User.objects.create_user("ai@example.com", "ai@example.com", PASSWORD)
+        r = self.client.post("/api/v1/auth/login", json.dumps({"email": "ai@example.com", "password": PASSWORD,
+                                                               "device_id": "d1", "platform": "web"}), content_type="application/json")
+        self.h = {"Authorization": "Bearer " + r.json()["token"], "X-Device-Id": "d1", "X-Device-Platform": "web"}
+
+    def internal(self, email="", key=SECRET):
+        return self.client.post("/api/v1/internal/ai", json.dumps({"email": email}), content_type="application/json",
+                                headers={"X-Service-Key": key})
+
+    def test_own_key_is_saved_never_shown_and_reaches_the_api(self):
+        g = self.client.get("/api/v1/ai/settings", headers=self.h).json()["settings"]
+        self.assertEqual((g["enabled"], g["has_key"]), (False, False))
+        self.assertIn("anthropic", [p["id"] for p in g["providers"]])
+        bad = self.client.post("/api/v1/ai/settings", json.dumps({"provider": "nope"}), content_type="application/json", headers=self.h)
+        self.assertEqual(bad.status_code, 400)
+        r = self.client.post("/api/v1/ai/settings", json.dumps({"provider": "anthropic", "api_key": "sk-ant-abcdef123456",
+                                                                "enabled": True}), content_type="application/json", headers=self.h).json()
+        self.assertEqual((r["settings"]["enabled"], r["settings"]["has_key"]), (True, True))
+        self.assertNotIn("sk-ant", json.dumps(r))                                 # the key never comes back
+        cfg = self.internal("AI@example.com").json()
+        self.assertEqual(cfg["user"], {"provider": "anthropic", "model": "", "api_key": "sk-ant-abcdef123456"})
+        self.assertIsNone(cfg["site"])
+        # turning it off (or clearing the key) stops it
+        self.client.post("/api/v1/ai/settings", json.dumps({"enabled": False}), content_type="application/json", headers=self.h)
+        self.assertIsNone(self.internal("ai@example.com").json()["user"])
+
+    def test_site_model_and_internal_guard(self):
+        s = SiteSettings.load()
+        s.ai_provider, s.ai_model, s.ai_api_key = "gemini", "", "site-key-1234567"
+        s.save()
+        self.assertEqual(self.internal().json()["site"], {"provider": "gemini", "model": "", "api_key": "site-key-1234567"})
+        self.assertEqual(self.internal(key="wrong").status_code, 403)
+        self.assertEqual(self.client.get("/api/v1/ai/settings").status_code, 401)

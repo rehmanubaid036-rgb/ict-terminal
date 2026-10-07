@@ -47,6 +47,7 @@ FORWARD = {
     ("GET", "community/status"), ("POST", "community/join"), ("GET", "community/messages"), ("POST", "community/messages"),
     ("GET", "community/ideas"), ("POST", "community/ideas"),
     ("GET", "alerts/settings"), ("POST", "alerts/settings"), ("POST", "alerts/test"),
+    ("GET", "ai/settings"), ("POST", "ai/settings"),
 }
 # a customer's own crypto order: status, cancel, transaction hash (the panel checks ownership)
 FORWARD_PATTERNS = [("GET", re.compile(r"payments/crypto/order/\d+")),
@@ -726,10 +727,15 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
         ans = assistant_ask(ctx, question, sigs, lang)
         out = {**ans.to_dict(), "symbol": i.ticker, "llm": False}
         user = a.get("email") or a.get("user") or "?"
-        if llm.enabled and ans.intent != "unknown" and store.use_agent(user, int(f.get("ai_messages_per_day") or 0)):
-            better = await run_in_threadpool(llm.rephrase, question, ans.text, lang)
-            if better:
-                out.update(text=better, llm=True, facts=ans.text)
+        if ans.intent != "unknown":
+            # the user's own key (no plan limit), else the site's model from the admin panel, else api/.env
+            cfg = await run_in_threadpool(auth.ai_config, a.get("email") or "") if require_auth else {}
+            own = LLM.from_config(cfg.get("user"))
+            model = own or LLM.from_config(cfg.get("site")) or (llm if llm.enabled else None)
+            if model is not None and (own is not None or store.use_agent(user, int(f.get("ai_messages_per_day") or 0))):
+                better = await run_in_threadpool(model.rephrase, question, ans.text, lang)
+                if better:
+                    out.update(text=better, llm=True, facts=ans.text, llm_by=model.provider)
         return out
 
     # ---- ICT Bridge EA ------------------------------------------------------------------------

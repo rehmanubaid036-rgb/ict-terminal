@@ -677,6 +677,27 @@ def internal_ea(request):
 
 
 @method("POST")
+def internal_ai(request):
+    """The AI settings the chart assistant needs: the site's provider / model / key and, for the given
+    user, their own key when they turned it on."""
+    if not is_internal(request):
+        return error("Forbidden.", 403)
+    from django.contrib.auth import get_user_model
+    from .models import AIPrefs
+    site = SiteSettings.load()
+    out = {"site": None, "user": None}
+    if site.ai_provider != "none" and site.ai_api_key:
+        out["site"] = {"provider": site.ai_provider, "model": site.ai_model, "api_key": site.ai_api_key}
+    email = str(body(request).get("email", "")).strip()
+    if email:
+        u = get_user_model().objects.filter(email__iexact=email).first()
+        p = AIPrefs.objects.filter(user=u, enabled=True).exclude(api_key="").first() if u else None
+        if p:
+            out["user"] = {"provider": p.provider, "model": p.model, "api_key": p.api_key}
+    return ok(**out)
+
+
+@method("POST")
 def internal_verify(request):
     """Checks a login token on api_server requests (api_server caches the answer)."""
     if not is_internal(request):
@@ -756,6 +777,33 @@ def alert_settings(request):
             return error(str(e))
         return ok(settings=alerts.prefs_dict(p))
     return ok(settings=alerts.prefs_dict(AlertPrefs.objects.filter(user=user).first()))
+
+
+@method("GET", "POST")
+@token_required
+def ai_settings(request):
+    """The user's own AI key for the chart assistant. The key itself is never sent back."""
+    from .models import AI_PROVIDERS, AIPrefs
+    user = request.api_token.user
+    p = AIPrefs.objects.filter(user=user).first()
+    if request.method == "POST":
+        data = body(request)
+        p = p or AIPrefs(user=user)
+        provider = str(data.get("provider", p.provider))
+        if provider not in {k for k, _ in AI_PROVIDERS} or provider == "none":
+            return error("Choose a provider.")
+        p.provider = provider
+        p.model = str(data.get("model", p.model) or "").strip()[:80]
+        if "api_key" in data:
+            key = str(data.get("api_key") or "").strip()
+            if key and (len(key) < 12 or len(key) > 300 or any(c.isspace() for c in key)):
+                return error("That does not look like an API key.")
+            p.api_key = key
+        p.enabled = bool(data.get("enabled", p.enabled)) and bool(p.api_key)
+        p.save()
+    return ok(settings={"enabled": bool(p and p.enabled), "provider": p.provider if p else "anthropic",
+                        "model": p.model if p else "", "has_key": bool(p and p.api_key),
+                        "providers": [{"id": k, "name": n} for k, n in AI_PROVIDERS if k != "none"]})
 
 
 @method("POST")

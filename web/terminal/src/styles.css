@@ -933,3 +933,9 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 /* the column header scrolls sideways with the rows and stays on top */
 .wl-rows > .wl-head { position: sticky; top: 0; z-index: 2; background: var(--panel); min-width: max-content; }
 .wl-rows > .wl-row { min-width: max-content; }
+
+/* assistant: draw an answer, own AI key */
+.msg-draw { display: block; margin-top: 6px; font-size: 12px; }
+.msg-by { display: block; margin-top: 4px; font-size: 10px; color: var(--muted); }
+.ai-key { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.ai-key .af-row input { flex: 1; min-width: 0; }

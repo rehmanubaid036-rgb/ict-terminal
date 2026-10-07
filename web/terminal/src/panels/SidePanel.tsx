@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Overlay } from 'klinecharts'
 import { useTerminal } from '../Terminal'
-import { api, errorText, type AlertSettings, type Quote, type SearchItem, type Signal } from '../api'
+import { api, errorText, type AiSettings, type AskAnswer, type AlertSettings, type Quote, type SearchItem, type Signal } from '../api'
 import { ICT_LAYERS, toolDef, INDICATORS, modelTag, SESSION_ALERTS, ICT_ALERT_EVENTS, ICT_ALERT_TFS } from '../constants'
 import { WL_COLS, type IctEvent, type WlCol } from '../state'
 import { Icon } from '../ui/icons'
 import { Empty, Switch, fmtPrice, nyTime, toast, useIsPhone } from '../ui/common'
-import { DRAWINGS, getChart, getEntry, notify, onRegistryChange, snapshot } from '../chart/registry'
+import { DRAWINGS, drawingHooks, getChart, getEntry, notify, onRegistryChange, snapshot } from '../chart/registry'
 import { JournalView, StatsView, EngineView } from './BottomPanel'
 import { CalendarPanel, NewsPanel } from './MarketPanels'
 import { TradePanel } from './Paper'
@@ -378,20 +378,62 @@ function Locked({ text }: { text: string }) {
 
 // ---- assistant --------------------------------------------------------------------------------
 const QUICK = [['Bias', 'bias'], ['Levels', 'levels'], ['Liquidity', 'liquidity'], ['FVG', 'fvg'], ['Signals', 'signals'], ['Session', 'session']]
+/** Puts the levels / liquidity / FVGs / draw of an assistant answer on the active chart as drawings
+ *  (saved with the chart, removable like any drawing). Returns how many were drawn. */
+function drawAnswer(chartId: number, ans: AskAnswer): number {
+  const chart = getChart(chartId)
+  if (!chart) return 0
+  const list = chart.getDataList()
+  const last = list[list.length - 1], from = list[Math.max(0, list.length - 60)]
+  if (!last || !from) return 0
+  const d = ans.data || {}
+  const lines: [number, string, string][] = []
+  if (d.levels) for (const [name, v] of Object.entries(d.levels as Record<string, number>)) lines.push([v, `AI · ${name}`, '#a78bfa'])
+  for (const [v, name] of (d.bsl ?? []) as [number, string][]) lines.push([v, `AI · BSL ${name}`, '#42a5f5'])
+  for (const [v, name] of (d.ssl ?? []) as [number, string][]) lines.push([v, `AI · SSL ${name}`, '#ffa726'])
+  if (typeof d.draw === 'number') lines.push([d.draw, 'AI · draw on liquidity', '#f5b301'])
+  snapshot(chartId)
+  let n = 0
+  for (const [v, text, color] of lines) {
+    if (!Number.isFinite(v)) continue
+    chart.createOverlay({ name: 'ictLiquidity', groupId: DRAWINGS, points: [{ timestamp: from.timestamp, value: v }],
+      extendData: { color, text, width: 1 }, ...drawingHooks(chartId) } as any)
+    n++
+  }
+  for (const f of (d.fvgs ?? []) as { dir: string; top: number; bottom: number }[]) {
+    chart.createOverlay({ name: 'ictFvgBox', groupId: DRAWINGS, points: [{ timestamp: from.timestamp, value: f.top }, { timestamp: last.timestamp, value: f.bottom }],
+      extendData: { color: f.dir === 'BISI' ? '#26a69a' : '#ef5350', text: `AI · ${f.dir}` }, ...drawingHooks(chartId) } as any)
+    n++
+  }
+  if (n) notify()
+  return n
+}
+const drawable = (a?: AskAnswer) => !!a && !!a.data && (Object.keys(a.data.levels ?? {}).length > 0 || (a.data.bsl ?? []).length > 0
+  || (a.data.ssl ?? []).length > 0 || (a.data.fvgs ?? []).length > 0 || typeof a.data.draw === 'number')
+
 function Assistant() {
   const t = useTerminal()
-  const [msgs, setMsgs] = useState<{ from: 'you' | 'bot'; text: string }[]>([])
+  const [msgs, setMsgs] = useState<{ from: 'you' | 'bot'; text: string; ans?: AskAnswer; drawn?: boolean }[]>([])
   const [q, setQ] = useState('')
   const [lang, setLang] = useState<'en' | 'ur'>('en')
   const [busy, setBusy] = useState(false)
+  const [ai, setAi] = useState<AiSettings | null>(null)
+  const [setup, setSetup] = useState(false)
   const end = useRef<HTMLDivElement>(null)
   useEffect(() => { end.current?.scrollIntoView({ behavior: 'smooth' }) }, [msgs, busy])
-  if (!(t.access.features.ai_messages_per_day ?? 0)) return <Locked text="The AI assistant is not part of your plan." />
+  useEffect(() => { api.aiSettings().then(r => setAi(r.settings)).catch(() => setAi(null)) }, [])
+  const planOk = (t.access.features.ai_messages_per_day ?? 0) > 0
+  if (!planOk && !ai?.enabled && !setup) return (
+    <div className="assistant">
+      <Locked text="The AI assistant is not part of your plan." />
+      <button className="btn ghost sm" onClick={() => setSetup(true)}>Use my own AI key instead</button>
+    </div>
+  )
   const ask = async (text: string) => {
     const x = text.trim()
     if (!x || busy) return
     setMsgs(m => [...m, { from: 'you', text: x }]); setQ(''); setBusy(true)
-    try { const r = await api.ask(t.active.ticker, x, lang); setMsgs(m => [...m, { from: 'bot', text: r.text }]) }
+    try { const r = await api.ask(t.active.ticker, x, lang); setMsgs(m => [...m, { from: 'bot', text: r.text, ans: r }]) }
     catch (e) { setMsgs(m => [...m, { from: 'bot', text: errorText(e) }]) }
     finally { setBusy(false) }
   }
@@ -400,10 +442,22 @@ function Assistant() {
       <div className="quick">
         {QUICK.map(([l, k]) => <button key={k} disabled={busy} onClick={() => void ask(k)}>{l}</button>)}
         <button className={`lang${lang === 'ur' ? ' on' : ''}`} onClick={() => setLang(l => (l === 'en' ? 'ur' : 'en'))} title="English / Roman Urdu">{lang === 'en' ? 'EN' : 'UR'}</button>
+        <button className={`lang${setup ? ' on' : ''}`} title="AI model settings (your own key)" onClick={() => setSetup(s => !s)}>⚙</button>
       </div>
+      {setup && <AiKeyForm ai={ai} onSaved={s => { setAi(s); setSetup(false) }} />}
       <div className="messages">
-        {!msgs.length && <Empty>Ask about {t.active.ticker.split(':')[1]}: bias, levels, liquidity, FVGs, setups or the session. Answers come from the engine's data.</Empty>}
-        {msgs.map((m, i) => <div key={i} className={`msg ${m.from}`}>{m.text}</div>)}
+        {!msgs.length && <Empty>Ask about {t.active.ticker.split(':')[1]}: bias, levels, liquidity, FVGs, setups or the session. Answers come from the engine's data{ai?.enabled ? ' (worded by your own AI key)' : ''}.</Empty>}
+        {msgs.map((m, i) => (
+          <div key={i} className={`msg ${m.from}`}>{m.text}
+            {m.from === 'bot' && drawable(m.ans) && (
+              <button className="link msg-draw" disabled={m.drawn} onClick={() => {
+                const n = drawAnswer(t.active.id, m.ans!)
+                if (n) { setMsgs(list => list.map((x, k) => (k === i ? { ...x, drawn: true } : x))); toast(`${n} drawing${n > 1 ? 's' : ''} added to the chart (remove them like any drawing).`) }
+              }}>{m.drawn ? '✓ On the chart' : '✎ Draw on chart'}</button>
+            )}
+            {m.from === 'bot' && m.ans?.llm && <small className="msg-by">worded by {m.ans.llm_by ?? 'AI'}</small>}
+          </div>
+        ))}
         {busy && <div className="msg bot typing"><i /><i /><i /></div>}
         <div ref={end} />
       </div>
@@ -411,6 +465,35 @@ function Assistant() {
         <input value={q} maxLength={300} placeholder={lang === 'ur' ? 'Sawal likhein…' : 'Ask about this chart…'} onChange={e => setQ(e.target.value)} />
         <button className="btn primary" disabled={busy || !q.trim()}>Ask</button>
       </form>
+    </div>
+  )
+}
+
+/** The user's own AI key: Claude, OpenAI, Gemini, OpenRouter or Groq. The key is never shown again. */
+function AiKeyForm({ ai, onSaved }: { ai: AiSettings | null; onSaved: (s: AiSettings) => void }) {
+  const [provider, setProvider] = useState(ai?.provider ?? 'anthropic')
+  const [model, setModel] = useState(ai?.model ?? '')
+  const [key, setKey] = useState('')
+  const [on, setOn] = useState(ai?.has_key ? ai.enabled : true)   // a first key is meant to be used
+  const [err, setErr] = useState('')
+  const providers = ai?.providers ?? [{ id: 'anthropic', name: 'Anthropic Claude' }, { id: 'openai', name: 'OpenAI' }, { id: 'gemini', name: 'Google Gemini' }, { id: 'openrouter', name: 'OpenRouter' }, { id: 'groq', name: 'Groq' }]
+  const save = async () => {
+    setErr('')
+    try { onSaved((await api.saveAiSettings({ provider, model: model.trim(), enabled: on, ...(key.trim() ? { api_key: key.trim() } : {}) })).settings) }
+    catch (e) { setErr(errorText(e)) }
+  }
+  return (
+    <div className="ai-key">
+      <div className="note">Your own key words the answers with that model (no daily limit). The answers still come only from the engine's data.</div>
+      <div className="af-row">
+        <select value={provider} onChange={e => setProvider(e.target.value)}>{providers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
+        <input value={model} placeholder="Model (empty = default)" onChange={e => setModel(e.target.value)} />
+      </div>
+      <input type="password" autoComplete="off" value={key} placeholder={ai?.has_key ? 'Key saved — type to replace' : 'API key'} onChange={e => setKey(e.target.value)} />
+      <label className="mini-check"><input type="checkbox" checked={on} onChange={e => setOn(e.target.checked)} /> Use my key</label>
+      {err && <div className="err-line">{err}</div>}
+      <div className="af-row"><button className="btn primary sm" onClick={() => void save()}>Save</button>
+        {ai?.has_key && <button className="btn ghost sm" onClick={() => { setKey(''); void api.saveAiSettings({ provider, api_key: '', enabled: false }).then(r => onSaved(r.settings)) }}>Remove key</button>}</div>
     </div>
   )
 }

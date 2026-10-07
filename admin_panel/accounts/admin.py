@@ -10,7 +10,7 @@ from django.utils import timezone
 from django.utils.html import format_html, format_html_join
 
 from .models import (Ad, ApiToken, ChatMessage, ChatProfile, ChatReport, CryptoOrder, CryptoTransfer, CryptoWallet, CryptoWalletChange, CustomerProfile, Device, DeviceClaim, EaConnection, LoginEvent, Payment, PaymentMethod,
-                     AlertDelivery, AlertPrefs, Idea, IdeaComment, Plan, SiteSettings, SocialAccount, Subscription, TrialGrant)
+                     AIPrefs, AlertDelivery, AlertPrefs, Idea, IdeaComment, Plan, SiteSettings, SocialAccount, Subscription, TrialGrant)
 from . import services
 from .services import active_subscriptions
 
@@ -37,7 +37,7 @@ class SiteSettingsAdmin(admin.ModelAdmin):
     filter_horizontal = ("signup_plans",)
 
     def formfield_for_dbfield(self, db_field, request, **kwargs):
-        if db_field.name == "whatsapp_token":
+        if db_field.name in ("whatsapp_token", "ai_api_key"):
             from django import forms
             kwargs["widget"] = forms.PasswordInput(render_value=True)
         return super().formfield_for_dbfield(db_field, request, **kwargs)
@@ -75,6 +75,10 @@ class SiteSettingsAdmin(admin.ModelAdmin):
                                       "phone numbers or emails are blocked by themselves; 3 blocked messages mute "
                                       "the account for 30 minutes; 3 reports hide a message. Moderate under "
                                       "Community messages / members."}),
+        ("AI chart assistant", {
+            "fields": (("ai_provider", "ai_model"), "ai_api_key"),
+            "description": "Optional. The assistant always answers from the engine's data; with a provider and key the "
+                           "answer is reworded by that model. Users may also add their own key in the terminal (AI tab)."}),
         ("WhatsApp signal alerts", {
             "fields": ("whatsapp_alerts_enabled", "whatsapp_phone_number_id", "whatsapp_token",
                        ("whatsapp_template", "whatsapp_template_lang")),
@@ -932,6 +936,23 @@ class AlertDeliveryAdmin(admin.ModelAdmin):
     list_filter = ("ok", "channel")
     search_fields = ("user__email", "text")
     readonly_fields = ("user", "signal_key", "channel", "ok", "error", "text", "created_at")
+
+    def has_add_permission(self, request):
+        return False
+
+
+@admin.register(AIPrefs)
+class AIPrefsAdmin(admin.ModelAdmin):
+    """Users' own AI keys: the key itself is never shown."""
+    list_display = ("user", "provider", "model", "enabled", "has_key", "updated_at")
+    list_filter = ("enabled", "provider")
+    search_fields = ("user__email",)
+    fields = ("user", "enabled", "provider", "model", "has_key", "updated_at")
+    readonly_fields = ("user", "provider", "model", "has_key", "updated_at")
+
+    @admin.display(boolean=True, description="Key set")
+    def has_key(self, obj):
+        return bool(obj.api_key)
 
     def has_add_permission(self, request):
         return False
