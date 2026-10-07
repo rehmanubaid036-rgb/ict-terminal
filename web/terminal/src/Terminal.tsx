@@ -40,6 +40,7 @@ registerMoreTools()
 registerVolumeProfiles()
 registerChartTypes()
 
+export interface ReplayState { on: boolean; playing: boolean; speed: number; sync: boolean; t: number; charts: number[] }
 export interface TerminalApi {
   access: Access
   state: TerminalState
@@ -91,11 +92,13 @@ export interface TerminalApi {
   setBottomOpen: (v: boolean) => void
   openAccount: (tab?: string) => void
   screenshot: () => void
-  replay: { on: boolean; playing: boolean; speed: number }
-  startReplay: () => void
+  replay: ReplayState
+  /** Starts bar replay at `at` (ms; default: the middle of the active chart's view). */
+  startReplay: (at?: number) => void
   stopReplay: () => void
-  setReplay: (r: Partial<{ playing: boolean; speed: number }>) => void
+  setReplay: (r: Partial<{ playing: boolean; speed: number; sync: boolean }>) => void
   stepReplay: () => void
+  backReplay: () => void
   maxCharts: number
   allowed: (model: string) => boolean
   logout: () => void
@@ -138,7 +141,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
   const [bottomOpen, setBottomOpen] = useState(false)
   const [account, setAccount] = useState<string | null>(null)
   const [menu, setMenu] = useState<{ x: number; y: number; axis?: boolean } | null>(null)
-  const [replay, setReplayState] = useState({ on: false, playing: false, speed: 1 })
+  const [replay, setReplayState] = useState<ReplayState>({ on: false, playing: false, speed: 1, sync: true, t: 0, charts: [] })
   const [maximized, setMaximized] = useState(false)
   const [settingsTab, setSettingsTab] = useState<SettingsTab | null>(null)
   const [cursor, setCursorState] = useState<CursorKind>(() => (['cross', 'dot', 'arrow'].includes(localStorage.getItem('ict.cursor') ?? '') ? localStorage.getItem('ict.cursor') as CursorKind : 'cross'))
@@ -502,36 +505,66 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
   }, [ready])
 
   // ---- replay ---------------------------------------------------------------------------------
+  // One clock for every replaying chart (ms): each shows the bars that closed by then. The chart the
+  // replay started on sets the step (its interval); 'sync' replays every chart on the screen.
   const playTimer = useRef(0)
-  const startReplay = () => {
+  const replayRef = useRef(replay)
+  replayRef.current = replay
+  const replayFeeds = (ids: number[]) => ids.map(id => getEntry(id)).filter((e): e is NonNullable<typeof e> => !!e)
+  const startReplay = async (at?: number) => {
     const e = getEntry(active.id)
     if (!e) return
-    const list = e.chart.getDataList()
-    if (list.length < 50) { toast('Not enough bars loaded for replay.', 'info'); return }
-    const range = e.chart.getVisibleRange()
-    e.feed.startReplay(Math.max(30, Math.min(range.to - 1, list.length - 1) - Math.floor((range.to - range.from) / 2)))
-    e.chart.resetData()
-    setReplayState({ on: true, playing: false, speed: 1 })
-    toast('Replay: press ▶ to play or ⏭ to step one bar. The right half of the screen is hidden.', 'info')
+    let t = at
+    if (t === undefined) {
+      const list = e.chart.getDataList()
+      if (list.length < 50) { toast('Not enough bars loaded for replay.', 'info'); return }
+      const range = e.chart.getVisibleRange()
+      const mid = Math.max(30, Math.min(range.to - 1, list.length - 1) - Math.floor((range.to - range.from) / 2))
+      t = list[mid].timestamp + e.feed.barMs
+    }
+    if (replayRef.current.on) stopReplay()
+    const sync = replayRef.current.sync
+    const ids = [active.id, ...(sync ? state.charts.slice(0, layoutCharts(state.layout)).map(c => c.id).filter(id => id !== active.id) : [])]
+    const ok = await Promise.all(replayFeeds(ids).map(async x => {
+      try { const r = await x.feed.startReplayAt(t!); x.chart.resetData(); return r } catch { return false }
+    }))
+    if (!ok[0]) { replayFeeds(ids).forEach(x => { x.feed.stopReplay(); x.chart.resetData() }); toast('No chart data that far back.', 'info'); return }
+    setReplayState(r => ({ ...r, on: true, playing: false, t: t!, charts: ids }))
+    toast('Replay: ▶ plays, ⏭ steps one bar, ⏮ goes back. Every chart on the screen follows the same clock.', 'info')
   }
   const stopReplay = () => {
     window.clearInterval(playTimer.current)
-    const e = getEntry(active.id)
-    if (e && e.feed.mode === 'replay') { e.feed.stopReplay(); e.chart.resetData() }
-    setReplayState({ on: false, playing: false, speed: 1 })
+    for (const x of replayFeeds([...new Set([...replayRef.current.charts, active.id])])) {
+      if (x.feed.mode === 'replay') { x.feed.stopReplay(); x.chart.resetData() }
+    }
+    setReplayState(r => ({ ...r, on: false, playing: false, t: 0, charts: [] }))
+  }
+  const moveClock = (t: number) => {
+    for (const x of replayFeeds(replayRef.current.charts)) {
+      if (x.feed.advanceTo(t) === 'reload') x.chart.resetData()
+    }
+    setReplayState(r => ({ ...r, t }))
+    notify()
   }
   const stepReplay = () => {
-    const e = getEntry(active.id)
-    if (e && !e.feed.step()) { window.clearInterval(playTimer.current); setReplayState(r => ({ ...r, playing: false })); toast('Replay reached the last bar.', 'info') }
-    notify()
+    const r = replayRef.current
+    const lead = getEntry(r.charts[0])
+    const next = lead?.feed.nextClose(r.t)
+    if (!lead || next == null) { window.clearInterval(playTimer.current); setReplayState(x => ({ ...x, playing: false })); toast('Replay reached the last bar.', 'info'); return }
+    moveClock(next)
+  }
+  const backReplay = () => {
+    const r = replayRef.current
+    const prev = getEntry(r.charts[0])?.feed.prevClose(r.t)
+    if (prev != null) moveClock(prev)
   }
   useEffect(() => {
     window.clearInterval(playTimer.current)
     if (replay.on && replay.playing) playTimer.current = window.setInterval(stepReplay, 1000 / replay.speed)
     return () => window.clearInterval(playTimer.current)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [replay.on, replay.playing, replay.speed, active.id])
-  useEffect(() => { if (replay.on) stopReplay() /* chart switched */ }, [state.active, state.layout]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [replay.on, replay.playing, replay.speed])
+  useEffect(() => { if (replayRef.current.on) stopReplay() /* layout changed */ }, [state.layout]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const screenshot = () => {
     const ch = getChart(active.id)
@@ -625,7 +658,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
       setSignals(m => ({ ...m, [active.id]: sig }))
     },
     crosshair, sideTab, setSideTab, bottomOpen, setBottomOpen, openAccount, screenshot,
-    replay, startReplay, stopReplay, setReplay: r => setReplayState(x => ({ ...x, ...r })), stepReplay,
+    replay, startReplay: at => void startReplay(at), stopReplay, setReplay: r => setReplayState(x => ({ ...x, ...r })), stepReplay, backReplay,
     maxCharts, allowed, logout, saveNamed, loadNamed, applyTemplate, saveTemplate, maximized, setMaximized,
   }
 

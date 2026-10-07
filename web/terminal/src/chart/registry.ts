@@ -15,6 +15,7 @@ interface Entry {
   feed: Feed
   selected: string | null
   tf?: string           // the chart's interval label: drawings limited to some intervals hide on the others
+  menuTime?: number     // time (ms) of the bar under the last right-click (Bar replay from here)
   undo: Drawing[][]     // snapshots before each change
   redo: Drawing[][]
 }

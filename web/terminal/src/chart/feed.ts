@@ -197,12 +197,63 @@ export class Feed {
   }
 
   // ---- replay ----------------------------------------------------------------------------
+  // Replay runs on a clock (ms): a chart shows every bar that has CLOSED by then, so charts of any
+  // interval can replay together without showing the future (a 1H bar appears when its hour ends).
+  get barMs() { return (this.tf?.seconds ?? 60) * 1000 }
+  private closedBy(t: number) {
+    let n = 0
+    while (n < this.replayBars.length && this.replayBars[n].timestamp + this.barMs <= t) n++
+    return n
+  }
+
   /** Starts replay at bar `index` of the loaded data (the chart then shows bars [0, index)). */
   startReplay(index: number) {
     this.replayBars = [...this.raw]
     this.replayIndex = Math.max(20, Math.min(index, this.replayBars.length - 1))
     this.mode = 'replay'
     window.clearInterval(this.timer)
+  }
+
+  /** Starts replay at clock `t` (ms): loads history around it when the chart does not have it.
+   *  Returns false when there is no data before that time. */
+  async startReplayAt(t: number): Promise<boolean> {
+    if (!this.tf || !this.ticker) return false
+    const sec = this.tf.seconds
+    const have = this.raw.length > 0 && this.raw[0].timestamp + 30 * sec * 1000 <= t
+    let bars = this.raw
+    if (!have) {
+      const to = Math.min(Math.floor(Date.now() / 1000) + sec, Math.floor(t / 1000) + 1500 * sec)
+      bars = await this.fetch(to, 2000)
+    }
+    this.replayBars = [...bars]
+    this.mode = 'replay'
+    window.clearInterval(this.timer)
+    this.replayIndex = this.closedBy(t)
+    return this.replayIndex > 0
+  }
+
+  /** Moves the clock to `t`; forward adds the bars that closed (no reload), back needs resetData(). */
+  advanceTo(t: number): 'same' | 'added' | 'reload' {
+    if (this.mode !== 'replay') return 'same'
+    const n = this.closedBy(t)
+    if (n === this.replayIndex) return 'same'
+    if (n < this.replayIndex || this.priceBars || this.heikin) { this.replayIndex = n; return 'reload' }
+    while (this.replayIndex < n) {
+      this.replayIndex++
+      this.onBar?.(this.replayBars[this.replayIndex - 1])
+    }
+    return 'added'
+  }
+
+  /** Clock time of the next bar close after `t`, or null at the end of the data. */
+  nextClose(t: number): number | null {
+    const i = this.closedBy(t)
+    return i < this.replayBars.length ? this.replayBars[i].timestamp + this.barMs : null
+  }
+  /** Clock time of the previous bar close before `t`. */
+  prevClose(t: number): number | null {
+    const i = this.closedBy(t)
+    return i >= 2 ? this.replayBars[i - 2].timestamp + this.barMs : null
   }
 
   /** Shows the next bar; false at the end of the data. */

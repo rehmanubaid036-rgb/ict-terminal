@@ -561,6 +561,9 @@ export function ChartPanel(p: ChartPanelProps) {
         // a right-click on the price scale opens the scale menu
         const r = e.currentTarget.getBoundingClientRect(), ax = chartRef.current?.getSize('candle_pane', 'yAxis')
         const x = e.clientX - r.left, y = e.clientY - r.top
+        const at = chartRef.current?.convertFromPixel([{ x, y }], { paneId: 'candle_pane' }) as Array<{ timestamp?: number }> | undefined
+        const en = getEntry(conf.id)
+        if (en) en.menuTime = at?.[0]?.timestamp
         p.onMenu(e.clientX, e.clientY, !!ax && x >= ax.left && x <= ax.left + ax.width && y >= ax.top && y <= ax.top + ax.height)
       }}>
       <div className="chart-tags">

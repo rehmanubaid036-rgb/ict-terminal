@@ -982,3 +982,10 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 .dd-tpl-row .grow-btn { display: flex; align-items: center; gap: 8px; }
 .dd-tpl-row .grow-btn i { display: inline-block; width: 22px; border-radius: 2px; }
 .dd-tpl-menu .link { text-align: left; }
+
+/* replay: start time, sync */
+.replay-start { display: inline-flex; gap: 4px; align-items: center; }
+.replay-start input { padding: 3px 6px; font-size: 12px; max-width: 170px; }
+@media (max-width: 760px) { .replay-start input { max-width: 140px; } }
+.flip-x { display: inline-flex; transform: scaleX(-1); }
+.replay-bar { flex-wrap: wrap; }

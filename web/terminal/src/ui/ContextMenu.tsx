@@ -76,7 +76,8 @@ export function ContextMenu({ x, y, axis, onClose }: { x: number; y: number; axi
       <button onClick={run(() => t.openSettings())}>Settings…</button>
       <button onClick={run(reopenAll)}>Show closed model trades again</button>
       <button onClick={run(t.screenshot)}>Save a picture of the chart</button>
-      <button onClick={run(() => (t.replay.on ? t.stopReplay() : t.startReplay()))}>{t.replay.on ? 'Stop replay' : 'Bar replay from here'}</button>
+      <button onClick={run(() => { const at = getEntry(a.id)?.menuTime; const en = getEntry(a.id); t.startReplay(at && en ? at + en.feed.barMs : undefined) })}>Bar replay from this bar</button>
+      {t.replay.on && <button onClick={run(t.stopReplay)}>Stop replay</button>}
       <button onClick={run(() => t.setSideTab('objects'))}>Object tree…</button>
       <button className="danger" onClick={run(() => { if (window.confirm('Remove all drawings on this chart?')) removeAll(a.id) })}>Remove all drawings</button>
     </div>,
