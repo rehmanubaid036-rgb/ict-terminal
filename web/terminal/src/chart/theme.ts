@@ -3,7 +3,7 @@ import { DEFAULT_SETTINGS, dash, klineStyle, type ChartSettings } from './settin
 
 export type Theme = 'dark' | 'light'
 
-const FONT = 'Inter, -apple-system, "Segoe UI", Roboto, sans-serif'
+export const FONT = 'Inter, -apple-system, "Segoe UI", Roboto, sans-serif'
 
 export function chartStyles(theme: Theme, chartType: string, s: ChartSettings = DEFAULT_SETTINGS): DeepPartial<Styles> {
   const dark = theme === 'dark'

@@ -6,7 +6,8 @@ import { timeframeByLabel, indicatorDef, DRAW_COLORS, ONE_MINUTE_MODELS, modelTa
 import type { ChartConf, PriceAlert } from '../state'
 import { Feed } from './feed'
 import { engineOverlays, signalBoxes, signalLines, biasOf, type Bias, type DrawStyle } from './overlays'
-import { chartStyles, chartCssBackground, type Theme } from './theme'
+import { chartStyles, chartCssBackground, FONT, type Theme } from './theme'
+import { openIntervalBox, openSymbolSearch } from '../hotkeys'
 import type { ChartSettings } from './settings'
 import { EVENTS, loadCalendar, relTime, eventAt } from './events'
 import { closeSignal, isClosed } from './closed'
@@ -325,6 +326,16 @@ export function ChartPanel(p: ChartPanelProps) {
   const now = Date.now()
   const next = st.latestNews ? events.find(e => e.time * 1000 > now - 15 * 60_000) : undefined
   const symName = conf.ticker.includes(':') ? conf.ticker.split(':')[1] : conf.ticker
+  // click targets over the chart's title (drawn on the canvas): the symbol opens the search, the interval the interval box
+  const titleSize = (p.compact ? 11 : st.textSize + 2)
+  const measure = (text: string) => {
+    const c = (measure as any).ctx ?? ((measure as any).ctx = document.createElement('canvas').getContext('2d'))
+    if (!c) return text.length * titleSize * 0.6
+    c.font = `600 ${titleSize}px ${FONT}`
+    return c.measureText(text).width
+  }
+  const symW = measure(symName), tfX = measure(`${symName} · `), tfW = measure(tf.label)
+  const pick = (fn: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); p.onActivate(); window.setTimeout(fn, 0) }
   return (
     <div className={`chart-panel cursor-${p.cursor}${p.active ? ' active' : ''}${p.hidden ? ' hidden' : ''}`}
       onMouseDown={p.onActivate} onTouchStart={p.onActivate}
@@ -352,6 +363,12 @@ export function ChartPanel(p: ChartPanelProps) {
         {next && <span className={`news-tag ${next.impact.toLowerCase()}`} title={new Date(next.time * 1000).toLocaleString()}>📅 {next.currency} {next.title} {relTime(next.time, now)}</span>}
       </div>
       {p.showClose && <button className="chart-close" title="Close this chart" onMouseDown={e => e.stopPropagation()} onClick={p.onClose}>✕</button>}
+      {st.title && <>
+        <button className="title-hit" title="Change symbol" style={{ left: 8, top: 4, width: symW + 6, height: titleSize + 6 }}
+          onMouseDown={e => e.stopPropagation()} onClick={pick(() => openSymbolSearch(''))} aria-label={`Change symbol (${symName})`} />
+        {st.titleMode !== 'ticker' && <button className="title-hit" title="Change interval" style={{ left: 10 + tfX - 3, top: 4, width: tfW + 6, height: titleSize + 6 }}
+          onMouseDown={e => e.stopPropagation()} onClick={pick(() => openIntervalBox(''))} aria-label={`Change interval (${tf.label})`} />}
+      </>}
       {st.watermark && <div className="chart-watermark">{symName}<small>{tf.label}</small></div>}
       <div ref={box} className="chart-canvas" />
       {pop && <SignalPop {...pop} onClose={() => setPop(null)} onShow={() => { p.onSignal(pop.s); setPop(null) }}
