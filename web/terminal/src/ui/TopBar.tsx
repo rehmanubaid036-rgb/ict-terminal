@@ -3,11 +3,12 @@ import { useTerminal } from '../Terminal'
 import { api, type SearchItem } from '../api'
 import { CHART_TYPES, FAVORITE_TFS, INDICATORS, LAYOUTS, TIMEFRAMES, parseTimeframe, timeframeByLabel, type LayoutId, WOLF_MODELS } from '../constants'
 import { IctPanel, ModelSection } from '../panels/IctPanel'
+import { COMPARE_COLORS, SMT_PARTNER } from '../chart/compare'
 import { Icon } from './icons'
 import { Modal, Popover, Switch, toast, useIsPhone } from './common'
 import { getEntry, undo, redo } from '../chart/registry'
 
-type Menu = 'tf' | 'type' | 'ict' | 'wolf' | 'layout' | 'more' | null
+type Menu = 'tf' | 'type' | 'ict' | 'wolf' | 'compare' | 'layout' | 'more' | null
 
 export function TopBar() {
   const t = useTerminal()
@@ -17,7 +18,7 @@ export function TopBar() {
   const [interval, setInterval] = useState<string | null>(null)
   const [indicators, setIndicators] = useState(false)
   const refs = { tf: useRef<HTMLButtonElement>(null), type: useRef<HTMLButtonElement>(null), ict: useRef<HTMLButtonElement>(null),
-    wolf: useRef<HTMLButtonElement>(null), layout: useRef<HTMLButtonElement>(null), more: useRef<HTMLButtonElement>(null) }
+    wolf: useRef<HTMLButtonElement>(null), compare: useRef<HTMLButtonElement>(null), layout: useRef<HTMLButtonElement>(null), more: useRef<HTMLButtonElement>(null) }
   const a = t.active
   const tf = timeframeByLabel(a.tf)
   const ictModels = a.models.filter(m => !WOLF_MODELS.has(m)), wolfModels = a.models.filter(m => WOLF_MODELS.has(m))
@@ -50,6 +51,7 @@ export function TopBar() {
       <span className="divider" />
       <button ref={refs.type} className="tb-btn" title="Chart type" onClick={() => toggle('type')}><Icon name="candles" /></button>
       <button className="tb-btn text" title="Indicators" onClick={() => setIndicators(true)}><Icon name="indicators" /><span>Indicators</span></button>
+      <button ref={refs.compare} className={`tb-btn text${a.compare?.length ? ' lit' : ''}`} title="Compare symbols (SMT)" onClick={() => toggle('compare')}><Icon name="plus" /><span>Compare</span>{a.compare?.length ? <em>{a.compare.length}</em> : null}</button>
       <button ref={refs.ict} className={`tb-btn text${a.ict.length + ictModels.length ? ' lit' : ''}${menu === 'ict' ? ' on' : ''}`} title="ICT: indicators and models, one click on / off" onClick={() => toggle('ict')}><Icon name="ict" /><span>ICT</span>{a.ict.length + ictModels.length > 0 && <em>{a.ict.length + ictModels.length}</em>}</button>
       <button ref={refs.wolf} className={`tb-btn text wolf-btn${wolfModels.length ? ' lit' : ''}`} title="Wolf Models: your custom models" onClick={() => toggle('wolf')}><Icon name="target" /><span>Wolf Models</span>{wolfModels.length > 0 && <em>{wolfModels.length}</em>}</button>
       <button className="tb-btn text" title="Community: ideas and chat" onClick={t.openCommunity}><Icon name="community" /><span>Community</span></button>
@@ -92,6 +94,7 @@ export function TopBar() {
           <IctPanel onDone={close} />
         </Popover>
       )}
+      {menu === 'compare' && <ComparePanel anchor={refs.compare} onClose={close} />}
       {menu === 'wolf' && (
         <Popover anchor={refs.wolf} onClose={close} className="menu-panel" align="right" title="Wolf Models">
           <ModelSection title="Your custom models" wolf />
@@ -271,5 +274,39 @@ function IndicatorsDialog({ onClose }: { onClose: () => void }) {
       </div>
       <p className="note">Tip: open the ICT menu for the engine's ICT concept indicators.</p>
     </Modal>
+  )
+}
+
+/** Compare symbols on the active chart: search, the SMT partner in one click, remove. */
+function ComparePanel({ anchor, onClose }: { anchor: React.RefObject<HTMLButtonElement | null>; onClose: () => void }) {
+  const t = useTerminal()
+  const a = t.active
+  const list = a.compare ?? []
+  const [q, setQ] = useState('')
+  const [found, setFound] = useState<SearchItem[]>([])
+  useEffect(() => {
+    if (!q.trim()) { setFound([]); return }
+    const id = window.setTimeout(() => api.search(q.trim(), 12).then(setFound).catch(() => setFound([])), 150)
+    return () => window.clearTimeout(id)
+  }, [q])
+  const feed = a.ticker.split(':')[0], sym = a.ticker.split(':')[1] ?? a.ticker
+  const partner = SMT_PARTNER[sym]
+  const add = (ticker: string) => {
+    if (ticker === a.ticker || list.includes(ticker) || list.length >= 4) return
+    t.updateActive({ compare: [...list, ticker] })
+    setQ('')
+  }
+  return (
+    <Popover anchor={anchor} onClose={onClose} className="menu-panel narrow cmp-panel" title="Compare">
+      <div className="menu-head"><span>Other symbols on this chart, rebased to its price: SMT at a glance</span></div>
+      {partner && !list.some(x => x.endsWith(':' + partner)) && <button className="btn ghost sm" onClick={() => add(`${feed}:${partner}`)}>+ SMT partner: {partner}</button>}
+      <input value={q} placeholder="Search a symbol to compare" onChange={e => setQ(e.target.value)} autoFocus />
+      {found.length > 0 && <div className="cmp-found">{found.slice(0, 8).map(s => <button key={s.symbol} onClick={() => add(s.symbol)}><b>{s.symbol.split(':')[1]}</b><span>{s.description}</span></button>)}</div>}
+      {list.map((x, i) => (
+        <div key={x} className="cmp-row"><i style={{ background: COMPARE_COLORS[i % COMPARE_COLORS.length] }} /><span>{x.split(':')[1] ?? x}</span>
+          <button className="icon-btn" title="Remove" onClick={() => t.updateActive({ compare: list.filter(y => y !== x) })}><Icon name="close" size={14} /></button></div>
+      ))}
+      {!list.length && <p className="note">Nothing compared yet (up to 4).</p>}
+    </Popover>
   )
 }

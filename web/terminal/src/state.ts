@@ -17,6 +17,7 @@ export interface ChartConf {
   models: string[]
   requireBias: boolean
   axis: AxisMode
+  compare?: string[]           // other symbols drawn on this chart (SMT)
 }
 
 export interface PriceAlert {
@@ -124,6 +125,7 @@ export function parse(data: any, maxCharts: number): { state: TerminalState; dra
       models: Array.isArray(c.models) ? c.models.filter((x: unknown) => typeof x === 'string') : def.models,
       requireBias: !!c.requireBias,
       axis: ['normal', 'logarithm', 'percentage'].includes(c.axis) ? c.axis : 'normal',
+      compare: Array.isArray(c.compare) ? c.compare.filter((x: unknown) => typeof x === 'string').slice(0, 4) : [],
     } as ChartConf
   })
   const sync: Sync = v1

@@ -9,6 +9,7 @@ import { registerIndicators } from './chart/indicators'
 import { drawingsOf, getChart, getEntry, notify, setDrawingHooks, setPending, snapshot, undo, redo, removeSelected } from './chart/registry'
 import { chartBackground, type Theme } from './chart/theme'
 import { registerEvents, loadCalendar } from './chart/events'
+import { registerCompare } from './chart/compare'
 import type { ChartSettings } from './chart/settings'
 import { ChartSettingsDialog, type SettingsTab } from './ui/ChartSettingsDialog'
 import { FavBar, type CursorKind } from './ui/FavBar'
@@ -28,6 +29,7 @@ import { useHotkeys } from './hotkeys'
 registerOverlays()
 registerIndicators()
 registerEvents()
+registerCompare()
 
 export interface TerminalApi {
   access: Access

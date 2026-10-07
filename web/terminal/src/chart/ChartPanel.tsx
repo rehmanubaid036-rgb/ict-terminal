@@ -10,6 +10,7 @@ import { chartStyles, chartCssBackground, FONT, type Theme } from './theme'
 import { openIntervalBox, openSymbolSearch } from '../hotkeys'
 import type { ChartSettings } from './settings'
 import { EVENTS, loadCalendar, relTime, eventAt } from './events'
+import { COMPARE, COMPARE_COLORS, loadCompare } from './compare'
 import { closeSignal, isClosed } from './closed'
 import type { CalendarEvent } from '../api'
 import { DRAWINGS, register, unregister, getEntry, snapshot, notify, drawingHooks, removeSelected, onRegistryChange, applyTfVisibility } from './registry'
@@ -127,7 +128,7 @@ export function ChartPanel(p: ChartPanelProps) {
     feed.onNewBar = () => refreshOverlays.current(0)
     feed.onLoaded = () => { props.current.onLoaded?.(); refreshOverlays.current(0) }
     chart.setDataLoader(feed.loader())
-    chart.createIndicator({ name: EVENTS, paneId: 'candle_pane' }, true)
+    for (const name of [EVENTS, COMPARE]) if (!chart.getIndicators({ name }).length) chart.createIndicator({ name, paneId: 'candle_pane' }, true)
     register(conf.id, chart, feed)
     const onCross = (c: unknown) => props.current.onCrosshair(conf.id, (c as Crosshair) ?? null)
     chart.subscribeAction('onCrosshairChange', onCross)
@@ -190,6 +191,35 @@ export function ChartPanel(p: ChartPanelProps) {
     chartRef.current?.overrideYAxis({ paneId: 'candle_pane', name: conf.axis, position: st.scale })
   }, [conf.axis, st.scale])
 
+  // ---- compare symbols (SMT) --------------------------------------------------------------------
+  const cmpKey = (conf.compare ?? []).join(',')
+  useEffect(() => {
+    const chart = chartRef.current
+    if (!chart) return
+    const tickers = conf.compare ?? []
+    if (!tickers.length) { chart.overrideIndicator({ name: COMPARE, paneId: 'candle_pane', extendData: { series: [] } }); return }
+    let gone = false, loadedFrom = Infinity, busy = false
+    const load = async () => {
+      const list = chart.getDataList()
+      if (!list.length || busy) return
+      busy = true
+      const from = list[0].timestamp, to = list[list.length - 1].timestamp
+      try {
+        const maps = await Promise.all(tickers.map(t => loadCompare(t, tf, from, to + tf.seconds * 1000).catch(() => ({} as Record<number, number>))))
+        if (gone) return
+        loadedFrom = from
+        chart.overrideIndicator({ name: COMPARE, paneId: 'candle_pane',
+          extendData: { series: tickers.map((t, i) => ({ ticker: t, color: COMPARE_COLORS[i % COMPARE_COLORS.length], close: maps[i] })) } })
+      } finally { busy = false }
+    }
+    const t0 = window.setTimeout(load, 600)
+    const onRange = () => { const l = chart.getDataList(); if (l.length && l[0].timestamp < loadedFrom) void load() }
+    chart.subscribeAction('onVisibleRangeChange', onRange)
+    const every = window.setInterval(load, 60_000)
+    return () => { gone = true; window.clearTimeout(t0); window.clearInterval(every); chart.unsubscribeAction('onVisibleRangeChange', onRange) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cmpKey, conf.ticker, tf.label])
+
   // ---- events layer: session breaks, economic events, alert lines --------------------------------
   useEffect(() => {
     if (!st.econEvents && !st.latestNews) { setEvents([]); return }
@@ -211,7 +241,7 @@ export function ChartPanel(p: ChartPanelProps) {
   useEffect(() => {
     const chart = chartRef.current
     if (!chart) return
-    for (const i of chart.getIndicators()) if (i.name !== EVENTS) chart.removeIndicator({ id: i.id })
+    for (const i of chart.getIndicators()) if (i.name !== EVENTS && i.name !== COMPARE) chart.removeIndicator({ id: i.id })
     for (const ind of conf.indicators) {
       const def = indicatorDef(ind.name)
       const value = { name: ind.name, ...(ind.params?.length ? { calcParams: ind.params } : {}) }
