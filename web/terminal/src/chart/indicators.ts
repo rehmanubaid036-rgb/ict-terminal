@@ -90,4 +90,64 @@ export function registerIndicators() {
       })
     },
   })
+
+  // Visible Range Volume Profile: volume by price of the bars on screen, up / down split,
+  // point of control (POC) and the 70% value area, drawn from the right edge
+  registerIndicator<unknown, number>({
+    name: 'VPVR', shortName: 'VPVR', series: 'price', figures: [], calcParams: [24, 70],
+    calc: list => list.map(() => ({})),
+    createTooltipDataSource: () => ({ name: 'VPVR', calcParamsText: '', features: [], legends: [] }),
+    draw: ({ ctx, chart, indicator, bounding, xAxis, yAxis }) => {
+      const list = chart.getDataList()
+      const r = chart.getVisibleRange()
+      const from = Math.max(0, r.from), to = Math.min(list.length, r.to)
+      if (to - from < 2) return true
+      const rows = Math.max(8, Math.min(80, Number(indicator.calcParams[0]) || 24))
+      const vaPct = Math.max(10, Math.min(95, Number(indicator.calcParams[1]) || 70)) / 100
+      let hi = -Infinity, lo = Infinity
+      for (let i = from; i < to; i++) { hi = Math.max(hi, list[i].high); lo = Math.min(lo, list[i].low) }
+      if (!(hi > lo)) return true
+      const step = (hi - lo) / rows
+      const up = new Array(rows).fill(0), dn = new Array(rows).fill(0)
+      for (let i = from; i < to; i++) {
+        const b = list[i], v = b.volume || 1
+        const a = Math.min(rows - 1, Math.floor((b.low - lo) / step)), z = Math.min(rows - 1, Math.floor((b.high - lo) / step))
+        const share = v / (z - a + 1)
+        for (let k = a; k <= z; k++) (b.close >= b.open ? up : dn)[k] += share
+      }
+      const tot = up.map((u, k) => u + dn[k])
+      const max = Math.max(...tot), sum = tot.reduce((x, y) => x + y, 0)
+      const poc = tot.indexOf(max)
+      // value area: grow from the POC toward the larger neighbour until 70% of the volume
+      let lowK = poc, highK = poc, acc = tot[poc]
+      while (acc < sum * vaPct && (lowK > 0 || highK < rows - 1)) {
+        const below = lowK > 0 ? tot[lowK - 1] : -1, above = highK < rows - 1 ? tot[highK + 1] : -1
+        if (above >= below) acc += tot[++highK]; else acc += tot[--lowK]
+      }
+      const width = bounding.width * 0.28, right = bounding.width - 2
+      ctx.save()
+      for (let k = 0; k < rows; k++) {
+        if (!tot[k]) continue
+        const y1 = yAxis.convertToPixel(lo + (k + 1) * step), y2 = yAxis.convertToPixel(lo + k * step)
+        const h = Math.max(1, y2 - y1 - 1)
+        const inVa = k >= lowK && k <= highK
+        const wu = (up[k] / max) * width, wd = (dn[k] / max) * width
+        ctx.fillStyle = inVa ? 'rgba(38,166,154,0.42)' : 'rgba(38,166,154,0.2)'
+        ctx.fillRect(right - wu - wd, y1, wu, h)
+        ctx.fillStyle = inVa ? 'rgba(239,83,80,0.42)' : 'rgba(239,83,80,0.2)'
+        ctx.fillRect(right - wd, y1, wd, h)
+      }
+      const yPoc = yAxis.convertToPixel(lo + (poc + 0.5) * step)
+      ctx.strokeStyle = '#f5a623'
+      ctx.lineWidth = 1.5
+      ctx.setLineDash([])
+      ctx.beginPath(); ctx.moveTo(xAxis.convertToPixel(from), yPoc); ctx.lineTo(right, yPoc); ctx.stroke()
+      ctx.fillStyle = '#f5a623'
+      ctx.font = '600 10px Inter, sans-serif'
+      ctx.fillText('POC', right - width - 30, yPoc - 3)
+      ctx.restore()
+      return true
+    },
+  })
 }
+

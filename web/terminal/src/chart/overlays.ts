@@ -164,6 +164,34 @@ export function registerOverlays() {
 
   // Fibonacci with the ICT levels: level 1 at the first click, 0 at the second, extensions past 0.
   const ICT_FIB = [1, 0.79, 0.705, 0.62, 0.5, 0, -0.27, -0.5, -1, -2, -2.5, -4]
+  // Anchored VWAP: click a bar, the volume-weighted average price from that bar to now
+  registerOverlay<DrawStyle>({
+    name: 'anchoredVwap', totalStep: 2, ...tool,
+    createPointFigures: ({ overlay, chart, coordinates: c }) => {
+      const t0 = overlay.points[0]?.timestamp
+      if (t0 === undefined || !c.length) return []
+      const list = chart.getDataList()
+      let i = list.findIndex(b => b.timestamp >= t0)
+      if (i < 0) return []
+      const s = st(overlay, '#f59e0b')
+      const pts: Coordinate[] = []
+      let pv = 0, vol = 0, last = 0
+      const range = chart.getVisibleRange()
+      for (; i < list.length; i++) {
+        const b = list[i], v = b.volume || 1
+        pv += ((b.high + b.low + b.close) / 3) * v
+        vol += v
+        last = pv / vol
+        if (i >= range.from - 1 && i <= range.to + 1) {
+          const p = chart.convertToPixel({ dataIndex: i, value: last }, { paneId: 'candle_pane' }) as Partial<Coordinate>
+          if (p.x !== undefined && p.y !== undefined) pts.push({ x: p.x, y: p.y })
+        }
+      }
+      const out: OverlayFigure[] = [{ type: 'line', attrs: { coordinates: pts }, styles: { color: s.color, size: s.width, style: s.dashed ? 'dashed' : 'solid', dashedValue: [4, 3] } }]
+      if (pts.length) out.push(text(pts[pts.length - 1].x + 4, pts[pts.length - 1].y, `AVWAP ${fmt(last, digits(chart))}`, s.color))
+      return out
+    },
+  })
   registerOverlay<DrawStyle>({
     name: 'fibIct', totalStep: 3, ...tool,
     createPointFigures: ({ coordinates: c, overlay, chart }) => {

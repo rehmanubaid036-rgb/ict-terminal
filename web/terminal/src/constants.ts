@@ -74,6 +74,7 @@ export const INDICATORS: IndicatorDef[] = [
   { name: 'EMA', title: 'Exponential Moving Average', overlay: true, group: 'Trend' },
   { name: 'SMA', title: 'Smoothed Moving Average', overlay: true, group: 'Trend' },
   { name: 'VWAP', title: 'VWAP (NY 18:00 session)', overlay: true, group: 'Volume' },
+  { name: 'VPVR', title: 'Volume Profile (visible range, POC, value area)', overlay: true, group: 'Volume' },
   { name: 'BOLL', title: 'Bollinger Bands', overlay: true, group: 'Volatility' },
   { name: 'DONCHIAN', title: 'Donchian Channels', overlay: true, group: 'Volatility' },
   { name: 'SUPERTREND', title: 'SuperTrend', overlay: true, group: 'Trend' },
@@ -176,6 +177,7 @@ export const TOOL_GROUPS: ToolGroup[] = [
     { id: 'longPosition', label: 'Long Position', icon: 'long' },
     { id: 'shortPosition', label: 'Short Position', icon: 'short' },
     { id: 'priceRange', label: 'Price & date range', icon: 'measure' },
+    { id: 'anchoredVwap', label: 'Anchored VWAP', icon: 'trend' },
   ] },
   { id: 'text', label: 'Annotations', tools: [
     { id: 'textLabel', label: 'Text', icon: 'text' },
