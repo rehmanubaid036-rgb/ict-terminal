@@ -693,3 +693,19 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
   .grid.phone-all .chart-panel .bias-box { display: none; }
   .chart-chips .chips-mode { color: var(--text); font-weight: 600; }
 }
+
+/* ICC Terminal window (docked right, or full screen) */
+.icc-btn b { font: 800 12px var(--font); letter-spacing: .04em; padding: 3px 7px; border-radius: 6px; color: #0a1020; background: linear-gradient(135deg, #f5a623, #fcd34d); }
+.icc-btn.on b { box-shadow: 0 0 0 2px var(--accent); }
+.icc-win { position: relative; flex: none; display: flex; flex-direction: column; min-width: 320px; background: var(--panel); border-left: 1px solid var(--line2); }
+.icc-win.full { position: fixed; inset: 0; z-index: 70; width: auto !important; border: 0; }
+.icc-split { position: absolute; left: -4px; top: 0; bottom: 0; width: 8px; cursor: col-resize; z-index: 2; touch-action: none; }
+.icc-split:hover { background: color-mix(in srgb, var(--accent) 35%, transparent); }
+.icc-head { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 8px 0 12px; border-bottom: 1px solid var(--line); font-size: 13px; font-weight: 600; }
+.icc-head .grow { flex: 1; }
+.icc-head a.icon-btn { text-decoration: none; display: grid; place-items: center; }
+.icc-badge { font: 800 11px var(--font); padding: 2px 6px; border-radius: 5px; color: #0a1020; background: linear-gradient(135deg, #f5a623, #fcd34d); }
+.icc-body { position: relative; flex: 1; min-height: 0; }
+.icc-body iframe { width: 100%; height: 100%; border: 0; display: block; background: #fff; }
+.icc-loading { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 10px; color: var(--muted); background: var(--panel); }
+@media (max-width: 760px) { .icc-win { position: fixed; inset: 0; z-index: 70; width: auto !important; } .icc-split { display: none; } }

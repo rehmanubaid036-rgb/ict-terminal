@@ -13,6 +13,7 @@ import type { ChartSettings } from './chart/settings'
 import { ChartSettingsDialog, type SettingsTab } from './ui/ChartSettingsDialog'
 import { FavBar, type CursorKind } from './ui/FavBar'
 import { CommunityWindow, type CommunityStart } from './ui/Community'
+import { IccWindow } from './ui/IccWindow'
 import { TopBar } from './ui/TopBar'
 import { Toolbar } from './ui/Toolbar'
 import { SidePanel, type SideTab } from './panels/SidePanel'
@@ -39,6 +40,8 @@ export interface TerminalApi {
   favBarOn: boolean
   setFavBarOn: (v: boolean) => void
   openCommunity: () => void
+  iccOpen: boolean
+  setIccOpen: (v: boolean) => void
   setChartSettings: (p: Partial<ChartSettings>) => void
   openSettings: (tab?: SettingsTab) => void
   setActive: (i: number) => void
@@ -116,6 +119,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
   const [settingsTab, setSettingsTab] = useState<SettingsTab | null>(null)
   const [cursor, setCursorState] = useState<CursorKind>(() => (['cross', 'dot', 'arrow'].includes(localStorage.getItem('ict.cursor') ?? '') ? localStorage.getItem('ict.cursor') as CursorKind : 'cross'))
   const [community, setCommunity] = useState<CommunityStart | null>(null)
+  const [iccOpen, setIccOpen] = useState(false)
   // phones: all the layout's charts on screen (stacked / 2x2), or one at a time with chips
   const [phoneAll, setPhoneAllState] = useState(() => localStorage.getItem('ict.phoneAll') !== '0')
   const setPhoneAll = (v: boolean) => { setPhoneAllState(v); try { localStorage.setItem('ict.phoneAll', v ? '1' : '0') } catch { /* ignore */ } }
@@ -369,6 +373,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
   const t: TerminalApi = {
     access, state, models, active, theme, setTheme, cursor, setCursor, favBarOn, setFavBarOn,
     openCommunity: () => setCommunity('ideas'),
+    iccOpen, setIccOpen,
     setChartSettings: p => setState(s => ({ ...s, chart: { ...s.chart, ...p } })),
     openSettings: tab => setSettingsTab(tab ?? 'symbol'),
     setActive: i => setState(s => (s.active === i ? s : { ...s, active: i })),
@@ -458,6 +463,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
             {!phone && bottomOpen && <BottomPanel />}
           </div>
           <SidePanel />
+          {iccOpen && <IccWindow phone={phone} onClose={() => setIccOpen(false)} />}
         </div>
         {menu && <ContextMenu x={menu.x} y={menu.y} onClose={() => setMenu(null)} />}
         {account && <AccountDialog tab={account} onClose={() => setAccount(null)} onAccess={onAccess} />}
