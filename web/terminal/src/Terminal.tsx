@@ -12,7 +12,7 @@ import { registerEvents, loadCalendar } from './chart/events'
 import type { ChartSettings } from './chart/settings'
 import { ChartSettingsDialog, type SettingsTab } from './ui/ChartSettingsDialog'
 import { FavBar, type CursorKind } from './ui/FavBar'
-import { CommunityWindow } from './ui/Community'
+import { CommunityWindow, type CommunityStart } from './ui/Community'
 import { TopBar } from './ui/TopBar'
 import { Toolbar } from './ui/Toolbar'
 import { SidePanel, type SideTab } from './panels/SidePanel'
@@ -115,7 +115,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
   const [maximized, setMaximized] = useState(false)
   const [settingsTab, setSettingsTab] = useState<SettingsTab | null>(null)
   const [cursor, setCursorState] = useState<CursorKind>(() => (['cross', 'dot', 'arrow'].includes(localStorage.getItem('ict.cursor') ?? '') ? localStorage.getItem('ict.cursor') as CursorKind : 'cross'))
-  const [community, setCommunity] = useState(false)
+  const [community, setCommunity] = useState<CommunityStart | null>(null)
   // phones: all the layout's charts on screen (stacked / 2x2), or one at a time with chips
   const [phoneAll, setPhoneAllState] = useState(() => localStorage.getItem('ict.phoneAll') !== '0')
   const setPhoneAll = (v: boolean) => { setPhoneAllState(v); try { localStorage.setItem('ict.phoneAll', v ? '1' : '0') } catch { /* ignore */ } }
@@ -128,6 +128,21 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
   const setTheme = (t: Theme) => { setThemeState(t); try { localStorage.setItem('ict.theme', t) } catch { /* ignore */ } }
   useEffect(() => { document.documentElement.dataset.theme = theme }, [theme])
   useEffect(() => setAlertToastSeconds(state.chart.alertToastSec), [state.chart.alertToastSec])
+  // links from the website: /terminal/?symbol=XAUUSD&tf=5m opens that chart, ?community=ideas|chat|publish the community
+  const linked = useRef(false)
+  useEffect(() => {
+    if (!ready || linked.current) return
+    linked.current = true
+    const q = new URLSearchParams(window.location.search)
+    const sym = (q.get('symbol') || '').trim().toUpperCase()
+    if (/^[A-Z0-9_.:]{2,30}$/.test(sym)) setTicker(sym.includes(':') ? sym : `${stateRef.current.charts[stateRef.current.active]?.ticker.split(':')[0] ?? 'AXI'}:${sym}`)
+    const tf = q.get('tf')
+    if (tf && timeframeByLabel(tf).label === tf) setTf(tf)
+    const c = q.get('community')
+    if (c === 'ideas' || c === 'chat' || c === 'publish') setCommunity(c)
+    if (q.toString()) window.history.replaceState(null, '', window.location.pathname)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready])
 
   const visible = layoutCharts(state.layout)
   const active = state.charts[Math.min(state.active, visible - 1)]
@@ -353,7 +368,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
 
   const t: TerminalApi = {
     access, state, models, active, theme, setTheme, cursor, setCursor, favBarOn, setFavBarOn,
-    openCommunity: () => setCommunity(true),
+    openCommunity: () => setCommunity('ideas'),
     setChartSettings: p => setState(s => ({ ...s, chart: { ...s.chart, ...p } })),
     openSettings: tab => setSettingsTab(tab ?? 'symbol'),
     setActive: i => setState(s => (s.active === i ? s : { ...s, active: i })),
@@ -447,7 +462,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
         {menu && <ContextMenu x={menu.x} y={menu.y} onClose={() => setMenu(null)} />}
         {account && <AccountDialog tab={account} onClose={() => setAccount(null)} onAccess={onAccess} />}
         {!phone && <FavBar />}
-        {community && <CommunityWindow onClose={() => setCommunity(false)} />}
+        {community && <CommunityWindow start={community} onClose={() => setCommunity(null)} />}
         {settingsTab && <ChartSettingsDialog tab={settingsTab} onClose={() => setSettingsTab(null)} />}
         <Toasts />
       </div>

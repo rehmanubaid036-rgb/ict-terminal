@@ -17,8 +17,10 @@ export const ago = (iso: string) => {
 }
 const DIR: Record<string, string> = { long: 'Long', short: 'Short', neutral: 'Education' }
 
-export function CommunityWindow({ onClose }: { onClose: () => void }) {
-  const [tab, setTab] = useState<Tab>('ideas')
+export type CommunityStart = 'ideas' | 'chat' | 'publish'
+
+export function CommunityWindow({ onClose, start = 'ideas' }: { onClose: () => void; start?: CommunityStart }) {
+  const [tab, setTab] = useState<Tab>(start === 'chat' ? 'chat' : 'ideas')
   const [status, setStatus] = useState<CommunityStatus | null>(null)
   const loadStatus = useCallback(() => api.community.status().then(setStatus).catch(() => setStatus(null)), [])
   useEffect(() => { void loadStatus() }, [loadStatus])
@@ -40,7 +42,7 @@ export function CommunityWindow({ onClose }: { onClose: () => void }) {
           <button className="icon-btn" onClick={onClose} aria-label="Close"><Icon name="close" /></button>
         </header>
         <div className="cm-body">
-          {tab === 'ideas' ? <Ideas status={status} onJoined={loadStatus} /> : <Chat status={status} onJoined={loadStatus} />}
+          {tab === 'ideas' ? <Ideas status={status} onJoined={loadStatus} publishFirst={start === 'publish'} /> : <Chat status={status} onJoined={loadStatus} />}
         </div>
       </div>
     </div>,
@@ -74,7 +76,7 @@ function Join({ status, onJoined, what }: { status: CommunityStatus | null; onJo
 const joined = (s: CommunityStatus | null) => !!(s && s.nickname && s.rules_accepted && !s.banned)
 
 // ---- ideas ----------------------------------------------------------------------------------------
-function Ideas({ status, onJoined }: { status: CommunityStatus | null; onJoined: () => void }) {
+function Ideas({ status, onJoined, publishFirst }: { status: CommunityStatus | null; onJoined: () => void; publishFirst?: boolean }) {
   const t = useTerminal()
   const sym = t.active.ticker.split(':')[1] ?? t.active.ticker
   const [scope, setScope] = useState<'all' | 'symbol' | 'mine'>('all')
@@ -83,7 +85,7 @@ function Ideas({ status, onJoined }: { status: CommunityStatus | null; onJoined:
   const [more, setMore] = useState(false)
   const [page, setPage] = useState(1)
   const [open, setOpen] = useState<number | null>(null)
-  const [publish, setPublish] = useState(false)
+  const [publish, setPublish] = useState(!!publishFirst)
   const load = useCallback(async (p = 1) => {
     try {
       const r = await api.community.ideas({ sort, page: p, ...(scope === 'symbol' ? { symbol: sym } : {}), ...(scope === 'mine' ? { mine: '1' } : {}) })
