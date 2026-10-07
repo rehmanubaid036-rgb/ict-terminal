@@ -69,6 +69,12 @@ export const CHART_TYPES = [
   { id: 'range', label: 'Range bars (ATR / 2)' },
   { id: 'baseline', label: 'Baseline' },
   { id: 'columns', label: 'Columns' },
+  { id: 'hlc_area', label: 'HLC area' },
+  { id: 'step_line', label: 'Step line' },
+  { id: 'line_markers', label: 'Line with markers' },
+  { id: 'vol_candles', label: 'Volume candles' },
+  { id: 'pnf', label: 'Point & Figure (ATR box, 3 reversal)' },
+  { id: 'kagi', label: 'Kagi (ATR reversal)' },
 ] as const
 export type ChartTypeId = (typeof CHART_TYPES)[number]['id']
 

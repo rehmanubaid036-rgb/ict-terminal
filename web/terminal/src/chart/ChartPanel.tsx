@@ -172,7 +172,8 @@ export function ChartPanel(p: ChartPanelProps) {
     const chart = chartRef.current, feed = feedRef.current
     if (!chart || !feed) return
     const heikin = conf.chartType === 'heikin_ashi'
-    const kind = conf.chartType === 'renko' ? 'renko' : conf.chartType === 'linebreak' ? 'linebreak' : conf.chartType === 'range' ? 'range' : heikin ? 'heikin' : 'normal'
+    const kind = conf.chartType === 'renko' ? 'renko' : conf.chartType === 'linebreak' ? 'linebreak' : conf.chartType === 'range' ? 'range'
+      : conf.chartType === 'pnf' ? 'pnf' : conf.chartType === 'kagi' ? 'kagi' : heikin ? 'heikin' : 'normal'
     // setSymbol / setPeriod reload the data themselves; only a change of bar kind (Heikin Ashi, Renko ...) needs a reset
     const onlyHeikin = feed.ticker === conf.ticker && feed.tf?.label === tf.label && (feed.heikin !== heikin || feed.kind !== kind)
     feed.ticker = conf.ticker
@@ -385,7 +386,9 @@ export function ChartPanel(p: ChartPanelProps) {
       const { ict, models: chosen, requireBias, ticker } = props.current.conf
       const ideas = props.current.settings
       const models = ideas.ideas ? chosen : []
-      if (!ict.length && !models.length) { chart.removeOverlay({ groupId: ICT }); setBias(null); return }
+      // Point & Figure and Kagi have no time axis to place ICT objects on (one column holds many bars)
+      const noTime = props.current.conf.chartType === 'pnf' || props.current.conf.chartType === 'kagi'
+      if ((!ict.length && !models.length) || noTime) { chart.removeOverlay({ groupId: ICT }); setBias(null); return }
       const list = chart.getDataList()
       if (list.length < 3) return
       const r = chart.getVisibleRange()

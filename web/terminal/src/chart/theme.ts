@@ -1,3 +1,4 @@
+import { DRAWN_TYPES } from './charttypes'
 import type { DeepPartial, Styles } from 'klinecharts'
 import { DEFAULT_SETTINGS, dash, klineStyle, type ChartSettings } from './settings'
 
@@ -13,7 +14,7 @@ export function chartStyles(theme: Theme, chartType: string, s: ChartSettings = 
   const cross = s.crossColor || (dark ? '#5d6b8a' : '#9aa3b5')
   const up = s.bodyUp, down = s.bodyDown
   const line = chartType === 'line'
-  const drawn = chartType === 'baseline' || chartType === 'columns'   // drawn by the chart-style layer over invisible candles
+  const drawn = DRAWN_TYPES.has(chartType)   // drawn by the chart-style layer over invisible candles
   const gl = (show: boolean) => ({ show, color: grid, style: klineStyle(s.gridStyle), dashedValue: s.gridStyle === 'dotted' ? [1, 3] : [2, 3] })
   const legend = [...(s.ohlc ? [{ title: 'O ', value: '{open}' }, { title: 'H ', value: '{high}' }, { title: 'L ', value: '{low}' }, { title: 'C ', value: '{close}' }] : []),
     ...(s.barChange ? [{ title: '', value: '{change}' }] : []), ...(s.volume ? [{ title: 'Vol ', value: '{volume}' }] : [])]
