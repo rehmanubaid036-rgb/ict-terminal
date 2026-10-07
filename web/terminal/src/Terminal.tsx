@@ -155,7 +155,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
   const [gotoOpen, setGotoOpen] = useState(false)
   useEffect(() => {
     const ask = () => setGotoOpen(true)
-    const key = (e: KeyboardEvent) => { if (e.altKey && (e.key === 'g' || e.key === 'G')) { e.preventDefault(); setGotoOpen(true) } }
+    const key = (_e: KeyboardEvent) => { /* Alt+G: see hotkeys.ts (the user can change it) */ }
     window.addEventListener('ict:goto-ask', ask)
     window.addEventListener('keydown', key)
     return () => { window.removeEventListener('ict:goto-ask', ask); window.removeEventListener('keydown', key) }
@@ -591,7 +591,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
     const r = parse((await api.layout(name)).data, maxCharts)
     r.drawings.forEach((d, i) => setPending(i, d))
     setState(s => ({ ...r.state, watchlist: s.watchlist, lists: s.lists, listName: s.listName, flags: s.flags, alerts: s.alerts,
-      indTemplates: s.indTemplates, drawTemplates: s.drawTemplates, drawDefaults: s.drawDefaults }))
+      indTemplates: s.indTemplates, drawTemplates: s.drawTemplates, drawDefaults: s.drawDefaults, hotkeys: s.hotkeys }))
     toast(`Layout "${name}" opened.`)
   }
 
@@ -599,7 +599,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
   const applyTemplate = async (name: string) => {
     const r = { state: fitPlan(parse((await api.template(name)).data, maxCharts).state) }
     setState(s => ({ ...r.state, watchlist: s.watchlist, lists: s.lists, listName: s.listName, flags: s.flags, alerts: s.alerts, alertLog: s.alertLog,
-      indTemplates: s.indTemplates, drawTemplates: s.drawTemplates, drawDefaults: s.drawDefaults,
+      indTemplates: s.indTemplates, drawTemplates: s.drawTemplates, drawDefaults: s.drawDefaults, hotkeys: s.hotkeys,
       scripts: [...s.scripts.filter(x => !r.state.scripts.some(y => y.id === x.id)), ...r.state.scripts].slice(-30) }))
     toast(`Template "${name}" applied.`)
   }

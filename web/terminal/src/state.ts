@@ -97,6 +97,7 @@ export interface TerminalState {
   indTemplates: IndTemplate[]         // saved indicator sets (Indicators → Templates)
   drawTemplates: DrawTemplate[]       // saved drawing looks per tool (drawing settings → Template)
   drawDefaults: Record<string, DrawLook>   // the look new drawings of a tool start with
+  hotkeys: Record<string, string>     // action id -> key combo ('' = none); missing = the default key
 }
 /** A drawing's look without its text / interval visibility (what a style template keeps). */
 export interface DrawLook { color?: string; width?: number; dashed?: boolean; levels?: number[] }
@@ -120,7 +121,7 @@ export function defaultState(): TerminalState {
   return {
     layout: '1', active: 0, charts: seeds.map(([t, tf], i) => newChart(i, t, tf)),
     sync: { symbol: false, interval: false, crosshair: true, drawings: false }, watchlist: [], lists: {}, listName: 'Watchlist', flags: {}, alerts: [],
-    signals: { ...DEFAULT_SIGNALS }, indTemplates: [], drawTemplates: [], drawDefaults: {},
+    signals: { ...DEFAULT_SIGNALS }, indTemplates: [], drawTemplates: [], drawDefaults: {}, hotkeys: {},
     chart: { ...DEFAULT_SETTINGS },
     alertLog: [],
     scripts: [],
@@ -132,7 +133,7 @@ export function defaultState(): TerminalState {
 export function serialize(s: TerminalState, drawingsOf: (id: number) => Drawing[]) {
   return {
     v: 2, layout: s.layout, active: s.active, sync: s.sync, watchlist: s.watchlist, lists: { ...s.lists, [s.listName]: s.watchlist }, listName: s.listName, flags: s.flags, alerts: s.alerts, signals: s.signals, chart: s.chart, alertLog: s.alertLog, scripts: s.scripts, wlCols: s.wlCols,
-    indTemplates: s.indTemplates, drawTemplates: s.drawTemplates, drawDefaults: s.drawDefaults,
+    indTemplates: s.indTemplates, drawTemplates: s.drawTemplates, drawDefaults: s.drawDefaults, hotkeys: s.hotkeys,
     charts: s.charts.map(c => ({ ...c, drawings: drawingsOf(c.id) })),
   }
 }
@@ -202,6 +203,8 @@ export function parse(data: any, maxCharts: number): { state: TerminalState; dra
       .map((x: any) => ({ name: String(x.name).slice(0, 40), indicators: x.indicators.filter((i: any) => typeof i?.name === 'string').slice(0, 30) })) : [],
     drawTemplates: Array.isArray(data?.drawTemplates) ? data.drawTemplates.filter((x: any) => typeof x?.tool === 'string' && typeof x?.name === 'string')
       .slice(0, 200).map((x: any) => ({ tool: x.tool, name: String(x.name).slice(0, 40), style: cleanLook(x.style) })) : [],
+    hotkeys: data?.hotkeys && typeof data.hotkeys === 'object'
+      ? Object.fromEntries(Object.entries(data.hotkeys as Record<string, unknown>).filter(([k, v]) => typeof v === 'string' && v.length <= 30 && k.length <= 60).slice(0, 200)) as Record<string, string> : {},
     drawDefaults: data?.drawDefaults && typeof data.drawDefaults === 'object'
       ? Object.fromEntries(Object.entries(data.drawDefaults as Record<string, unknown>).slice(0, 80).map(([k, v]) => [k, cleanLook(v)])) : {},
   }

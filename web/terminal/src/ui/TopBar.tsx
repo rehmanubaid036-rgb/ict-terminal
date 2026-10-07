@@ -1,3 +1,4 @@
+import { HotkeysDialog } from './HotkeysDialog'
 import { MAON } from '../chart/indicators2'
 import { useEffect, useRef, useState } from 'react'
 import { useTerminal, POPOUT } from '../Terminal'
@@ -24,6 +25,7 @@ export function TopBar() {
   const [interval, setInterval] = useState<string | null>(null)
   const [indicators, setIndicators] = useState(false)
   const [screener, setScreener] = useState(false)
+  const [hotkeys, setHotkeys] = useState(false)
   const donations = useDonations()
   const [donate, setDonate] = useState(false)
   const refs = { tf: useRef<HTMLButtonElement>(null), type: useRef<HTMLButtonElement>(null), ict: useRef<HTMLButtonElement>(null),
@@ -40,6 +42,7 @@ export function TopBar() {
       const d = (e as CustomEvent).detail
       if (d === 'screener') setScreener(true)
       else if (d === 'indicators') setIndicators(true)
+      else if (d === 'hotkeys') setHotkeys(true)
       else if (d === 'templates' || d === 'layout' || d === 'ict') setMenu(d)
     }
     window.addEventListener('ict:symbol', s)
@@ -155,12 +158,7 @@ export function TopBar() {
           <Switch checked={t.theme === 'dark'} onChange={v => t.setTheme(v ? 'dark' : 'light')} label="Dark theme" />
           <Switch checked={t.bottomOpen} onChange={v => { t.setBottomOpen(v); close() }} label="Journal & stats panel" />
           <div className="menu-sep" />
-          <div className="kbd-list">
-            <div><kbd>A–Z</kbd> symbol search</div><div><kbd>0–9</kbd> interval</div><div><kbd>Alt+T</kbd> trend line</div>
-            <div><kbd>Alt+H</kbd> horizontal line</div><div><kbd>Alt+F</kbd> fib (ICT)</div><div><kbd>Alt+R</kbd> rectangle</div>
-            <div><kbd>Alt+A</kbd> alert at price</div><div><kbd>Alt+S</kbd> screenshot</div><div><kbd>Ctrl+Z / Y</kbd> undo / redo</div>
-            <div><kbd>Del</kbd> delete drawing</div><div><kbd>Esc</kbd> cancel tool</div>
-          </div>
+          <button className="btn ghost sm" onClick={() => { close(); setHotkeys(true) }}>⌨ Keyboard shortcuts…</button>
           <div className="menu-sep" />
           <button className="btn ghost sm" onClick={() => { close(); t.logout() }}>Log out</button>
         </Popover>
@@ -169,6 +167,7 @@ export function TopBar() {
       {interval !== null && <IntervalBox initial={interval} onClose={() => setInterval(null)} onPick={l => { t.setTf(l); setInterval(null) }} />}
       {indicators && <IndicatorsDialog onClose={() => setIndicators(false)} />}
       {screener && <Screener onClose={() => setScreener(false)} />}
+      {hotkeys && <HotkeysDialog onClose={() => setHotkeys(false)} />}
       {donate && donations && <DonateDialog info={donations} onClose={() => setDonate(false)} />}
     </header>
   )

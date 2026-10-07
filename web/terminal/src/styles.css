@@ -1004,3 +1004,13 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 .st-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .st-actions .note { margin: 0; }
 @media (max-width: 760px) { .st-row { grid-template-columns: 46px 1fr 60px; } .st-row span:nth-child(2), .st-row span:nth-child(4) { display: none; } }
+
+/* keyboard shortcuts */
+.hk-top { display: flex; gap: 8px; align-items: center; }
+.hk-top .search-input { flex: 1; }
+.hk-list { max-height: 60vh; overflow: auto; display: flex; flex-direction: column; gap: 4px; }
+.hk-group { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 10px 0 4px; }
+.hk-row { display: grid; grid-template-columns: 1fr 150px auto; align-items: center; gap: 8px; padding: 3px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+.hk-key { border: 1px solid var(--line2); border-radius: 6px; padding: 3px 8px; background: var(--panel2); color: var(--text); text-align: center; }
+.hk-key.wait { border-color: #2962ff; color: #2962ff; }
+.hk-key em { color: var(--muted); font-style: normal; }
