@@ -262,7 +262,7 @@ def check_programs():
     cmds = " ".join((p.get("cmd") or "").lower() for p in ict_services.ict_processes())
     for marker, name in (("waitress", "Admin panel server"), ("ictapi.main", "API server"),
                          ("serve_web.py", "Web terminal server"), ("ictengine.runner", "Engine runner"),
-                         ("crypto_watch", "Crypto payment watcher")):
+                         ("crypto_watch", "Crypto payment watcher"), ("signal_alerts", "WhatsApp signal alerts")):
         report(marker in cmds, f"{name} running")
     report(service_state("ICT Tunnel") == "RUNNING", "Cloudflare tunnel service (ICT Tunnel)", service_state("ICT Tunnel"))
     task = subprocess.run(["schtasks", "/query", "/tn", "ICT Terminal"], capture_output=True, text=True,

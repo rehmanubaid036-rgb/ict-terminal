@@ -26,6 +26,7 @@ start "ICT API Server" /min /d "%ROOT%\api" cmd /k ""%PY%" -m uvicorn ictapi.mai
 start "ICT Web Terminal" /min /d "%ROOT%\web" cmd /k ""%PY%" "%ROOT%\web\serve_web.py""
 start "ICT Engine Runner" /min /d "%ROOT%\engine" cmd /k ""%PY%" -m ictengine.runner --every 300"
 start "ICT Crypto Watcher" /min /d "%ROOT%\admin_panel" cmd /k ""%PY%" "%ROOT%\admin_panel\manage.py" crypto_watch"
+start "ICT Signal Alerts" /min /d "%ROOT%\admin_panel" cmd /k ""%PY%" "%ROOT%\admin_panel\manage.py" signal_alerts"
 
 sc query "ICT Tunnel" >nul 2>&1 && sc start "ICT Tunnel" >nul 2>&1
 echo ICT Terminal started.

@@ -188,6 +188,16 @@ class SiteSettings(models.Model):
     community_blocked_words = models.TextField(
         "Extra blocked words", blank=True,
         help_text="One per line, added to the built-in list of abusive words (English, Urdu, Hindi).")
+    # WhatsApp signal alerts (Meta WhatsApp Cloud API)
+    whatsapp_alerts_enabled = models.BooleanField("WhatsApp signal alerts on", default=False,
+                                                  help_text="Off = no WhatsApp message is sent to anyone.")
+    whatsapp_phone_number_id = models.CharField("Phone number ID", max_length=40, blank=True,
+                                                help_text="Meta for Developers → your app → WhatsApp → API setup → Phone number ID.")
+    whatsapp_token = models.CharField("Access token", max_length=600, blank=True,
+                                      help_text="A permanent System User token with whatsapp_business_messaging permission.")
+    whatsapp_template = models.CharField("Message template name", max_length=60, default="ict_signal",
+                                         help_text="An approved template with 8 variables, see the help text below.")
+    whatsapp_template_lang = models.CharField("Template language", max_length=10, default="en")
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -890,3 +900,39 @@ class IdeaReport(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["idea", "reporter"], name="idea_report_once")]
+
+
+class AlertPrefs(models.Model):
+    """A user's signal alert settings (WhatsApp)."""
+    GRADES = [("all", "All grades"), ("A", "A and A+"), ("A+", "A+ only")]
+
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="alert_prefs")
+    whatsapp_number = models.CharField(max_length=20, blank=True, help_text="International format, digits only (923001234567)")
+    auto_notify = models.BooleanField(default=False, help_text="Send every new matching signal to WhatsApp")
+    min_grade = models.CharField(max_length=4, choices=GRADES, default="A")
+    models_csv = models.CharField("Models", max_length=200, blank=True, help_text="Empty = every model of the plan")
+    symbols_csv = models.CharField("Symbols", max_length=200, blank=True, help_text="Empty = every symbol")
+    bias_only = models.BooleanField(default=True, help_text="Only setups with the daily bias")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Signal alert settings"
+
+    def __str__(self):
+        return f"Alerts of {self.user}"
+
+
+class AlertDelivery(models.Model):
+    """One signal sent (or tried) to one user, so nobody gets the same signal twice."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="alert_deliveries")
+    signal_key = models.CharField(max_length=120)
+    channel = models.CharField(max_length=12, default="whatsapp")
+    ok = models.BooleanField(default=False)
+    error = models.CharField(max_length=300, blank=True)
+    text = models.CharField(max_length=400, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["user", "signal_key", "channel"], name="alert_once")]
+        verbose_name = "Signal alert sent"
+        verbose_name_plural = "Signal alerts sent"

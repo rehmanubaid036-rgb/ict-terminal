@@ -107,6 +107,8 @@ export interface IdeaCard { id: number; title: string; symbol: string; timeframe
 export interface IdeaFull extends IdeaCard { body: string; image: string; chart: { ticker?: string; tf?: string } | null; comment_list: IdeaComment[] }
 export interface NewIdea { title: string; body: string; symbol: string; timeframe: string; direction: string; image: string; thumb: string; chart: { ticker: string; tf: string } }
 
+export interface AlertSettings { available: boolean; whatsapp_number: string; auto_notify: boolean; min_grade: 'all' | 'A' | 'A+'; models: string; symbols: string; bias_only: boolean }
+
 export interface CalendarEvent { time: number; currency: string; impact: string; title: string }
 
 export interface Signal {
@@ -166,6 +168,11 @@ export const api = {
   models: () => get<ModelInfo[]>('/api/v1/models'),
   signals: (symbol: string, from: number, to: number, models: string[], require_bias: boolean, signal?: AbortSignal, source: 'store' | 'scan' = 'store') =>
     get<{ signals: Signal[]; delay_minutes?: number; covered?: boolean }>('/api/v1/signals', { symbol, from, to, models: models.join(','), require_bias, source }, signal),
+  alerts: {
+    get: () => get<{ settings: AlertSettings }>('/api/v1/alerts/settings'),
+    save: (s: Partial<AlertSettings>) => post<{ settings: AlertSettings }>('/api/v1/alerts/settings', s),
+    test: () => post<{ sent: boolean }>('/api/v1/alerts/test', {}),
+  },
   community: {
     status: () => get<CommunityStatus>('/api/v1/community/status'),
     join: (nickname: string, accept_rules: boolean) => post<{ profile: { nickname: string } }>('/api/v1/community/join', { nickname, accept_rules }),

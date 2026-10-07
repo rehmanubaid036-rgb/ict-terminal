@@ -45,6 +45,7 @@ FORWARD = {
     # community: chat (accounts with a nickname) and ideas (open to read)
     ("GET", "community/status"), ("POST", "community/join"), ("GET", "community/messages"), ("POST", "community/messages"),
     ("GET", "community/ideas"), ("POST", "community/ideas"),
+    ("GET", "alerts/settings"), ("POST", "alerts/settings"), ("POST", "alerts/test"),
 }
 # a customer's own crypto order: status, cancel, transaction hash (the panel checks ownership)
 FORWARD_PATTERNS = [("GET", re.compile(r"payments/crypto/order/\d+")),

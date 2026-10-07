@@ -21,7 +21,8 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 ICT_PORTS = (3100, 8100, 8101)
-WINDOWS = ("ICT Admin Panel", "ICT API Server", "ICT Web Terminal", "ICT Engine Runner", "ICT Crypto Watcher")
+WINDOWS = ("ICT Admin Panel", "ICT API Server", "ICT Web Terminal", "ICT Engine Runner", "ICT Crypto Watcher",
+           "ICT Signal Alerts")
 NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 

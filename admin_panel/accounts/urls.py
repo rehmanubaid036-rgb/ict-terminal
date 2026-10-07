@@ -23,6 +23,8 @@ urlpatterns = [
     path("community/join", api.community_join),
     path("community/messages", api.community_messages),
     path("community/messages/<int:message_id>/report", api.community_report),
+    path("alerts/settings", api.alert_settings),
+    path("alerts/test", api.alert_test),
     path("community/ideas", api.community_ideas),
     path("community/ideas/<int:idea_id>", api.community_idea),
     path("community/ideas/<int:idea_id>/like", api.community_idea_like),

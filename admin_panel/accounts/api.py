@@ -740,3 +740,41 @@ def community_idea_delete(request, idea_id):
 @token_required
 def community_idea_report(request, idea_id):
     return _community(lambda: community.report_idea(request.api_token.user, idea_id))
+
+
+# ── signal alerts (WhatsApp) ────────────────────────────────────────────────
+@method("GET", "POST")
+@token_required
+def alert_settings(request):
+    from . import alerts
+    from .models import AlertPrefs
+    user = request.api_token.user
+    if request.method == "POST":
+        try:
+            p = alerts.save_prefs(user, body(request))
+        except ValueError as e:
+            return error(str(e))
+        return ok(settings=alerts.prefs_dict(p))
+    return ok(settings=alerts.prefs_dict(AlertPrefs.objects.filter(user=user).first()))
+
+
+@method("POST")
+@token_required
+def alert_test(request):
+    """Sends a sample alert to the user's number (at most one a minute)."""
+    from django.core.cache import cache
+
+    from . import alerts
+    from .models import AlertPrefs
+    p = AlertPrefs.objects.filter(user=request.api_token.user).first()
+    if p is None or not p.whatsapp_number:
+        return error("Save your WhatsApp number first.")
+    key = f"alert-test-{p.user_id}"
+    if cache.get(key):
+        return error("Wait a minute before the next test message.", 429)
+    cache.set(key, 1, 60)
+    try:
+        alerts.send_template(p.whatsapp_number, ["XAUUSD", "TEST", "BUY", "A", "1.00", "0.90", "1.10 / 1.20", "test message"])
+    except alerts.WhatsAppError as e:
+        return error(str(e), 502)
+    return ok(sent=True)

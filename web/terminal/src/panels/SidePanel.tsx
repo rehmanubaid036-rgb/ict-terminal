@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Overlay } from 'klinecharts'
 import { useTerminal } from '../Terminal'
-import { api, errorText, type Quote, type SearchItem, type Signal } from '../api'
+import { api, errorText, type AlertSettings, type Quote, type SearchItem, type Signal } from '../api'
 import { ICT_LAYERS, toolDef, INDICATORS, modelTag } from '../constants'
 import { Icon } from '../ui/icons'
 import { Empty, Switch, fmtPrice, nyTime, toast, useIsPhone } from '../ui/common'
@@ -228,7 +228,47 @@ function Signals() {
             </button>
           ))}
       </div>
+      <WhatsAppAlerts />
       <div className="disclaimer">Setups are research output, not financial advice.</div>
+    </div>
+  )
+}
+
+/** Auto notify: every new signal that matches these settings goes to the user's WhatsApp. */
+function WhatsAppAlerts() {
+  const t = useTerminal()
+  const [s, setS] = useState<AlertSettings | null>(null)
+  const [open, setOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
+  useEffect(() => { if (open && !s) api.alerts.get().then(r => setS(r.settings)).catch(e => toast(errorText(e), 'error')) }, [open]) // eslint-disable-line
+  const save = async (patch: Partial<AlertSettings>) => {
+    if (!s) return
+    const next = { ...s, ...patch }
+    setS(next)
+    setBusy(true)
+    try { setS((await api.alerts.save(next)).settings); if ('auto_notify' in patch) toast(patch.auto_notify ? 'WhatsApp auto notify is on.' : 'WhatsApp auto notify is off.') }
+    catch (e) { toast(errorText(e), 'error'); setS(s) } finally { setBusy(false) }
+  }
+  return (
+    <div className="wa-box">
+      <button className="wa-head" onClick={() => setOpen(o => !o)}><span className="wa-dot" />WhatsApp alerts{s?.auto_notify ? <em>on</em> : null}<span className="grow" />{open ? '▾' : '▸'}</button>
+      {open && (!s ? <div className="note">Loading…</div> : <>
+        {!s.available && <div className="note">WhatsApp alerts are not switched on by the admin yet. You can save your settings now.</div>}
+        <label className="wa-field">WhatsApp number (with country code)
+          <input defaultValue={s.whatsapp_number} placeholder="923001234567" inputMode="tel" onBlur={e => { if (e.target.value !== s.whatsapp_number) void save({ whatsapp_number: e.target.value }) }} />
+        </label>
+        <Switch checked={s.auto_notify} onChange={v => void save({ auto_notify: v })} label="Auto notify: send every new signal" />
+        <div className="seg">{(['all', 'A', 'A+'] as const).map(g => <button key={g} className={s.min_grade === g ? 'on' : ''} onClick={() => void save({ min_grade: g })}>{g === 'all' ? 'All grades' : g === 'A' ? 'A and A+' : 'A+ only'}</button>)}</div>
+        <Switch checked={s.bias_only} onChange={v => void save({ bias_only: v })} label="Only setups with the daily bias" />
+        <label className="wa-field">Models (empty = all in your plan)
+          <input defaultValue={s.models} placeholder="M1, M5, M17" onBlur={e => { if (e.target.value !== s.models) void save({ models: e.target.value }) }} />
+        </label>
+        <label className="wa-field">Symbols (empty = all)
+          <input defaultValue={s.symbols} placeholder={`XAUUSD, ${t.active.ticker.split(':')[1] ?? 'NAS100'}`} onBlur={e => { if (e.target.value !== s.symbols) void save({ symbols: e.target.value }) }} />
+        </label>
+        <button className="btn ghost sm" disabled={busy || !s.whatsapp_number || !s.available}
+          onClick={async () => { try { await api.alerts.test(); toast('Test message sent to your WhatsApp.') } catch (e) { toast(errorText(e), 'error') } }}>Send a test message</button>
+      </>)}
     </div>
   )
 }

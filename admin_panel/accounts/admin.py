@@ -10,7 +10,7 @@ from django.utils import timezone
 from django.utils.html import format_html, format_html_join
 
 from .models import (Ad, ApiToken, ChatMessage, ChatProfile, ChatReport, CryptoOrder, CryptoTransfer, CryptoWallet, CryptoWalletChange, CustomerProfile, Device, DeviceClaim, EaConnection, LoginEvent, Payment, PaymentMethod,
-                     Idea, IdeaComment, Plan, SiteSettings, SocialAccount, Subscription, TrialGrant)
+                     AlertDelivery, AlertPrefs, Idea, IdeaComment, Plan, SiteSettings, SocialAccount, Subscription, TrialGrant)
 from . import services
 from .services import active_subscriptions
 
@@ -35,6 +35,12 @@ def state_badge(sub):
 @admin.register(SiteSettings)
 class SiteSettingsAdmin(admin.ModelAdmin):
     filter_horizontal = ("signup_plans",)
+
+    def formfield_for_dbfield(self, db_field, request, **kwargs):
+        if db_field.name == "whatsapp_token":
+            from django import forms
+            kwargs["widget"] = forms.PasswordInput(render_value=True)
+        return super().formfield_for_dbfield(db_field, request, **kwargs)
     fieldsets = (
         ("Login methods", {"fields": ("allow_google_login", "allow_facebook_login", "allow_email_login", "allow_signup"),
                            "description": "Turn email + password off to make everyone use Google / Facebook "
@@ -69,6 +75,14 @@ class SiteSettingsAdmin(admin.ModelAdmin):
                                       "phone numbers or emails are blocked by themselves; 3 blocked messages mute "
                                       "the account for 30 minutes; 3 reports hide a message. Moderate under "
                                       "Community messages / members."}),
+        ("WhatsApp signal alerts", {
+            "fields": ("whatsapp_alerts_enabled", "whatsapp_phone_number_id", "whatsapp_token",
+                       ("whatsapp_template", "whatsapp_template_lang")),
+            "description": "Users turn on Auto notify in the terminal (Signals tab) and get every new matching signal "
+                           "on WhatsApp. Meta WhatsApp Cloud API: create an approved template named as above with 8 body "
+                           "variables: {{1}} symbol, {{2}} model, {{3}} BUY/SELL, {{4}} grade, {{5}} entry, {{6}} stop, "
+                           "{{7}} targets, {{8}} time. Example body: \"ICT Terminal signal: {{1}} {{2}} {{3}} (grade {{4}}). "
+                           "Entry {{5}}, SL {{6}}, TP {{7}}. {{8}}. Not financial advice.\""}),
         ("Ads", {"fields": (("ads_enabled", "ads_for_free"),),
                  "description": "Ads themselves are under Ads. Plans with “Show ads” ticked (free / trial) and "
                                 "users without a plan see them; paying VIP plans never do."}),
@@ -903,3 +917,21 @@ class IdeaCommentAdmin(admin.ModelAdmin):
     @admin.action(description="Delete (hide) comments")
     def hide_comments(self, request, queryset):
         self.message_user(request, f"Deleted {queryset.update(hidden=True)} comment(s).", messages.WARNING)
+
+
+@admin.register(AlertPrefs)
+class AlertPrefsAdmin(admin.ModelAdmin):
+    list_display = ("user", "whatsapp_number", "auto_notify", "min_grade", "models_csv", "symbols_csv", "bias_only", "updated_at")
+    list_filter = ("auto_notify", "min_grade")
+    search_fields = ("user__email", "whatsapp_number")
+
+
+@admin.register(AlertDelivery)
+class AlertDeliveryAdmin(admin.ModelAdmin):
+    list_display = ("created_at", "user", "channel", "ok", "text", "error")
+    list_filter = ("ok", "channel")
+    search_fields = ("user__email", "text")
+    readonly_fields = ("user", "signal_key", "channel", "ok", "error", "text", "created_at")
+
+    def has_add_permission(self, request):
+        return False

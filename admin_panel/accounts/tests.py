@@ -1458,3 +1458,69 @@ class IdeaTests(CommunityTests):
         self.assertEqual(self.client.post(f"/api/v1/community/ideas/{idea['id']}/delete", headers=self.b).status_code, 404)
         self.assertEqual(self.client.post(f"/api/v1/community/ideas/{idea['id']}/delete", headers=self.a).json()["deleted"], True)
         self.assertEqual(self.client.get("/api/v1/community/ideas").json()["ideas"], [])
+
+
+class SignalAlertTests(TestCase):
+    """WhatsApp auto notify: settings, matching, plan delay / models, one message per signal."""
+
+    def setUp(self):
+        import sqlite3
+        import tempfile
+        from pathlib import Path
+        from .models import AlertPrefs, Plan, Subscription
+        s = SiteSettings.load()
+        s.whatsapp_alerts_enabled, s.whatsapp_phone_number_id, s.whatsapp_token = True, "123", "tok"
+        s.save()
+        self.user = User.objects.create_user("w@example.com", "w@example.com", PASSWORD)
+        plan = Plan.objects.create(name="Pro", slug="pro-x", duration_days=30, price=0, signal_delay_minutes=0,
+                                   allowed_models="M1,M5")
+        Subscription.objects.create(user=self.user, plan=plan, expires_at=timezone.now() + timedelta(days=30))
+        AlertPrefs.objects.create(user=self.user, whatsapp_number="923001234567", auto_notify=True, min_grade="A")
+        self.db = Path(tempfile.mkdtemp()) / "ict.db"
+        con = sqlite3.connect(self.db)
+        con.execute("CREATE TABLE signals (symbol, model_id, direction, created_time, entry, stop, targets, grade, bias_filter)")
+        now = timezone.now()
+        rows = [("XAUUSD", "M1", 1, now - timedelta(minutes=3), 4000.5, 3995.0, "[[4010, 0.5], [4020, 0.5]]", "A", 1),
+                ("XAUUSD", "M1", 1, now - timedelta(minutes=3), 4000.5, 3995.0, "[[4010, 0.5], [4020, 0.5]]", "A", 0),
+                ("XAUUSD", "M2", -1, now - timedelta(minutes=2), 4001.0, 4005.0, "[[3990, 1.0]]", "A+", 1),   # not in the plan
+                ("NAS100", "M5", 1, now - timedelta(minutes=1), 25000.0, 24990.0, "[[25030, 1.0]]", "B", 1),  # grade too low
+                ("XAUUSD", "M5", -1, now - timedelta(days=1), 4100.0, 4110.0, "[[4080, 1.0]]", "A+", 1)]      # too old
+        con.executemany("INSERT INTO signals VALUES (?,?,?,?,?,?,?,?,?)", [(*r[:3], r[3].isoformat(), *r[4:]) for r in rows])
+        con.commit()
+        con.close()
+
+    def test_matching_signals_are_sent_once(self):
+        from . import alerts
+        from .models import AlertDelivery
+        sent = []
+        n = alerts.run_once(path=self.db, sender=lambda num, params, site: sent.append((num, params)))
+        self.assertEqual(n, 1)
+        self.assertEqual(sent[0][0], "923001234567")
+        self.assertEqual(sent[0][1][:6], ["XAUUSD", "M1", "BUY", "A", "4,000.50", "3,995.00"])
+        self.assertEqual(alerts.run_once(path=self.db, sender=lambda *a: sent.append(a)), 0)   # never twice
+        self.assertEqual(AlertDelivery.objects.filter(ok=True).count(), 1)
+
+    def test_off_switches_and_plan_delay(self):
+        from . import alerts
+        from .models import AlertPrefs, Plan
+        sent = []
+        Plan.objects.filter(slug="pro-x").update(signal_delay_minutes=30)
+        self.assertEqual(alerts.run_once(path=self.db, sender=lambda *a: sent.append(a)), 0)    # the plan sees it later
+        Plan.objects.filter(slug="pro-x").update(signal_delay_minutes=0)
+        AlertPrefs.objects.update(auto_notify=False)
+        self.assertEqual(alerts.run_once(path=self.db, sender=lambda *a: sent.append(a)), 0)
+        AlertPrefs.objects.update(auto_notify=True, min_grade="all")
+        self.assertEqual(alerts.run_once(path=self.db, sender=lambda *a: sent.append(a)), 2)    # + the B grade M5
+
+    def test_settings_api(self):
+        r = self.client.post("/api/v1/auth/login", json.dumps({"email": "w@example.com", "password": PASSWORD,
+                                                               "device_id": "d1", "platform": "web"}), content_type="application/json")
+        h = {"Authorization": "Bearer " + r.json()["token"], "X-Device-Id": "d1", "X-Device-Platform": "web"}
+        g = self.client.get("/api/v1/alerts/settings", headers=h).json()["settings"]
+        self.assertEqual((g["available"], g["whatsapp_number"], g["auto_notify"]), (True, "923001234567", True))
+        bad = self.client.post("/api/v1/alerts/settings", json.dumps({"whatsapp_number": "12"}), content_type="application/json", headers=h)
+        self.assertEqual(bad.status_code, 400)
+        ok_ = self.client.post("/api/v1/alerts/settings", json.dumps({"whatsapp_number": "+92 300 765 4321", "models": "m1, x9, M5",
+                                                                     "min_grade": "A+"}), content_type="application/json", headers=h).json()
+        self.assertEqual((ok_["settings"]["whatsapp_number"], ok_["settings"]["models"], ok_["settings"]["min_grade"]),
+                         ("923007654321", "M1,M5", "A+"))

@@ -664,3 +664,12 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
   .cm-publish { grid-template-columns: 1fr; }
   .cm-rooms { width: 110px; } .cm-msg { max-width: 92%; }
 }
+
+/* WhatsApp alerts (Signals tab) */
+.wa-box { border: 1px solid var(--line2); border-radius: 10px; padding: 8px 10px; display: flex; flex-direction: column; gap: 8px; }
+.wa-head { display: flex; align-items: center; gap: 8px; border: 0; background: none; color: var(--text); font-weight: 600; cursor: pointer; padding: 2px 0; }
+.wa-head em { font-style: normal; font-size: 11px; color: #fff; background: #25d366; border-radius: 999px; padding: 0 7px; }
+.wa-head .grow { flex: 1; }
+.wa-dot { width: 10px; height: 10px; border-radius: 50%; background: #25d366; }
+.wa-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+.wa-field input { width: 100%; }
