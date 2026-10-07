@@ -1,3 +1,4 @@
+import { pictureData } from './tools3'
 import { MAON, registerMaOn } from './indicators2'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
@@ -473,6 +474,34 @@ export function ChartPanel(p: ChartPanelProps) {
       const t = window.prompt('Text:', '')
       if (!t) { props.current.onToolDone(); return }
       extendData.text = t
+    }
+    if (name === 'signpost' || name === 'priceNote' || name === 'flagMark') {
+      const t = window.prompt(name === 'flagMark' ? 'Flag text (optional):' : name === 'priceNote' ? 'Note (the price is added):' : 'Signpost text:', '')
+      if (t === null) { props.current.onToolDone(); return }
+      extendData.text = t
+    }
+    if (name === 'sticker') {
+      const t = window.prompt('Sticker (an emoji or up to 4 letters):', '🚀')
+      if (!t) { props.current.onToolDone(); return }
+      extendData.text = t.slice(0, 4)
+    }
+    if (name === 'picture') {
+      // pick a picture first; the drawing starts once it is read (shrunk to keep the layout small)
+      const input = document.createElement('input')
+      input.type = 'file'; input.accept = 'image/png,image/jpeg,image/gif,image/webp'
+      let gone = false
+      input.onchange = async () => {
+        const f = input.files?.[0]
+        if (!f || gone) { props.current.onToolDone(); return }
+        try {
+          const pic = await pictureData(f)
+          if (gone) return
+          chart.createOverlay({ name, groupId: DRAWINGS, mode: p.magnet, extendData: { ...extendData, ...pic } as any, ...drawingHooks(conf.id),
+            onDrawEnd: () => { notify(); props.current.onToolDone() } })
+        } catch { toast('That picture could not be read.', 'error'); props.current.onToolDone() }
+      }
+      input.click()
+      return () => { gone = true }
     }
     if (name === 'simpleAnnotation') {
       const t = window.prompt('Callout text:', '')

@@ -8,11 +8,12 @@ import { ChartPanel } from './chart/ChartPanel'
 import { registerOverlays } from './chart/overlays'
 import { registerIndicators } from './chart/indicators'
 import { registerIndicators2 } from './chart/indicators2'
-import { setDrawDefaults, drawingsOf, getChart, getEntry, notify, setDrawingHooks, setPending, snapshot, undo, redo, removeSelected } from './chart/registry'
+import { allIds, setDrawDefaults, drawingsOf, getChart, getEntry, notify, setDrawingHooks, setPending, snapshot, undo, redo, removeSelected } from './chart/registry'
 import { chartBackground, type Theme } from './chart/theme'
 import { registerEvents, loadCalendar } from './chart/events'
 import { registerCompare } from './chart/compare'
 import { registerMoreTools } from './chart/tools2'
+import { registerTools3, setPictureRedraw } from './chart/tools3'
 import { registerVolumeProfiles } from './chart/volprofile'
 import { registerChartTypes } from './chart/charttypes'
 import type { ChartSettings } from './chart/settings'
@@ -39,6 +40,8 @@ registerIndicators2()
 registerEvents()
 registerCompare()
 registerMoreTools()
+registerTools3()
+setPictureRedraw(() => allIds().forEach(id => getChart(id)?.resize()))
 registerVolumeProfiles()
 registerChartTypes()
 
