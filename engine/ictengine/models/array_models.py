@@ -170,10 +170,21 @@ def _org_precondition(ctx, day, t):
     return org_direction(ctx, day, t) != 0
 
 
+def org_targets(ctx: Context, day, s, entry: float, risk: float) -> list[tuple[float, str]]:
+    """Rulebook M13 targets: the gap's CE first, then the full fill (the previous 16:15 close)."""
+    key = pd.Timestamp(day)
+    if key not in ctx.levels.index:
+        return []
+    row = ctx.levels.loc[key]
+    fill = row["org_low"] if s.direction == -1 else row["org_high"]   # gap up is filled down to the old close
+    return [(float(row["org_ce"]), "org_ce"), (float(fill), "org_fill")]
+
+
 ORG_SYMBOLS = ("NAS100", "US30", "US500")   # rulebook M13 instruments
 M13_CONFIG = ReversalConfig("M13_opening_range_gap",
                             (clock.TimeWindow("org", "Opening Range Gap", "model_window", time(9, 30), time(11, 0)),),
-                            "all", require_bias=False, raid_lead_min=0, precondition=_org_precondition)
+                            "all", require_bias=False, raid_lead_min=0, precondition=_org_precondition,
+                            targets_fn=org_targets, min_rr=1.5)
 
 
 def scan_m11(ctx: Context, **kw) -> list[Signal]:
