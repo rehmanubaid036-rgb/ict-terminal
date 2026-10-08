@@ -32,8 +32,6 @@ const ray = (a: Coordinate, b: Coordinate, far = 4000): Coordinate => {
   return { x: a.x + (dx / len) * far, y: a.y + (dy / len) * far }
 }
 const fmt = (v: number) => (Math.abs(v) >= 100 ? v.toFixed(2) : Math.abs(v) >= 1 ? v.toFixed(4) : v.toFixed(5))
-const LEVEL_COLORS = ['#787b86', '#f23645', '#ff9800', '#4caf50', '#089981', '#00bcd4', '#2962ff', '#9c27b0', '#e91e63']
-const lc = (i: number, own: string, custom: boolean) => (custom ? own : LEVEL_COLORS[i % LEVEL_COLORS.length])
 
 /** Polyline through the points with a label at each (patterns). */
 function labelled(name: string, labels: string[], color: string): OverlayTemplate<DrawStyle> {
@@ -74,90 +72,6 @@ export function registerTools3() {
   })
 
   // ---- Fibonacci ------------------------------------------------------------------------------
-  // trend-based extension: A -> B measured from C
-  registerOverlay<DrawStyle>({
-    name: 'fibExtension', totalStep: 4, ...tool,
-    createPointFigures: ({ coordinates: c, overlay, bounding }) => {
-      if (c.length < 2) return []
-      const s = look(overlay, '#787b86'), own = !!(overlay.extendData as DrawStyle)?.color
-      const out: OverlayFigure[] = [seg(c[0], c[1], s.color, 1, true)]
-      if (c.length < 3) return out
-      out.push(seg(c[1], c[2], s.color, 1, true))
-      const p = overlay.points, move = (p[1].value ?? 0) - (p[0].value ?? 0)
-      const levels = (overlay.extendData as DrawStyle)?.levels ?? [0, 0.382, 0.618, 1, 1.272, 1.618, 2, 2.618]
-      const pxPer = (c[1].y - c[0].y) / (move || 1)
-      const x1 = c[2].x, x2 = Math.max(c[2].x + 120, bounding.width)
-      levels.forEach((lv, i) => {
-        const y = c[2].y + pxPer * move * lv
-        out.push(seg({ x: x1, y }, { x: x2, y }, lc(i, s.color, own), s.width, s.dashed))
-        out.push(label(x1 + 2, y - 7, `${lv} (${fmt((p[2].value ?? 0) + move * lv)})`, lc(i, s.color, own), false, 'left'))
-      })
-      return out
-    },
-  })
-
-  // time zones: vertical lines 1, 2, 3, 5, 8, 13 ... units from A (unit = A -> B)
-  registerOverlay<DrawStyle>({
-    name: 'fibTimeZones', totalStep: 3, ...tool,
-    createPointFigures: ({ coordinates: c, overlay, bounding }) => {
-      if (c.length < 2) return []
-      const s = look(overlay, '#2962ff'), unit = c[1].x - c[0].x, out: OverlayFigure[] = []
-      if (Math.abs(unit) < 2) return [seg(c[0], c[1], s.color)]
-      for (const [i, f] of [0, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89].entries()) {
-        const x = c[0].x + unit * f
-        if (x < -10 || x > bounding.width + 10) continue
-        out.push(seg({ x, y: 0 }, { x, y: bounding.height }, i ? rgba(s.color, 0.7) : s.color, s.width, s.dashed))
-        out.push(label(x + 3, 10, String(f), s.color, false, 'left'))
-      }
-      return out
-    },
-  })
-
-  // channel: base line A-B, parallels at the Fib levels of the width to C
-  registerOverlay<DrawStyle>({
-    name: 'fibChannel', totalStep: 4, ...tool,
-    createPointFigures: ({ coordinates: c, overlay }) => {
-      if (c.length < 2) return []
-      const s = look(overlay, '#787b86'), own = !!(overlay.extendData as DrawStyle)?.color
-      if (c.length < 3) return [seg(c[0], c[1], s.color, s.width)]
-      const dy = c[2].y - (c[0].y + ((c[1].y - c[0].y) * (c[2].x - c[0].x)) / ((c[1].x - c[0].x) || 1))
-      const out: OverlayFigure[] = []
-      ;[0, 0.236, 0.382, 0.5, 0.618, 0.786, 1, 1.618].forEach((lv, i) => {
-        const a = { x: c[0].x, y: c[0].y + dy * lv }, b = { x: c[1].x, y: c[1].y + dy * lv }
-        out.push(seg(a, ray(a, b), lc(i, s.color, own), s.width, s.dashed), label(a.x - 4, a.y, String(lv), lc(i, s.color, own), false, 'right'))
-      })
-      return out
-    },
-  })
-
-  // fan: lines from A through the Fib levels of the A-B height at B's time
-  registerOverlay<DrawStyle>({
-    name: 'fibFan', totalStep: 3, ...tool,
-    createPointFigures: ({ coordinates: c, overlay }) => {
-      if (c.length < 2) return []
-      const s = look(overlay, '#787b86'), own = !!(overlay.extendData as DrawStyle)?.color, [a, b] = c, out: OverlayFigure[] = []
-      ;[0, 0.236, 0.382, 0.5, 0.618, 0.786, 1].forEach((lv, i) => {
-        const end = { x: b.x, y: b.y + (a.y - b.y) * lv }
-        out.push(seg(a, ray(a, end), lc(i, s.color, own), s.width, s.dashed), label(end.x + 4, end.y, String(lv), lc(i, s.color, own), false, 'left'))
-      })
-      return out
-    },
-  })
-
-  // circles: centred on A, radius = A-B distance times each level
-  registerOverlay<DrawStyle>({
-    name: 'fibCircles', totalStep: 3, ...tool,
-    createPointFigures: ({ coordinates: c, overlay }) => {
-      if (c.length < 2) return []
-      const s = look(overlay, '#787b86'), own = !!(overlay.extendData as DrawStyle)?.color
-      const r = Math.hypot(c[1].x - c[0].x, c[1].y - c[0].y), out: OverlayFigure[] = [seg(c[0], c[1], s.color, 1, true)]
-      ;[0.236, 0.382, 0.5, 0.618, 0.786, 1, 1.618].forEach((lv, i) => {
-        out.push({ type: 'circle', attrs: { x: c[0].x, y: c[0].y, r: r * lv }, styles: { style: 'stroke', borderColor: lc(i, s.color, own), borderSize: s.width, color: 'transparent' } })
-      })
-      return out
-    },
-  })
-
   // ---- Gann ----------------------------------------------------------------------------------
   const gannLv = [0, 0.25, 0.382, 0.5, 0.618, 0.75, 1]
   registerOverlay<DrawStyle>({

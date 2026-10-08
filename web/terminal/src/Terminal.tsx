@@ -16,6 +16,8 @@ import { registerCompare } from './chart/compare'
 import { registerMoreTools } from './chart/tools2'
 import { registerTools3, setPictureRedraw } from './chart/tools3'
 import { registerTools4 } from './chart/tools4'
+import { registerFib } from './chart/fib'
+import { registerLines } from './chart/lines'
 import { indHit } from './chart/indalert'
 import { toBars } from './chart/feed'
 import { registerVolumeProfiles } from './chart/volprofile'
@@ -47,6 +49,8 @@ registerCompare()
 registerMoreTools()
 registerTools3()
 registerTools4()
+registerLines()         // TradingView's trend line / ray / extended line / rectangle settings
+registerFib()           // after the others: TradingView's Fib tools replace the built-in Fib retracement
 setPictureRedraw(() => allIds().forEach(id => getChart(id)?.resize()))
 registerVolumeProfiles()
 registerChartTypes()

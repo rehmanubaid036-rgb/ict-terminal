@@ -1076,3 +1076,17 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 .tour-card p { margin: 0; color: var(--soft); line-height: 1.45; }
 .tour-n { font-size: 11px; color: var(--muted); }
 .tour-btns { display: flex; gap: 6px; align-items: center; margin-top: 4px; }
+
+/* drawing settings: TradingView's Fib panel and the extra rows */
+.dd-wide { width: min(560px, 100%); }
+.dd-small { min-width: 0 !important; padding: 4px 6px !important; }
+.dd-fib-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 14px; margin: 6px 0; }
+.dd-fib-row { display: flex; align-items: center; gap: 6px; }
+.dd-fib-row input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); margin: 0; }
+.dd-fib-row .cs-color { width: 26px; height: 26px; }
+.dd-fib-row .icon-btn { opacity: .5; }
+.dd-fib-row .icon-btn:hover { opacity: 1; }
+.dd-fib-val { width: 78px !important; padding: 4px 6px !important; }
+.dd-body input[type=range] { width: 110px; accent-color: var(--accent); }
+.cs-foot .btn.on, .dd-body .btn.on { border-color: var(--accent); color: var(--accent); }
+@media (max-width: 520px) { .dd-fib-grid { grid-template-columns: 1fr; } }

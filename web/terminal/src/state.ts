@@ -68,6 +68,14 @@ export function cleanLook(x: any): DrawLook {
   if ([1, 2, 3, 4].includes(Number(x?.width))) o.width = Number(x.width)
   if (typeof x?.dashed === 'boolean') o.dashed = x.dashed
   if (Array.isArray(x?.levels)) o.levels = x.levels.map(Number).filter(Number.isFinite).slice(0, 24)
+  for (const k of LOOK_BOOLS) if (typeof x?.[k] === 'boolean') o[k] = x[k]
+  for (const [k, [lo, hi]] of Object.entries(LOOK_NUMS)) { const v = Number(x?.[k]); if (x?.[k] !== undefined && Number.isFinite(v)) o[k] = Math.min(hi, Math.max(lo, v)) }
+  for (const [k, ok] of Object.entries(LOOK_ENUMS)) if (ok.includes(x?.[k])) o[k] = x[k]
+  for (const k of ['trendColor', 'fillColor', 'textColor']) if (isColor(x?.[k])) o[k] = x[k]
+  if (Array.isArray(x?.fibLevels)) {
+    o.fibLevels = x.fibLevels.slice(0, 40).filter((l: any) => Number.isFinite(Number(l?.v)))
+      .map((l: any) => ({ v: Number(l.v), color: isColor(l.color) ? l.color : '#787b86', on: l.on !== false }))
+  }
   return o
 }
 export const DEFAULT_SIGNALS: SignalsPrefs = { models: null, span: 604800, grade: 'all', bias: true, notify: false }
@@ -105,7 +113,15 @@ export interface TerminalState {
   hotkeys: Record<string, string>     // action id -> key combo ('' = none); missing = the default key
 }
 /** A drawing's look without its text / interval visibility (what a style template keeps). */
-export interface DrawLook { color?: string; width?: number; dashed?: boolean; levels?: number[] }
+export interface DrawLook { color?: string; width?: number; dashed?: boolean; levels?: number[]; [k: string]: unknown }
+// look settings a template / default keeps besides colour, width and dash (the drawing settings' Style and Text tabs)
+const LOOK_BOOLS = ['oneColor', 'trendOn', 'bgOn', 'extendLeft', 'extendRight', 'reverse', 'showPrices', 'showLevels', 'middlePoint', 'priceLabels',
+  'stats', 'fillOn', 'middleLine', 'bold', 'italic']
+const LOOK_NUMS: Record<string, [number, number]> = { trendWidth: [1, 4], levelWidth: [1, 4], bgOpacity: [0, 100], fillOpacity: [0, 100], fontSize: [8, 40] }
+const LOOK_ENUMS: Record<string, string[]> = { lineStyle: ['solid', 'dashed', 'dotted'], trendStyle: ['solid', 'dashed', 'dotted'], levelStyle: ['solid', 'dashed', 'dotted'],
+  levelsAs: ['values', 'percents'], labelsH: ['left', 'center', 'right'], labelsV: ['top', 'middle', 'bottom'], leftEnd: ['normal', 'arrow'], rightEnd: ['normal', 'arrow'],
+  textH: ['left', 'center', 'right'], textV: ['top', 'middle', 'bottom'] }
+const isColor = (v: unknown) => typeof v === 'string' && v.length <= 30
 export interface IndTemplate { name: string; indicators: IndicatorConf[] }
 export interface DrawTemplate { tool: string; name: string; style: DrawLook }
 

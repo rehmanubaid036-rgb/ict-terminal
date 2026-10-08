@@ -6,7 +6,7 @@ import type { Drawing } from '../state'
 export const DRAWINGS = 'drawings'
 
 // the look new drawings of each tool start with (the user's 'Use as default'); set by the terminal
-let drawDefaults: Record<string, { color?: string; width?: number; dashed?: boolean; levels?: number[] }> = {}
+let drawDefaults: Record<string, Record<string, unknown>> = {}
 export const setDrawDefaults = (d: typeof drawDefaults) => { drawDefaults = d || {} }
 export const drawDefault = (tool: string) => drawDefaults[tool]
 

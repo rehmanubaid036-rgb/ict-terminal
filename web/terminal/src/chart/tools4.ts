@@ -22,7 +22,6 @@ const rgba = (hex: string, a: number) => {
   const n = parseInt(hex.slice(1), 16)
   return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`
 }
-const FIB = [0.236, 0.382, 0.5, 0.618, 0.786, 1]
 const nyParts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
 /** UTC ms of hh:mm New York time on the NY date of ``ts``. */
 function nyAt(ts: number, hh: number, mm: number): number {
@@ -41,35 +40,6 @@ export function registerTools4() {
   done = true
 
   // ---- Fibonacci ------------------------------------------------------------------------------
-  registerOverlay<DrawStyle>({
-    name: 'fibArcs', totalStep: 3, ...tool,
-    createPointFigures: ({ coordinates: c, overlay }) => {
-      if (c.length < 2) return []
-      const s = look(overlay, '#ff9800'), [a, b] = c, r = Math.hypot(b.x - a.x, b.y - a.y), up = b.y < a.y
-      const out: OverlayFigure[] = [seg(a, b, s.color, 1, true)]
-      for (const lv of FIB) {
-        const pts = Array.from({ length: 33 }, (_, k) => { const t = Math.PI * (k / 32); return { x: b.x + r * lv * Math.cos(t), y: b.y + (up ? 1 : -1) * r * lv * Math.sin(t) } })
-        out.push(poly(pts, rgba(s.color, lv === 0.5 ? 1 : 0.7), s.width, s.dashed), label(b.x, b.y + (up ? 1 : -1) * r * lv + (up ? 8 : -8), String(lv), s.color))
-      }
-      return out
-    },
-  })
-  registerOverlay<DrawStyle>({
-    name: 'fibWedge', totalStep: 4, ...tool,
-    createPointFigures: ({ coordinates: c, overlay }) => {
-      if (c.length < 2) return []
-      const s = look(overlay, '#00bcd4'), [o, a] = c
-      if (c.length < 3) return [seg(o, a, s.color, s.width)]
-      const b = c[2], ra = Math.hypot(a.x - o.x, a.y - o.y)
-      const t0 = Math.atan2(a.y - o.y, a.x - o.x), t1 = Math.atan2(b.y - o.y, b.x - o.x)
-      const out: OverlayFigure[] = [seg(o, a, s.color, s.width), seg(o, { x: o.x + ra * Math.cos(t1), y: o.y + ra * Math.sin(t1) }, s.color, s.width)]
-      for (const lv of FIB) {
-        const pts = Array.from({ length: 25 }, (_, k) => { const t = t0 + ((t1 - t0) * k) / 24; return { x: o.x + ra * lv * Math.cos(t), y: o.y + ra * lv * Math.sin(t) } })
-        out.push(poly(pts, rgba(s.color, 0.8), 1, s.dashed), label(pts[0].x, pts[0].y, String(lv), s.color, false, 'left'))
-      }
-      return out
-    },
-  })
   registerOverlay<DrawStyle>({
     name: 'fibSpiral', totalStep: 3, ...tool,
     createPointFigures: ({ coordinates: c, overlay }) => {

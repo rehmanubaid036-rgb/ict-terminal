@@ -119,6 +119,11 @@ export function registerOverlays() {
 
   // ---- drawing tools -------------------------------------------------------------------------
   const tool = { needDefaultPointFigure: true, needDefaultXAxisFigure: true, needDefaultYAxisFigure: true }
+  // background of a closed shape: on / off, own colour and transparency (Style tab)
+  const shapeFill = (o: { extendData: unknown }, color: string, pct: number) => {
+    const e = (o.extendData ?? {}) as DrawStyle & { fillOn?: boolean; fillColor?: string; fillOpacity?: number }
+    return e.fillOn === false ? 'rgba(0,0,0,0.001)' : alpha(e.fillColor ?? color, (e.fillOpacity ?? pct) / 100)
+  }
   const st = (o: { extendData: unknown }, color: string): { color: string; width: number; dashed: boolean; text: string } => {
     const e = (o.extendData ?? {}) as DrawStyle
     return { color: e.color ?? color, width: e.width ?? 1, dashed: !!e.dashed, text: e.text ?? '' }
@@ -135,20 +140,11 @@ export function registerOverlays() {
     },
   })
   registerOverlay<DrawStyle>({
-    name: 'rectangle', totalStep: 3, ...tool,
-    createPointFigures: ({ coordinates: c, overlay }) => {
-      if (c.length < 2) return []
-      const s = st(overlay, '#2962ff'), [a, b] = c
-      return [{ type: 'rect', attrs: { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), width: Math.abs(b.x - a.x), height: Math.abs(b.y - a.y) },
-        styles: { style: 'stroke_fill', color: alpha(s.color, 0.15), borderColor: s.color, borderSize: s.width, borderStyle: s.dashed ? 'dashed' : 'solid' } }]
-    },
-  })
-  registerOverlay<DrawStyle>({
     name: 'circleShape', totalStep: 3, ...tool,
     createPointFigures: ({ coordinates: c, overlay }) => {
       if (c.length < 2) return []
       const s = st(overlay, '#f59e0b'), [a, b] = c
-      return [{ type: 'circle', attrs: { x: a.x, y: a.y, r: Math.hypot(b.x - a.x, b.y - a.y) }, styles: { style: 'stroke_fill', color: alpha(s.color, 0.12), borderColor: s.color, borderSize: s.width } }]
+      return [{ type: 'circle', attrs: { x: a.x, y: a.y, r: Math.hypot(b.x - a.x, b.y - a.y) }, styles: { style: 'stroke_fill', color: shapeFill(overlay, s.color, 12), borderColor: s.color, borderSize: s.width, borderStyle: s.dashed ? 'dashed' : 'solid' } }]
     },
   })
   registerOverlay<DrawStyle>({
@@ -156,7 +152,7 @@ export function registerOverlays() {
     createPointFigures: ({ coordinates: c, overlay }) => {
       if (c.length < 2) return []
       const s = st(overlay, '#8b5cf6')
-      return [{ type: 'polygon', attrs: { coordinates: c }, styles: { style: 'stroke_fill', color: alpha(s.color, 0.15), borderColor: s.color, borderSize: s.width } }]
+      return [{ type: 'polygon', attrs: { coordinates: c }, styles: { style: 'stroke_fill', color: shapeFill(overlay, s.color, 15), borderColor: s.color, borderSize: s.width, borderStyle: s.dashed ? 'dashed' : 'solid' } }]
     },
   })
   registerOverlay<DrawStyle>({
@@ -169,8 +165,6 @@ export function registerOverlays() {
     },
   })
 
-  // Fibonacci with the ICT levels: level 1 at the first click, 0 at the second, extensions past 0.
-  const ICT_FIB = [1, 0.79, 0.705, 0.62, 0.5, 0, -0.27, -0.5, -1, -2, -2.5, -4]
   // Anchored VWAP: click a bar, the volume-weighted average price from that bar to now
   registerOverlay<DrawStyle>({
     name: 'anchoredVwap', totalStep: 2, ...tool,
@@ -196,26 +190,6 @@ export function registerOverlays() {
       }
       const out: OverlayFigure[] = [{ type: 'line', attrs: { coordinates: pts }, styles: { color: s.color, size: s.width, style: s.dashed ? 'dashed' : 'solid', dashedValue: [4, 3] } }]
       if (pts.length) out.push(text(pts[pts.length - 1].x + 4, pts[pts.length - 1].y, `AVWAP ${fmt(last, digits(chart))}`, s.color))
-      return out
-    },
-  })
-  registerOverlay<DrawStyle>({
-    name: 'fibIct', totalStep: 3, ...tool,
-    createPointFigures: ({ coordinates: c, overlay, chart }) => {
-      if (c.length < 2) return []
-      const p = overlay.points
-      const [a, b] = c, d = digits(chart)
-      const x1 = Math.min(a.x, b.x), x2 = Math.max(a.x, b.x) + 60
-      const y = (lv: number) => b.y + (a.y - b.y) * lv
-      const v = (lv: number) => (p[1]?.value ?? 0) + ((p[0]?.value ?? 0) - (p[1]?.value ?? 0)) * lv
-      const out: OverlayFigure[] = [rect(x1, Math.min(y(0.62), y(0.79)), x2 - x1, Math.abs(y(0.79) - y(0.62)), 'rgba(139,92,246,0.14)'),
-        line(a, b, '#94a3b8', 1, true, false)]
-      const ext = (overlay.extendData ?? {}) as DrawStyle
-      for (const lv of Array.isArray(ext.levels) && ext.levels.length ? ext.levels : ICT_FIB) {
-        const color = lv === 0.705 ? '#a78bfa' : lv === 0.5 ? '#cbd5e1' : lv < 0 ? '#2dd4bf' : lv === 0 || lv === 1 ? '#94a3b8' : '#8b5cf6'
-        out.push(line({ x: x1, y: y(lv) }, { x: x2, y: y(lv) }, color, lv === 0.705 ? 2 : 1, lv < 0))
-        out.push(text(x2 + 4, y(lv), `${lv} (${fmt(v(lv), d)})${lv === 0.705 ? ' OTE' : ''}`, color))
-      }
       return out
     },
   })
