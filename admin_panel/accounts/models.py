@@ -624,6 +624,9 @@ class EaConnection(models.Model):
     token_prefix = models.CharField(max_length=8, blank=True, editable=False)
     token_created_at = models.DateTimeField(null=True, blank=True, editable=False)
     blocked = models.BooleanField(default=False, help_text="Stop this customer's EA from receiving trades")
+    filters = models.JSONField(default=dict, blank=True,
+                               help_text="The customer's auto-trading settings from the terminal: models, symbols, grade, "
+                                         "daily bias, sessions, direction, days, trades a day and risk")
 
     # Reported by the EA on each check-in
     last_seen = models.DateTimeField(null=True, blank=True)

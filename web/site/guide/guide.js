@@ -197,4 +197,11 @@
     else if (e.target.closest && e.target.closest("#zoom")) zoom.hidden = true;
   });
   document.addEventListener("keydown", function (e) { if (e.key === "Escape") zoom.hidden = true; });
+  // anonymous page-view count for the admin's statistics (not on the PDF print layout)
+  try {
+    if (!/[?&]print=1/.test(location.search)) {
+      var body = JSON.stringify({ kind: "site", page: location.pathname, ref: "" });
+      if (navigator.sendBeacon) navigator.sendBeacon("/api/v1/track", new Blob([body], { type: "application/json" }));
+    }
+  } catch (e) { /* never break the guide */ }
 })();

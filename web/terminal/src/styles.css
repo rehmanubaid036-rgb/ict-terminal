@@ -1048,3 +1048,27 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 /* Urdu interface: an Arabic-script font for the Urdu words, numbers and symbols stay as they are */
 .lang-ur body, .lang-ur button, .lang-ur input, .lang-ur select { font-family: Inter, "Noto Sans Arabic", system-ui, sans-serif; }
 .lang-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; }
+
+/* MT5 auto-trading settings + tour */
+.mt5-help { display: flex; gap: 6px; }
+.mt5-help a, .mt5-actions a { text-decoration: none; color: var(--text); }
+.mt5-set { gap: 10px; }
+.mt5-set .mt5-sub small { text-transform: none; letter-spacing: 0; }
+.mt5-model { display: flex; gap: 6px; align-items: flex-start; font-size: 12px; padding: 3px 0; cursor: pointer; }
+.mt5-model input { accent-color: var(--accent); margin-top: 2px; }
+.mt5-set .seg { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0; }
+.mt5-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.mt5-grid small { font-size: 10.5px; }
+.mt5-funnel { display: flex; flex-direction: column; gap: 3px; }
+.mt5-step { display: grid; grid-template-columns: 1.4fr 1fr 34px; gap: 6px; align-items: center; font-size: 12px; }
+.mt5-step span { color: var(--soft); }
+.mt5-step i { display: block; height: 8px; border-radius: 4px; background: var(--accent); opacity: .75; }
+.mt5-step b { text-align: right; }
+.tour { position: fixed; inset: 0; z-index: 2000; }
+.tour-dim { position: fixed; inset: 0; background: rgba(0, 0, 0, .55); }
+.tour-ring { position: fixed; border-radius: 10px; border: 2px solid var(--accent); box-shadow: 0 0 0 9999px rgba(0, 0, 0, .55); transition: all .25s ease; pointer-events: none; }
+.tour-card { position: fixed; background: var(--panel); color: var(--text); border: 1px solid var(--line2); border-radius: 12px; padding: 12px 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .35); display: flex; flex-direction: column; gap: 6px; font-size: 13px; transition: all .25s ease; }
+.tour-card p { margin: 0; color: var(--soft); line-height: 1.45; }
+.tour-n { font-size: 11px; color: var(--muted); }
+.tour-btns { display: flex; gap: 6px; align-items: center; margin-top: 4px; }

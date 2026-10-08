@@ -183,13 +183,13 @@ export function registerMoreTools() {
   }
 
   // paper trading line: entry / stop loss / take profit / order price across the chart with a label
-  registerOverlay<{ color: string; label: string }>({
+  registerOverlay<{ color: string; label: string; dashed?: boolean }>({
     name: 'tradeLine', totalStep: 2, needDefaultPointFigure: false, needDefaultXAxisFigure: false, needDefaultYAxisFigure: true,
     createPointFigures: ({ coordinates: c, overlay, bounding }) => {
       if (!c.length) return []
       const e = overlay.extendData ?? { color: '#2962ff', label: '' }
       return [
-        { type: 'line', attrs: { coordinates: [{ x: 0, y: c[0].y }, { x: bounding.width, y: c[0].y }] }, styles: { color: e.color, size: 1, style: 'dashed', dashedValue: [6, 3] } },
+        { type: 'line', attrs: { coordinates: [{ x: 0, y: c[0].y }, { x: bounding.width, y: c[0].y }] }, styles: { color: e.color, size: 1, style: 'dashed', dashedValue: e.dashed ? [2, 4] : [6, 3] } },
         { type: 'text', ignoreEvent: true, attrs: { x: 6, y: c[0].y, text: e.label, align: 'left', baseline: 'middle' },
           styles: { family: FONT, size: 11, weight: 600, color: '#fff', backgroundColor: e.color, paddingLeft: 5, paddingRight: 5, paddingTop: 2, paddingBottom: 2, borderRadius: 3 } },
       ]

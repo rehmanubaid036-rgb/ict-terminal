@@ -268,6 +268,15 @@
     });
   }
 
+  // anonymous page-view count for the admin's statistics (no cookies, nothing personal)
+  try {
+    var ref = document.referrer ? new URL(document.referrer).hostname : '';
+    if (ref === location.hostname) ref = '';
+    var body = JSON.stringify({ kind: 'site', page: location.pathname, ref: ref });
+    if (navigator.sendBeacon) navigator.sendBeacon('/api/v1/track', new Blob([body], { type: 'application/json' }));
+    else fetch('/api/v1/track', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body, keepalive: true });
+  } catch (e) { /* counting must never break the page */ }
+
   getJSON('/api/v1/donations/info').then(showDonations).catch(function () { /* donations off or server down */ });
   getJSON('/api/v1/models').then(showModels).catch(function () { showModels([]); });
   getJSON('/api/v1/plans').then(showPlans).catch(function () { showPlans(null); });

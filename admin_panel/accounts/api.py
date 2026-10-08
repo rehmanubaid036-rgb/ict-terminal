@@ -403,7 +403,7 @@ def copy_status(user, access):
 @method("GET", "POST")
 @token_required
 def copy_settings(request):
-    """GET: the customer's copy trading status. POST {copy_enabled, multiplier}: change it."""
+    """GET: the customer's copy trading status. POST {copy_enabled, multiplier, filters}: change it."""
     user = request.api_token.user
     access, _ = services.access_for_token(request.api_token, ip=client_ip(request), **device_info({}, request))
     if request.method == "POST":
@@ -419,6 +419,11 @@ def copy_settings(request):
             if not 0.1 <= mult <= 10:
                 return error("Multiplier must be between 0.1 and 10.")
             conn.multiplier = mult
+        if "filters" in data:
+            filters, err = services.clean_ea_filters(data["filters"])
+            if err:
+                return error(err)
+            conn.filters = filters
         conn.save()
     return ok(copy=copy_status(user, access))
 

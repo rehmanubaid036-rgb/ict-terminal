@@ -108,8 +108,15 @@ export interface SymbolInfoData {
 export interface CopyStatus {
   active: boolean; reason: string; models: string[]; max_mt_accounts: number; copy_enabled: boolean; multiplier: number; lot_per_1000: number
   has_token: boolean; token_prefix: string; ea_online: boolean; last_seen: string | null; mt5_login: string; mt5_server: string
-  balance: number | null; currency: string; open_copies: number; ea_version: string
+  balance: number | null; currency: string; open_copies: number; ea_version: string; filters?: EaFilters
 }
+/** The customer's auto-trading settings (terminal > MT5). Empty lists = all; 0 = the EA's own input. */
+export interface EaFilters {
+  models: string[]; symbols: string[]; min_grade: 'all' | 'A' | 'A+'; bias_only: boolean; sessions: string[]
+  direction: 'both' | 'long' | 'short'; weekdays: number[]; max_trades_day: number; risk_percent: number; max_open: number; max_daily_loss: number
+}
+export interface Mt5Preview { days: number; steps: { step: string; n: number }[]
+  signals: { id: number; time: string; symbol: string; model_id: string; direction: number; grade: string; entry: number; stop: number }[] }
 export interface Mt5Position { ticket: string; symbol: string; side: 1 | -1; volume: number; open: number; sl: number | null; tp: number | null; price: number; profit: number; swap: number; magic: string; time: number; comment: string }
 export interface Mt5Order { ticket: string; symbol: string; type: number; volume: number; price: number; sl: number | null; tp: number | null; magic: string }
 export interface Mt5Account { mt5_login: string; server: string; currency: string; balance: number | null; equity: number | null; ea_version: string; magic: string; positions: Mt5Position[]; orders: Mt5Order[]; updated_at: string }
@@ -262,7 +269,8 @@ export const api = {
   symbolInfo: (symbol: string) => get<SymbolInfoData>('/api/v1/symbol-info', { symbol }),
   copy: {
     get: () => get<{ copy: CopyStatus }>('/api/v1/copy/settings'),
-    save: (p: { copy_enabled?: boolean; multiplier?: number }) => post<{ copy: CopyStatus }>('/api/v1/copy/settings', p),
+    save: (p: { copy_enabled?: boolean; multiplier?: number; filters?: EaFilters }) => post<{ copy: CopyStatus }>('/api/v1/copy/settings', p),
+    preview: (approved: string[], filters: EaFilters, days = 7) => post<Mt5Preview>('/api/v1/mt5/preview', { approved, filters, days }),
     token: () => post<{ ea_token: string; copy: CopyStatus; message: string }>('/api/v1/copy/token', {}),
   },
   mt5State: () => get<{ accounts: Mt5Account[]; events: EaEvent[] }>('/api/v1/mt5/state'),
@@ -270,6 +278,7 @@ export const api = {
     post<{ order: CryptoOrder & { key: string } }>('/api/v1/donations/crypto', { ...d, source: 'web' }),
   donateCryptoStatus: (id: number, key: string) => get<{ order: CryptoOrder }>(`/api/v1/donations/crypto/${id}`, { key }),
   donateCryptoTxid: (id: number, key: string, txid: string) => post<{ order: CryptoOrder }>(`/api/v1/donations/crypto/${id}/txid`, { key, txid }),
+  track: (kind: 'terminal_open' | 'terminal_minute') => post<{ ok: boolean }>('/api/v1/track', { kind }),
   donationInfo: () => get<DonationInfo>('/api/v1/donations/info'),
   donate: (d: { amount: string; method: number | null; reference: string; name: string; message: string; public: boolean; source: string }) =>
     post<{ id: number; message: string }>('/api/v1/donations', d),

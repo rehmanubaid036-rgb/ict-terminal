@@ -364,6 +364,69 @@ def resolve_ea_token(raw):
     return conn
 
 
+EA_SESSIONS = ("asia", "london", "ny_am", "ny_pm")
+EA_GRADES = ("all", "A", "A+")
+EA_DIRECTIONS = ("both", "long", "short")
+EA_FILTER_DEFAULTS = {"models": [], "symbols": [], "min_grade": "all", "bias_only": False, "sessions": [],
+                      "direction": "both", "weekdays": [], "max_trades_day": 0, "risk_percent": 0, "max_open": 0,
+                      "max_daily_loss": 0}
+
+
+def clean_ea_filters(data):
+    """Checks the auto-trading settings sent by the terminal. Returns (filters, error). Empty lists mean "all";
+    0 for a number means "use the EA's own input"."""
+    if not isinstance(data, dict):
+        return None, "Settings must be an object."
+    out = dict(EA_FILTER_DEFAULTS)
+
+    def names(key, allowed=None, upper=True, limit=60):
+        v = data.get(key, [])
+        if not isinstance(v, list):
+            raise ValueError(f"{key} must be a list.")
+        items = []
+        for x in v[:limit]:
+            x = str(x).strip()[:30]
+            x = x.upper() if upper else x
+            if allowed is not None and x not in allowed:
+                raise ValueError(f"Unknown value in {key}: {x}")
+            if x and x not in items:
+                items.append(x)
+        return items
+
+    def number(key, lo, hi, cast=float):
+        v = data.get(key, 0)
+        try:
+            v = cast(v or 0)
+        except (TypeError, ValueError):
+            raise ValueError(f"{key} must be a number.")
+        if v and not lo <= v <= hi:
+            raise ValueError(f"{key} must be between {lo} and {hi} (0 = the EA's own setting).")
+        return round(v, 2) if cast is float else v
+
+    try:
+        out["models"] = [m for m in names("models") if m.startswith("M") and m[1:].isdigit()]
+        out["symbols"] = [s for s in names("symbols") if s.replace(".", "").replace("_", "").isalnum()]
+        out["sessions"] = names("sessions", EA_SESSIONS, upper=False)
+        days = data.get("weekdays", [])
+        if not isinstance(days, list) or any(not isinstance(d, int) or isinstance(d, bool) or not 0 <= d <= 6 for d in days):
+            raise ValueError("weekdays must be a list of 0 (Monday) to 6 (Sunday).")
+        out["weekdays"] = sorted(set(days))
+        if data.get("min_grade", "all") not in EA_GRADES:
+            raise ValueError("min_grade must be all, A or A+.")
+        out["min_grade"] = data.get("min_grade", "all")
+        if data.get("direction", "both") not in EA_DIRECTIONS:
+            raise ValueError("direction must be both, long or short.")
+        out["direction"] = data.get("direction", "both")
+        out["bias_only"] = bool(data.get("bias_only", False))
+        out["max_trades_day"] = number("max_trades_day", 1, 50, int)
+        out["risk_percent"] = number("risk_percent", 0.01, 5)
+        out["max_open"] = number("max_open", 1, 20, int)
+        out["max_daily_loss"] = number("max_daily_loss", 0.1, 50)
+    except ValueError as e:
+        return None, str(e)
+    return out, ""
+
+
 def copy_settings_payload(conn, access):
     """What the copier EA is allowed to do right now."""
     site = SiteSettings.load()
@@ -378,7 +441,8 @@ def copy_settings_payload(conn, access):
     if not conn.copy_enabled:
         reasons.append("Auto-trading is switched OFF in your terminal / app.")
     plan_models = features.get("models") or []
-    models = [m for m in site.approved_models if plan_models == "all" or m in plan_models]
+    models = [m for m in site.approved_models if plan_models == "all" or m.partition(":")[0] in plan_models
+              or m in plan_models]
     if not reasons and not models:
         reasons.append("No model is approved for auto-trading yet. Signals are shown in the terminal only.")
     return {
@@ -388,6 +452,7 @@ def copy_settings_payload(conn, access):
         "max_mt_accounts": features.get("max_mt_accounts", 0),
         "copy_enabled": conn.copy_enabled,
         "multiplier": float(conn.multiplier),
+        "filters": {**EA_FILTER_DEFAULTS, **(conn.filters or {})},
         "lot_per_1000": float(site.copy_lot_per_1000),
         "magic_numbers": site.magic_list,
     }

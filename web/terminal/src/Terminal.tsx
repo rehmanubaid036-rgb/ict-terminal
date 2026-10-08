@@ -443,6 +443,14 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
     return () => window.clearInterval(t)
   }, [ready])
 
+  // ---- use statistics for the admin: one "open", then a ping per minute while the terminal is on screen ----
+  useEffect(() => {
+    if (!ready || POPOUT) return
+    void api.track('terminal_open').catch(() => {})
+    const t = window.setInterval(() => { if (!document.hidden) void api.track('terminal_minute').catch(() => {}) }, 60_000)
+    return () => window.clearInterval(t)
+  }, [ready])
+
   // ---- alerts the server sent (terminal closed or open): show them, switch those alerts off ----
   useEffect(() => {
     if (!ready || POPOUT) return

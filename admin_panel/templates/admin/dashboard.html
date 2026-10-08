@@ -70,6 +70,7 @@
       </div>
     </div>
     <a class="btn btn-warning btn-block" href="{% url 'admin:accounts_subscription_add' %}"><i class="fas fa-plus mr-1"></i> New subscription</a>
+    <a class="btn btn-warning btn-block" href="{% url 'ict_stats' %}"><i class="fas fa-chart-line mr-1"></i> Statistics: traffic, terminal use, revenue</a>
     <a class="btn btn-outline-secondary btn-block" href="{% url 'admin:accounts_sitesettings_changelist' %}"><i class="fas fa-user-plus mr-1"></i> Registration settings{% if s.signup_plans %} ({{ s.signup_plans }}){% endif %}</a>
   </div>
 </div>

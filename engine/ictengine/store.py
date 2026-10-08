@@ -85,6 +85,19 @@ CREATE TABLE IF NOT EXISTS screener (      -- one row per symbol, written by the
     data       TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS usage_counts (  -- website / terminal use per day, for the admin's statistics
+    day     TEXT NOT NULL,                   -- YYYY-MM-DD (UTC)
+    metric  TEXT NOT NULL,                   -- site_view, terminal_open, terminal_minute, ...
+    key     TEXT NOT NULL DEFAULT '',        -- page, platform, referrer ...
+    n       INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (day, metric, key)
+);
+CREATE TABLE IF NOT EXISTS usage_unique (  -- who was seen on a day (hashed: no IPs or emails are kept)
+    day     TEXT NOT NULL,
+    metric  TEXT NOT NULL,                   -- site_visitor, terminal_user
+    who     TEXT NOT NULL,
+    PRIMARY KEY (day, metric, who)
+);
 CREATE TABLE IF NOT EXISTS ea_state (      -- the latest account snapshot each EA sends (positions, orders)
     user       TEXT NOT NULL,
     mt5_login  TEXT NOT NULL,
@@ -226,6 +239,28 @@ class Store:
                 out.append(d)
             return out
 
+    def signals_window(self, start: pd.Timestamp, end: pd.Timestamp, models: list[tuple[str, bool]] | None = None) -> list[dict]:
+        """Signals created in [start, end] of all symbols. ``models`` are (model_id, bias_filter) pairs; None means
+        every model, made without the bias filter (each setup once)."""
+        args: list = [start.isoformat(), end.isoformat()]
+        if models is None:
+            cond = "bias_filter = 0"
+        elif not models:
+            return []
+        else:
+            cond = " OR ".join("(model_id = ? AND bias_filter = ?)" for _ in models)
+            for mid, bias in models:
+                args += [mid, int(bias)]
+        q = (f"SELECT id, symbol, model_id, bias_filter, payload FROM signals WHERE created_time >= ? AND created_time <= ? "
+             f"AND ({cond}) ORDER BY created_time")
+        with self._conn() as c:
+            out = []
+            for r in c.execute(q, args):
+                d = json.loads(r["payload"])
+                d.update(id=r["id"], model_id=r["model_id"], symbol=r["symbol"], bias_filter=bool(r["bias_filter"]))
+                out.append(d)
+            return out
+
     def add_ea_events(self, user: str, mt_login: str, events: list[dict]) -> int:
         now = pd.Timestamp.now(tz="UTC").isoformat()
         rows = []
@@ -361,6 +396,21 @@ class Store:
     def delete_layout(self, user: str, name: str) -> bool:
         with self._conn() as c:
             return c.execute("DELETE FROM layouts WHERE user = ? AND name = ?", (user, name)).rowcount > 0
+
+    # ---- usage statistics -------------------------------------------------------------------------
+    def count_usage(self, metric: str, key: str = "", n: int = 1, who: str | None = None, unique_metric: str | None = None) -> None:
+        day = pd.Timestamp.now(tz="UTC").strftime("%Y-%m-%d")
+        with self._conn() as c:
+            c.execute("INSERT INTO usage_counts (day, metric, key, n) VALUES (?, ?, ?, ?) "
+                      "ON CONFLICT (day, metric, key) DO UPDATE SET n = n + excluded.n", (day, metric, key[:120], n))
+            if who and unique_metric:
+                c.execute("INSERT OR IGNORE INTO usage_unique (day, metric, who) VALUES (?, ?, ?)", (day, unique_metric, who[:40]))
+
+    def usage(self, since_day: str) -> dict:
+        with self._conn() as c:
+            counts = [dict(r) for r in c.execute("SELECT day, metric, key, n FROM usage_counts WHERE day >= ?", (since_day,))]
+            uniq = [dict(r) for r in c.execute("SELECT day, metric, COUNT(*) AS n FROM usage_unique WHERE day >= ? GROUP BY day, metric", (since_day,))]
+        return {"counts": counts, "unique": uniq}
 
     # ---- MT5 accounts seen through the EA ---------------------------------------------------------
     def set_ea_state(self, user: str, login: str, data: dict) -> None:

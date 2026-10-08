@@ -22,13 +22,13 @@
 //|  is closed at its exit time. Risk per signal = InpRiskPercent.    |
 //+------------------------------------------------------------------+
 #property copyright "ICT Terminal"
-#property version   "1.11"
+#property version   "1.12"
 #property strict
 
 #include <Trade/Trade.mqh>
 #include "ICT_Json.mqh"
 
-#define EA_VERSION "1.11"
+#define EA_VERSION "1.12"
 #define TAG        "ICT#"
 #define MAX_LEGS   3
 #define MAX_TARGETS 6
@@ -85,6 +85,9 @@ string      g_events[];                 // JSON event objects waiting to be repo
 string      g_status = "Starting...", g_reason = "";
 bool        g_active = false;
 int         g_feedCount = 0;
+// risk settings in use: the EA inputs, or the customer's own from the terminal (MT5 tab) when set there
+double      g_riskPct = 0.5, g_maxLossPct = 3.0;
+int         g_maxOpen = 2;
 datetime    g_lastOk = 0;
 
 //+------------------------------------------------------------------+
@@ -100,6 +103,9 @@ int OnInit()
       Alert("ICT Bridge: risk per signal must be between 0 and 5 %.");
       return INIT_PARAMETERS_INCORRECT;
    }
+   g_riskPct = InpRiskPercent;
+   g_maxOpen = InpMaxOpenSignals;
+   g_maxLossPct = InpMaxDailyLossPct;
    trade.SetExpertMagicNumber(InpMagic);
    trade.SetDeviationInPoints(InpSlippagePoints);
    LoadStates();
@@ -214,6 +220,13 @@ void Poll()
    g_lastOk = TimeCurrent();
    g_active = JsonBool(resp, "active");
    g_reason = JsonString(resp, "reason");
+   // the customer's settings from the terminal (sent only when set there); otherwise the EA inputs
+   double userRisk = JsonNumber(resp, "user_risk_percent", 0);
+   g_riskPct = (userRisk > 0 && userRisk <= 5) ? userRisk : InpRiskPercent;
+   int userOpen = (int)JsonNumber(resp, "user_max_open", 0);
+   g_maxOpen = (userOpen > 0 && userOpen <= 20) ? userOpen : InpMaxOpenSignals;
+   double userLoss = JsonNumber(resp, "user_max_daily_loss", 0);
+   g_maxLossPct = (userLoss > 0 && userLoss <= 50) ? userLoss : InpMaxDailyLossPct;
    g_status = g_active ? "Auto-trading" : "Connected (not trading)";
    if(!g_active)
       return;
@@ -230,7 +243,7 @@ void Poll()
          g_status = "Daily loss limit reached";
          return;
       }
-      if(OpenSignalCount() >= InpMaxOpenSignals)
+      if(OpenSignalCount() >= g_maxOpen)
          return;
       Place(objs[i], id);
    }
@@ -616,7 +629,7 @@ double RiskLot(const string symbol, double entry, double stop)
    double tickSize  = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE);
    double distance  = MathAbs(entry - stop);
    if(tickValue <= 0 || tickSize <= 0 || distance <= 0) return 0;
-   double riskMoney = AccountInfoDouble(ACCOUNT_BALANCE) * InpRiskPercent / 100.0;
+   double riskMoney = AccountInfoDouble(ACCOUNT_BALANCE) * g_riskPct / 100.0;
    double lot = riskMoney / (distance / tickSize * tickValue);
    double step = SymbolInfoDouble(symbol, SYMBOL_VOLUME_STEP);
    if(step <= 0) step = 0.01;
@@ -627,7 +640,7 @@ double RiskLot(const string symbol, double entry, double stop)
 
 bool DailyLossHit()
 {
-   if(InpMaxDailyLossPct <= 0) return false;
+   if(g_maxLossPct <= 0) return false;
    MqlDateTime t;
    TimeToStruct(TimeCurrent(), t);
    t.hour = 0; t.min = 0; t.sec = 0;
@@ -642,7 +655,7 @@ bool DailyLossHit()
                 + HistoryDealGetDouble(deal, DEAL_SWAP);
    }
    double startBalance = AccountInfoDouble(ACCOUNT_BALANCE) - result;
-   return startBalance > 0 && -result >= startBalance * InpMaxDailyLossPct / 100.0;
+   return startBalance > 0 && -result >= startBalance * g_maxLossPct / 100.0;
 }
 
 int OpenSignalCount()
@@ -830,7 +843,7 @@ void ShowStatus()
    string exits = (InpExitMode == EXIT_PARTIAL ? "partial closes" : "legs")
                   + (InpTrailStartR > 0 && InpTrailLockPct > 0 ? StringFormat(", trail %.0f%% after %.1fR", InpTrailLockPct, InpTrailStartR) : ", no trailing");
    Comment(StringFormat("ICT Bridge %s\nStatus: %s\n%s\nOpen signals: %d / %d   Feed: %d   Risk: %.2f%%\nExits: %s\nLast contact: %s",
-                        EA_VERSION, g_status, g_reason, OpenSignalCount(), InpMaxOpenSignals, g_feedCount,
-                        InpRiskPercent, exits, last));
+                        EA_VERSION, g_status, g_reason, OpenSignalCount(), g_maxOpen, g_feedCount,
+                        g_riskPct, exits, last));
 }
 //+------------------------------------------------------------------+

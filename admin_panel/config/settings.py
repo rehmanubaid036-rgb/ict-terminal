@@ -170,7 +170,7 @@ JAZZMIN_SETTINGS = {
         {"model": "accounts.Payment"},
     ],
     # the left menu is grouped into sections in accounts/admin_menu.py (Users, Plans, Payments, Crypto ...)
-    "order_with_respect_to": ["users", "plans", "payments", "crypto", "donations", "community", "alerts", "trading",
+    "order_with_respect_to": ["stats", "users", "plans", "payments", "crypto", "donations", "community", "alerts", "trading",
                               "ai", "ads", "settings", "other"],
     "icons": {},          # filled below from accounts.admin_menu
     "show_ui_builder": False,

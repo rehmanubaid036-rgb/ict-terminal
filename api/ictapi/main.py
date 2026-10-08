@@ -738,6 +738,52 @@ img{{max-width:100%;height:auto;border-radius:10px;border:1px solid #232c45}}a{{
 <small>Shared {escape(row["created_at"][:16].replace("T", " "))} UTC · <a href="/">ICT Terminal</a> · not financial advice</small></body></html>"""
         return HTMLResponse(page, headers={"Cache-Control": "public, max-age=600"})
 
+    # ---- usage statistics (admin > Statistics): page views, visitors, terminal opens and minutes ---------
+    TRACK_KINDS = {"site": "site_view", "terminal_open": "terminal_open", "terminal_minute": "terminal_minute"}
+    track_seen: dict[str, float] = {}
+
+    @app.post("/api/v1/track")
+    async def track(request: Request):
+        """Anonymous use counters. Visitors are counted by a daily hash of address + browser (nothing personal
+        is stored). Terminal minutes come from a once-a-minute ping while the terminal is visible."""
+        import hashlib
+        try:
+            data = await request.json()
+        except ValueError:
+            data = {}
+        kind = TRACK_KINDS.get(str(data.get("kind") or ""))
+        if kind is None:
+            return {"ok": False}
+        ip = request.headers.get("cf-connecting-ip") or (request.client.host if request.client else "")
+        ua = request.headers.get("user-agent", "")[:200]
+        day = pd.Timestamp.now(tz="UTC").strftime("%Y-%m-%d")
+        visitor = hashlib.sha256(f"{day}|{ip}|{ua}".encode()).hexdigest()[:20]
+        # at most one count per visitor, kind and 20 s (refreshes and scripts do not inflate it)
+        k = f"{visitor}|{kind}"
+        now = time.time()
+        if now - track_seen.get(k, 0) < 20:
+            return {"ok": True}
+        track_seen[k] = now
+        if len(track_seen) > 50_000:
+            track_seen.clear()
+        if kind == "site_view":
+            page = re.sub(r"[^A-Za-z0-9/_.-]", "", str(data.get("page") or "/"))[:80] or "/"
+            ref = re.sub(r"[^A-Za-z0-9.-]", "", str(data.get("ref") or ""))[:60]
+            await run_in_threadpool(store.count_usage, "site_view", page, 1, visitor, "site_visitor")
+            if ref:
+                await run_in_threadpool(store.count_usage, "site_ref", ref)
+            return {"ok": True}
+        a = await access(request)                                   # the terminal's user (guest / plan)
+        who = hashlib.sha256(f"{day}|{_owner(a) or visitor}".encode()).hexdigest()[:20]
+        platform = re.sub(r"[^a-z]", "", str(request.headers.get("X-Device-Platform", "web")).lower())[:12] or "web"
+        plan = "guest" if a.get("guest") or a.get("status") == "guest" else ("vip" if a.get("is_vip") else "free")
+        if kind == "terminal_open":
+            await run_in_threadpool(store.count_usage, "terminal_open", platform, 1, who, "terminal_user")
+            await run_in_threadpool(store.count_usage, "terminal_plan", plan)
+        else:
+            await run_in_threadpool(store.count_usage, "terminal_minute", platform, 1, who, "terminal_user")
+        return {"ok": True}
+
     @app.get("/api/v1/alerts/fired")
     def alerts_fired(since: int = 0, a: dict = Depends(logged_in)):
         """Chart alerts the server sent (ms times), so the terminal can show them and switch them off."""
@@ -948,6 +994,64 @@ img{{max-width:100%;height:auto;border-radius:10px;border:1px solid #232c45}}a{{
                 out.append((mid, flag.upper() == "BIAS"))
         return out
 
+    # ---- the customer's auto-trading settings (terminal > MT5 tab), applied to what their EA gets -----------
+    GRADE_RANK = {"A+": 3, "A": 2, "B": 1}
+    SESSIONS = {"asia": (18, 2), "london": (2, 7), "ny_am": (7, 12), "ny_pm": (12, 18)}   # New York hours [from, to)
+
+    def _session_of(hour: int) -> str:
+        for name, (a, b) in SESSIONS.items():
+            if (a <= hour < b) if a < b else (hour >= a or hour < b):
+                return name
+        return ""
+
+    def _user_pairs(approved: list[str], f: dict) -> list[tuple[str, bool]]:
+        """The admin's approved models, narrowed to the user's choice; the user can add the daily-bias filter
+        (never remove the admin's)."""
+        mine = set(f.get("models") or [])
+        out = []
+        for mid, bias in _ea_models(approved):
+            if mine and mid not in mine:
+                continue
+            pair = (mid, bias or bool(f.get("bias_only")))
+            if pair not in out:
+                out.append(pair)
+        return out
+
+    def _filter_steps(f: dict):
+        """(label, test) for each of the user's filters on one signal."""
+        syms = {s.upper() for s in f.get("symbols") or []}
+        need = {"A+": 3, "A": 2}.get(f.get("min_grade") or "all", 0)
+        sess = set(f.get("sessions") or [])
+        days = set(f.get("weekdays") or [])
+        direction = {"long": 1, "short": -1}.get(f.get("direction") or "both")
+
+        def ny(s):
+            return _ny(s["created_time"])
+        return [
+            ("Your symbols", lambda s: not syms or str(s.get("symbol", "")).upper() in syms),
+            ("Grade", lambda s: GRADE_RANK.get(s.get("grade") or "", 0) >= need),
+            ("Direction", lambda s: direction is None or int(s.get("direction") or 0) == direction),
+            ("Sessions", lambda s: not sess or _session_of(ny(s).hour) in sess),
+            ("Week days", lambda s: not days or ny(s).weekday() in days),
+        ]
+
+    def _ny(t) -> pd.Timestamp:
+        t = pd.Timestamp(t)
+        return (t.tz_localize("UTC") if t.tz is None else t).tz_convert("America/New_York")
+
+    def _passes(s: dict, f: dict) -> bool:
+        return all(test(s) for _, test in _filter_steps(f))
+
+    def _day_cap(sigs: list[dict], f: dict, now: pd.Timestamp, pairs) -> list[dict]:
+        """At most ``max_trades_day`` signals a New York day: the first ones of the day that passed the filters."""
+        cap = int(f.get("max_trades_day") or 0)
+        if cap <= 0 or not sigs:
+            return sigs
+        day0 = now.tz_convert("America/New_York").normalize().tz_convert("UTC")
+        today = [s for s in store.signals_window(day0, now, pairs) if _passes(s, f)]
+        allowed = {s["id"] for s in today[:cap]}
+        return [s for s in sigs if s["id"] in allowed]
+
     def _num(v):
         try:
             return float(v)
@@ -1008,12 +1112,67 @@ img{{max-width:100%;height:auto;border-radius:10px;border:1px solid #232c45}}a{{
         _save_ea_state(r, data)
         if not r.get("valid") or not copy.get("active"):
             return {**base, "reason": copy.get("reason") or r.get("reason", "")}
-        models = _ea_models(copy.get("models") or [])
-        sigs = store.live_signals(now, models)
+        f = copy.get("filters") or {}
+        models = _user_pairs(copy.get("models") or [], f)
+        sigs = [s for s in store.live_signals(now, models) if _passes(s, f)]
+        sigs = _day_cap(sigs, f, now, models)
         keep = ("id", "model_id", "symbol", "direction", "entry", "stop", "targets", "expiry", "time_stop",
                 "exit_by", "created_time", "grade")
-        return {**base, "active": True, "reason": "", "models": [m for m, _ in models],
-                "signals": [{k: s.get(k) for k in keep} for s in sigs]}
+        out = {**base, "active": True, "reason": "", "models": [m for m, _ in models],
+               "signals": [{k: s.get(k) for k in keep} for s in sigs]}
+        # the user's risk settings replace the EA's inputs (EA 1.12+); sent only when set
+        for key, name in (("risk_percent", "user_risk_percent"), ("max_open", "user_max_open"),
+                          ("max_daily_loss", "user_max_daily_loss")):
+            v = _num(f.get(key))
+            if v and v > 0:
+                out[name] = v
+        return out
+
+    @app.post("/api/v1/mt5/preview")
+    async def mt5_preview(request: Request, a: dict = Depends(logged_in)):
+        """How the signals of the last N days pass through the auto-trading settings, step by step, before any
+        reaches MT5. Body: {approved: [...admin models from copy settings], filters: {...}, days}."""
+        try:
+            data = await request.json()
+        except ValueError:
+            data = {}
+        f = data.get("filters") if isinstance(data.get("filters"), dict) else {}
+        approved = [str(m).upper()[:20] for m in (data.get("approved") or []) if isinstance(m, str)][:40]
+        days = min(max(int(_num(data.get("days")) or 7), 1), 30)
+        now = pd.Timestamp.now(tz="UTC")
+        start = now - pd.Timedelta(days=days)
+
+        def run():
+            steps = []
+            every = store.signals_window(start, now)
+            steps.append({"step": "All signals (every model)", "n": len(every)})
+            admin_pairs = _ea_models(approved)
+            adm = store.signals_window(start, now, admin_pairs)
+            steps.append({"step": "Approved by admin for auto-trading", "n": len(adm)})
+            mine = set(f.get("models") or [])
+            steps.append({"step": "Your models", "n": sum(1 for s in adm if not mine or s["model_id"] in mine)})
+            pairs = _user_pairs(approved, f)
+            cur = store.signals_window(start, now, pairs)
+            steps.append({"step": "Daily bias agrees" if f.get("bias_only") else "Daily bias (off: not checked)", "n": len(cur)})
+            for label, test in _filter_steps(f):
+                cur = [s for s in cur if test(s)]
+                steps.append({"step": label, "n": len(cur)})
+            cap = int(_num(f.get("max_trades_day")) or 0)
+            if cap > 0:
+                per_day: dict = {}
+                kept = []
+                for s in cur:
+                    d = _ny(s["created_time"]).date()
+                    if per_day.get(d, 0) < cap:
+                        per_day[d] = per_day.get(d, 0) + 1
+                        kept.append(s)
+                cur = kept
+                steps.append({"step": f"Max {cap} a day", "n": len(cur)})
+            last = [{"id": s["id"], "time": s["created_time"], "symbol": s["symbol"], "model_id": s["model_id"],
+                     "direction": s.get("direction"), "grade": s.get("grade") or "", "entry": s.get("entry"),
+                     "stop": s.get("stop")} for s in cur[-25:]][::-1]
+            return {"days": days, "steps": steps, "signals": last}
+        return await run_in_threadpool(run)
 
     @app.post("/api/v1/ea/report")
     async def ea_report(request: Request):

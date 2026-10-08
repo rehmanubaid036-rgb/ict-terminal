@@ -178,6 +178,37 @@ class ApiTests(TestCase):
         raw2 = self.post("copy/token", **auth).json()["ea_token"]
         self.assertIn("paused", self.post("internal/ea", {"ea_token": raw2}, **svc).json()["reason"])
 
+    def test_copy_filters_are_checked_and_returned(self):
+        svc = {"X-Service-Key": SECRET}
+        self.make_user()
+        auth = {"Authorization": f"Bearer {self.login().json()['token']}"}
+        raw = self.post("copy/token", **auth).json()["ea_token"]
+        good = {"models": ["m9", "M1"], "symbols": ["xauusd"], "min_grade": "A+", "bias_only": True,
+                "sessions": ["london", "ny_am"], "direction": "long", "weekdays": [0, 1, 2], "max_trades_day": 2,
+                "risk_percent": 1, "max_open": 3, "max_daily_loss": 4}
+        r = self.post("copy/settings", {"filters": good}, **auth)
+        self.assertEqual(r.status_code, 200, r.content)
+        f = r.json()["copy"]["filters"]
+        self.assertEqual(f["models"], ["M9", "M1"])
+        self.assertEqual(f["symbols"], ["XAUUSD"])
+        self.assertEqual((f["min_grade"], f["bias_only"], f["max_trades_day"]), ("A+", True, 2))
+        ea = self.post("internal/ea", {"ea_token": raw}, **svc).json()
+        self.assertEqual(ea["copy"]["filters"]["sessions"], ["london", "ny_am"])
+        for bad in ({"min_grade": "B+"}, {"sessions": ["moon"]}, {"weekdays": [9]}, {"risk_percent": 20},
+                    {"direction": "up"}, {"models": "M9"}, {"max_open": 99}):
+            self.assertEqual(self.post("copy/settings", {"filters": bad}, **auth).status_code, 400, bad)
+        # 0 = the EA's own input; empty lists = all
+        f = self.post("copy/settings", {"filters": {}}, **auth).json()["copy"]["filters"]
+        self.assertEqual((f["models"], f["risk_percent"], f["min_grade"]), ([], 0, "all"))
+
+    def test_bias_approved_models_match_the_plan(self):
+        from .services import copy_settings_payload, ea_connection_for
+        user = self.make_user()
+        site = SiteSettings.load(); site.auto_trade_models = "M9:BIAS, M4"; site.save()
+        access = {"is_vip": True, "features": {"auto_trade": True, "models": ["M9"]}}
+        conn = ea_connection_for(user); conn.copy_enabled = True; conn.save()
+        self.assertEqual(copy_settings_payload(conn, access)["models"], ["M9:BIAS"])
+
     def test_copy_endpoints_need_login_and_secret(self):
         self.assertEqual(self.get("copy/settings").status_code, 401)
         self.assertEqual(self.post("copy/token").status_code, 401)
@@ -1857,3 +1888,33 @@ class SignupPlansAndAdminMenuTests(TestCase):
         self.assertEqual(sections["crypto"][:2], ["CryptoOrder", "CryptoWallet"])
         self.assertIn("ChatMessage", sections["community"])
         self.assertNotIn("other", sections)
+
+
+class StatsPageTests(TestCase):
+    """Admin > Statistics reads ICT's usage counters and this panel's own tables."""
+
+    def test_page_and_numbers(self):
+        import sqlite3
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+        db = Path(tempfile.mkdtemp()) / "ict.db"
+        con = sqlite3.connect(db)
+        con.execute("CREATE TABLE usage_counts (day TEXT, metric TEXT, key TEXT, n INTEGER)")
+        con.execute("CREATE TABLE usage_unique (day TEXT, metric TEXT, who TEXT)")
+        today = timezone.now().strftime("%Y-%m-%d")
+        con.executemany("INSERT INTO usage_counts VALUES (?,?,?,?)", [(today, "site_view", "/", 12), (today, "terminal_minute", "web", 90),
+                                                                      (today, "terminal_open", "web", 4)])
+        con.executemany("INSERT INTO usage_unique VALUES (?,?,?)", [(today, "site_visitor", "a"), (today, "site_visitor", "b"), (today, "terminal_user", "a")])
+        con.commit()
+        con.close()
+        boss = User.objects.create_superuser("st@example.com", "st@example.com", PASSWORD)
+        self.client.force_login(boss)
+        with mock.patch("accounts.alerts.ict_db", return_value=db):
+            r = self.client.get("/admin/stats/?days=7")
+        self.assertEqual(r.status_code, 200)
+        cards = {c[0]: c[1] for c in r.context["cards"]}
+        self.assertEqual((cards["Website visitors"], cards["Page views"], cards["Terminal hours"], cards["Terminal opens"]), (2, 12, 1.5, 4))
+        self.assertContains(r, "Top pages")
+        self.client.logout()
+        self.assertEqual(self.client.get("/admin/stats/").status_code, 302)          # staff only

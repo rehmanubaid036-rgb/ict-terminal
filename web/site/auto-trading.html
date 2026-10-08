@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MT5 Auto-Trading Guide | ICT Terminal</title>
+  <meta name="description" content="Connect MetaTrader 5 to ICT Terminal with the ICT Bridge EA: install, token, settings (models, symbols, A+ only, daily bias, sessions, risk) and how every signal is filtered before it reaches MT5.">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap">
+  <link rel="stylesheet" href="/style.css?v=8">
+</head>
+<body>
+<header class="nav"><div class="wrap nav-in"><a class="logo" href="/"><img class="logo-mark" src="/favicon.svg" alt=""><span><b>ICT</b> Terminal</span></a>
+<a class="btn btn-primary" href="/terminal/?tab=mt5">Open the MT5 tab</a></div></header>
+
+<main class="wrap doc at-page">
+  <p class="kicker">Guide</p>
+  <h1>MT5 auto-trading</h1>
+  <p class="lead">The ICT Bridge EA connects your MetaTrader 5 account to ICT Terminal. When an approved ICT model finds a
+    setup that passes <b>your</b> settings, the EA places the trade with its stop, targets and exits. This guide takes
+    you through it step by step.</p>
+
+  <nav class="at-toc">
+    <a href="#need">What you need</a><a href="#install">Install</a><a href="#connect">Connect</a>
+    <a href="#settings">Settings</a><a href="#filter">How trades are filtered</a><a href="#ea">EA inputs</a>
+    <a href="#exits">Exits</a><a href="#trouble">Problems</a><a href="#risk">Risk</a>
+  </nav>
+
+  <div class="at-note">In the terminal, open the <b>MT5</b> tab and press <b>Take a tour</b>: it points at every part
+    of the panel and explains it in a few seconds.</div>
+
+  <h2 id="need">1. What you need</h2>
+  <ul>
+    <li>A plan with <b>auto-trading</b> (VIP). Free plans see signals on the chart only.</li>
+    <li>MetaTrader 5 on a Windows PC or a Windows VPS (MT5 must stay open for the EA to trade; a VPS keeps it on 24/5).</li>
+    <li>A broker account. <b>Start on a demo account</b> and move to real money only after you have watched it for a few weeks.</li>
+  </ul>
+
+  <h2 id="install">2. Install the EA</h2>
+  <ol>
+    <li>Open the web terminal, go to the <b>MT5</b> tab and download <code>ICT_Bridge.mq5</code> and <code>ICT_Json.mqh</code>.</li>
+    <li>In MT5: <b>File → Open Data Folder → MQL5 → Experts</b>. Copy both files there.</li>
+    <li>Open <code>ICT_Bridge.mq5</code> in MetaEditor (double-click it) and press <b>Compile</b>. It must say 0 errors.</li>
+    <li>In MT5: <b>Tools → Options → Expert Advisors</b>. Tick <b>Allow algorithmic trading</b> and <b>Allow WebRequest for listed URL</b>, then add
+      <code>https://ictapi.iccterminal.trade</code>.</li>
+  </ol>
+
+  <h2 id="connect">3. Connect it to your account</h2>
+  <ol>
+    <li>In the MT5 tab press <b>Make my EA token</b> and copy it. It is shown only once; if you lose it, make a new one (the old one stops working).</li>
+    <li>In MT5, drag <b>ICT_Bridge</b> onto <b>any one chart</b>. It trades every allowed symbol from that one chart.</li>
+    <li>Paste the token in <b>EA token</b>, check the inputs (risk, symbol suffix) and press OK. Make sure the <b>Algo Trading</b> button in MT5 is green.</li>
+    <li>Back in the terminal the MT5 tab shows <b>EA online</b> with your account number, balance and positions within a few seconds.</li>
+    <li>Turn the <b>Let the EA trade</b> switch ON. The status shows <b>ON</b> when everything is ready; otherwise it says why not.</li>
+  </ol>
+
+  <h2 id="settings">4. Your auto-trading settings</h2>
+  <p>All of these are in the terminal's MT5 tab under <b>Auto-trading settings</b>. Press <b>Save</b>; the EA picks them up
+    on its next check (within a minute). You do not need to change anything in MT5.</p>
+  <div class="at-table">
+    <div><b>Models</b><span>Only models the admin has approved for auto-trading can be chosen (others are still tested). Tick the ones
+      you want; none ticked means all approved models. Each model uses its own timeframes, for example a 1-hour bias with a
+      1 or 5-minute entry, so there is no separate timeframe to pick.</span></div>
+    <div><b>Symbols</b><span>For example only XAUUSD and NAS100. None picked means every symbol the engine scans.</span></div>
+    <div><b>Setup quality</b><span>All grades, A and A+, or <b>A+ only</b>. A+ setups have the most confirmations; they are fewer but cleaner.</span></div>
+    <div><b>Daily bias</b><span>When on, a trade is taken only if it points the same way as the higher-timeframe (daily) bias.
+      If the admin approved a model "with bias", the bias check is always on for it.</span></div>
+    <div><b>Direction</b><span>Buy and sell, buy only or sell only.</span></div>
+    <div><b>Sessions</b><span>New York time: Asia 18:00–02:00, London 02:00–07:00, New York AM 07:00–12:00, New York PM 12:00–18:00. None = all day.</span></div>
+    <div><b>Days</b><span>Pick the week days to trade, for example Monday to Thursday. None = every day.</span></div>
+    <div><b>Trades a day</b><span>At most this many a day: the first setups of the (New York) day that pass all your filters. 0 = no limit.</span></div>
+    <div><b>Risk per trade %</b><span>How much of your balance one trade risks (0.01 – 5 %). 0 = the EA's own input.</span></div>
+    <div><b>Open at the same time</b><span>How many trades can be open together (1 – 20). 0 = the EA input.</span></div>
+    <div><b>Daily loss stop %</b><span>After losing this much today, no new trades until tomorrow. 0 = the EA input.</span></div>
+  </div>
+  <p class="small muted">Risk, open-trade and daily-loss settings from the terminal need EA version 1.12 or newer. Older EAs keep their own inputs.</p>
+
+  <h2 id="filter">5. How a trade gets from the terminal to MT5</h2>
+  <p>Every signal goes through these steps on our server. Only what is left at the end is sent to your EA:</p>
+  <ol class="at-funnel">
+    <li><b>The engine finds a setup</b><span>All ICT models scan every symbol all day.</span></li>
+    <li><b>Approved by the admin</b><span>Only models that passed testing and were approved for auto-trading go on.</span></li>
+    <li><b>Your plan</b><span>Your plan must include auto-trading and that model.</span></li>
+    <li><b>Your models</b><span>The models you ticked.</span></li>
+    <li><b>Daily bias</b><span>If you switched it on (or the admin requires it).</span></li>
+    <li><b>Your symbols</b></li>
+    <li><b>Grade</b><span>All, A and A+, or A+ only.</span></li>
+    <li><b>Direction, sessions and days</b></li>
+    <li><b>Trades a day</b><span>The first ones of the day only.</span></li>
+    <li><b>Fresh only</b><span>Created in the last 30 minutes and not expired, so a late EA never chases an old setup.</span></li>
+    <li><b>Your EA's own checks</b><span>Auto-trading switched ON, open-trade limit, daily loss stop, lot size limits and the broker's rules.</span></li>
+  </ol>
+  <p>In the MT5 tab, <b>How signals reach your MT5</b> shows these steps for the last 7 days with your settings, even
+    before you save, so you can see how many trades a setting would have allowed.</p>
+
+  <h2 id="ea">6. EA inputs (in MT5)</h2>
+  <ul>
+    <li><b>Risk per signal / Max daily loss / Signals open at the same time</b>: used when you leave the terminal settings at 0.</li>
+    <li><b>Max lot</b>: never more than this lot in total per signal.</li>
+    <li><b>Symbol suffix / Symbol map</b>: if your broker names symbols differently (for example <code>XAUUSD.pro</code> or <code>USTEC</code> for NAS100).
+      Usually found automatically.</li>
+    <li><b>Magic number</b>: tells this EA's trades apart from your own; keep it unless you run two copies.</li>
+    <li><b>Exit mode, partials, breakeven and trailing</b>: how targets are taken (see below).</li>
+  </ul>
+
+  <h2 id="exits">7. How trades are managed</h2>
+  <ul>
+    <li>Every trade has a stop loss and a final take profit at the broker from the start.</li>
+    <li><b>Partial</b> mode closes a share at each target (the signal's split, for example 50/20/15/15). <b>Legs</b> mode opens one position per target.</li>
+    <li>After target 1 the stop moves to the entry (breakeven), if switched on.</li>
+    <li>Trailing keeps a share of the best open profit once the trade is far enough in profit.</li>
+    <li>Pending orders are cancelled when the setup expires; a trade that does not reach target 1 in time is closed at its time stop.</li>
+    <li>Your open positions appear in the MT5 tab and as lines on the chart, and every fill and exit is in the EA trade log.</li>
+  </ul>
+
+  <h2 id="trouble">8. If it does not trade</h2>
+  <ul>
+    <li><b>"Not trading" in the terminal</b>: the reason is shown under the status (no plan with auto-trading, switch off, no model approved yet).</li>
+    <li><b>EA shows "WebRequest" errors</b>: add the server address in Tools → Options → Expert Advisors (step 2.4).</li>
+    <li><b>"Invalid EA token"</b>: make a new token in the MT5 tab and paste it again.</li>
+    <li><b>Online but no trades</b>: look at <b>How signals reach your MT5</b>. If the last step is 0, your filters are strict or no
+      setup appeared; that is normal on quiet days.</li>
+    <li><b>Lot too small</b>: with small balances the risk lot may be under the broker's minimum; the EA skips it unless "trade the minimum anyway" is on.</li>
+    <li><b>Algo Trading button red</b> or the EA's smiley is sad: turn Algo Trading on and allow it in the EA's settings.</li>
+  </ul>
+
+  <h2 id="risk">9. Risk</h2>
+  <p>Trading is risky and you can lose money. Past results and backtests do not promise future profit. Auto-trading
+    places real orders on your account: test on a demo first, use small risk and check your account often. ICT Terminal
+    does not manage your money and is not financial advice. Read the full <a href="/risk.html">risk disclaimer</a>.</p>
+
+  <p class="at-cta"><a class="btn btn-primary" href="/terminal/?tab=mt5">Open the MT5 tab</a> <a class="btn btn-ghost" href="/guide/">User guide</a></p>
+</main>
+
+<footer class="footer"><div class="wrap foot-in"><span>&copy; 2026 ICT Terminal</span>
+<nav><a href="/">Home</a><a href="/guide/">Guide</a><a href="/auto-trading.html">Auto-trading</a><a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a><a href="/risk.html">Risk disclaimer</a></nav></div></footer>
+<script src="/site.js?v=8"></script>
+</body>
+</html>

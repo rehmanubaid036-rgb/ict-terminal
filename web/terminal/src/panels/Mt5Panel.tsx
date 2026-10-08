@@ -5,9 +5,25 @@ import { useTerminal } from '../Terminal'
 import { api, errorText, type CopyStatus, type EaEvent, type Mt5Account } from '../api'
 import { allIds, getChart, getEntry } from '../chart/registry'
 import { Switch, toast } from '../ui/common'
+import { Tour, type TourStep } from '../ui/Tour'
+import { Mt5Settings } from './Mt5Settings'
 
 const ORDER_TYPES = ['Buy', 'Sell', 'Buy limit', 'Sell limit', 'Buy stop', 'Sell stop', 'Buy stop limit', 'Sell stop limit']
 const GROUP = 'mt5pos'
+const TOUR: TourStep[] = [
+  { target: 'mt5-status', title: 'Auto-trading status', text: 'ON means your EA is allowed to trade now. If it says "not trading", the line below tells you why (no plan with auto-trading, switched off, or no model approved yet).' },
+  { target: 'mt5-switch', title: 'Your ON / OFF switch', text: 'Turn auto-trading on or off at any time. When it is off the EA keeps running but opens no new trades.' },
+  { target: 'mt5-lot', title: 'Lot multiplier', text: '1 = 0.01 lot for every 1,000 of balance (when the EA uses fixed lots). 2 doubles it, 0.5 halves it.' },
+  { target: 'mt5-token', title: 'EA token and files', text: 'Make your EA token, download ICT_Bridge.mq5 and ICT_Json.mqh, put them in MT5 (MQL5 > Experts), compile, then paste the token into the EA. The token is shown only once.' },
+  { target: 'mt5-models', title: 'Choose models', text: 'Only models the admin approved for auto-trading can reach MT5. Tick the ones you want; none ticked means all approved ones.' },
+  { target: 'mt5-symbols', title: 'Choose symbols', text: 'Pick the markets your EA may trade, for example only XAUUSD and NAS100. None picked means every symbol.' },
+  { target: 'mt5-quality', title: 'Quality filters', text: 'A+ only keeps the strongest setups. "Daily bias agrees" keeps only trades in the direction of the higher-timeframe bias. You can also allow only buys or only sells.' },
+  { target: 'mt5-time', title: 'Sessions and days', text: 'Trade only in the sessions and on the days you choose (New York time), for example London + New York AM, Monday to Thursday.' },
+  { target: 'mt5-risk', title: 'Trades and risk', text: 'Limit trades a day and set your risk per trade, trades open at once and the daily loss stop. 0 keeps the EA input. Needs EA 1.12.' },
+  { target: 'mt5-funnel', title: 'See the filter at work', text: 'This shows the last 7 days of signals passing through every step of your settings, so you see how many would have reached MT5 before you save.' },
+  { target: 'mt5-account', title: 'Your MT5 account', text: 'Balance, equity, open positions and pending orders as your EA reports them. Click a position to open its chart; entry, SL and TP lines are drawn on it.' },
+  { target: 'mt5-log', title: 'Trade log', text: 'Every fill, exit and error the EA reports. Done! The full guide on the website explains everything step by step.' },
+]
 /** XAUUSD.pro, XAUUSDm, #US30 ... -> the engine name, to match the chart's symbol. */
 const plain = (s: string) => s.replace(/^[#.]/, '').replace(/[._-][a-z0-9]{1,6}$/i, '').replace(/(?<=[A-Z0-9]{5})[a-z]{1,2}$/, '').toUpperCase()
 
@@ -19,6 +35,7 @@ export function Mt5Panel() {
   const [token, setToken] = useState('')
   const [lines, setLines] = useState(true)
   const [err, setErr] = useState('')
+  const [tour, setTour] = useState(false)
   const linesRef = useRef(lines)
   linesRef.current = lines
 
@@ -66,13 +83,18 @@ export function Mt5Panel() {
   const pl = (accounts ?? []).reduce((x, a) => x + a.positions.reduce((y, p) => y + p.profit + (p.swap || 0), 0), 0)
   return (
     <div className="mt5">
+      {tour && <Tour steps={TOUR} onClose={() => setTour(false)} />}
+      <div className="mt5-help">
+        <button className="btn primary sm" onClick={() => setTour(true)} disabled={!copy}>Take a tour</button>
+        <a className="btn ghost sm" href="/auto-trading.html" target="_blank" rel="noopener">Full guide</a>
+      </div>
       <div className="wa-box">
-        <div className="mt5-head"><b>Auto-trading</b>
+        <div className="mt5-head" data-tour="mt5-status"><b>Auto-trading</b>
           <span className={`ok-pill${copy?.active ? '' : ' off'}`}>{copy ? (copy.active ? 'ON' : 'not trading') : '…'}</span></div>
         {copy && <>
           {!copy.active && copy.reason && <div className="note">{copy.reason}</div>}
-          <Switch checked={copy.copy_enabled} onChange={v => void save({ copy_enabled: v })} label="Let the EA trade the approved models" />
-          <label className="wa-field">Lot multiplier (0.1 - 10)
+          <div data-tour="mt5-switch"><Switch checked={copy.copy_enabled} onChange={v => void save({ copy_enabled: v })} label="Let the EA trade (with the settings below)" /></div>
+          <label className="wa-field" data-tour="mt5-lot">Lot multiplier (0.1 - 10)
             <input type="number" step="0.1" min="0.1" max="10" defaultValue={copy.multiplier} onBlur={e => { const v = Number(e.target.value); if (v && v !== copy.multiplier) void save({ multiplier: v }) }} />
           </label>
           <div className="dw-row"><span>Models it may trade</span><b>{copy.models.length ? copy.models.join(', ') : 'none yet'}</b></div>
@@ -80,7 +102,7 @@ export function Mt5Panel() {
           <div className="dw-row"><span>EA token</span><b>{copy.has_token ? `${copy.token_prefix}…` : 'none'}</b></div>
           {token && <div className="mt5-token"><code>{token}</code><button className="link" onClick={() => { void navigator.clipboard?.writeText(token); toast('Token copied.') }}>Copy</button>
             <div className="note">Shown only now. Paste it in the EA's "EA token" input.</div></div>}
-          <div className="mt5-actions">
+          <div className="mt5-actions" data-tour="mt5-token">
             <button className="btn ghost sm" onClick={() => void newToken()}>{copy.has_token ? 'New EA token' : 'Make my EA token'}</button>
             <a className="btn ghost sm" href="/api/v1/ea/download/ICT_Bridge.mq5" download>EA file</a>
             <a className="btn ghost sm" href="/api/v1/ea/download/ICT_Json.mqh" download>ICT_Json.mqh</a>
@@ -91,8 +113,9 @@ export function Mt5Panel() {
           </details>
         </>}
       </div>
+      {copy && <Mt5Settings copy={copy} onSaved={setCopy} />}
 
-      <div className="mt5-head"><b>MT5 account</b><span className="grow" />
+      <div className="mt5-head" data-tour="mt5-account"><b>MT5 account</b><span className="grow" />
         <label className="mini-check"><input type="checkbox" checked={lines} onChange={e => setLines(e.target.checked)} /> Lines on chart</label></div>
       {accounts === null ? <div className="note">Loading…</div> : !accounts.length ? <div className="note">No account yet. Run the ICT Bridge EA (1.11 or newer) and its positions show here.</div> :
         accounts.map(a => (
@@ -114,7 +137,7 @@ export function Mt5Panel() {
           </div>))}
       {!!accounts?.length && <div className="dw-row"><span>Open P/L (all)</span><b className={pl >= 0 ? 'up' : 'down'}>{pl >= 0 ? '+' : ''}{pl.toFixed(2)}</b></div>}
 
-      <div className="mt5-sub">EA trade log</div>
+      <div className="mt5-sub" data-tour="mt5-log">EA trade log</div>
       {!events.length ? <div className="note">Nothing yet.</div> : events.slice(0, 30).map(e => (
         <div key={e.id} className="mt5-ev"><small>{e.at?.slice(0, 16).replace('T', ' ')}</small> <b>{e.event}</b> #{e.signal_id} {e.price ? `@ ${e.price}` : ''} {e.profit ? <span className={e.profit >= 0 ? 'up' : 'down'}>{e.profit.toFixed(2)}</span> : null} <span className="muted">{e.detail}</span></div>))}
       <div className="disclaimer">Auto-trading is at your own risk. Test on a demo account first.</div>

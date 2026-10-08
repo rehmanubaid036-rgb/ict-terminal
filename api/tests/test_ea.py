@@ -99,3 +99,58 @@ def test_account_snapshot_for_the_terminal(ea):
     assert s[0]["orders"][0]["type"] == 2
     client.post("/api/v1/ea/feed", json={"ea_token": "waiting", "mt5_login": "555", "balance": 1000})   # an old EA: kept as it was
     assert store.ea_states("p@x.com")[0]["equity"] == 1012.5
+
+
+def _graded(model, minutes_ago, grade, direction=LONG, symbol="XAUUSD"):
+    s = sig(model, minutes_ago, direction)
+    s.grade = grade
+    s.symbol = symbol
+    return s
+
+
+def _now_session():
+    h = pd.Timestamp.now(tz="UTC").tz_convert("America/New_York").hour
+    return "asia" if h >= 18 or h < 2 else "london" if h < 7 else "ny_am" if h < 12 else "ny_pm"
+
+
+def test_user_filters_narrow_the_feed(tmp_path, gold):
+    store = Store(tmp_path / "f.db")
+    flt = {"models": ["M9"], "symbols": ["XAUUSD"], "min_grade": "A", "bias_only": True, "direction": "long",
+           "sessions": [_now_session()], "weekdays": [], "max_trades_day": 0, "risk_percent": 1.5, "max_open": 3,
+           "max_daily_loss": 0}
+    fake = FakeEA({"f": {**ACTIVE, "copy": {**ACTIVE["copy"], "models": ["M9", "M1"], "filters": flt}}})
+    client = TestClient(create_app(FrameProvider({"AXI:XAUUSD": gold}), store, auth=fake, require_auth=True))
+    store.upsert_signals("XAUUSD", "M9", [_graded("M9_market_maker", 5, "A+")], True)              # passes
+    store.upsert_signals("XAUUSD", "M9", [_graded("M9_market_maker", 6, "A+")], False)             # no bias: user wants bias
+    store.upsert_signals("XAUUSD", "M9", [_graded("M9_market_maker", 7, "B")], True)               # grade B
+    store.upsert_signals("XAUUSD", "M9", [_graded("M9_market_maker", 8, "A", SHORT)], True)        # short
+    store.upsert_signals("NAS100", "M9", [_graded("M9_market_maker", 9, "A", symbol="NAS100")], True)  # symbol
+    store.upsert_signals("XAUUSD", "M1", [_graded("M1_silver_bullet", 4, "A+")], True)             # model not chosen
+    r = client.post("/api/v1/ea/feed", json={"ea_token": "f"}).json()
+    assert r["models"] == ["M9"] and len(r["signals"]) == 1 and r["signals"][0]["grade"] == "A+"
+    assert r["user_risk_percent"] == 1.5 and r["user_max_open"] == 3 and "user_max_daily_loss" not in r
+
+    other = [x for x in ("asia", "london", "ny_am", "ny_pm") if x != _now_session()]
+    fake.answers["f"]["copy"]["filters"] = {**flt, "sessions": other}
+    assert client.post("/api/v1/ea/feed", json={"ea_token": "f"}).json()["signals"] == []
+
+
+def test_max_trades_a_day(tmp_path, gold):
+    store = Store(tmp_path / "c.db")
+    fake = FakeEA({"c": {**ACTIVE, "copy": {**ACTIVE["copy"], "models": ["M9"], "filters": {"max_trades_day": 1}}}})
+    client = TestClient(create_app(FrameProvider({"AXI:XAUUSD": gold}), store, auth=fake, require_auth=True))
+    store.upsert_signals("XAUUSD", "M9", [_graded("M9_market_maker", 2, "A"), _graded("M9_market_maker", 3, "A", SHORT)], False)
+    got = client.post("/api/v1/ea/feed", json={"ea_token": "c"}).json()["signals"]
+    assert len(got) == 1                                       # only the first of the day
+
+
+def test_preview_funnel(tmp_path, gold):
+    store = Store(tmp_path / "p.db")
+    client = TestClient(create_app(FrameProvider({"AXI:XAUUSD": gold}), store, require_auth=False))
+    store.upsert_signals("XAUUSD", "M9", [_graded("M9_market_maker", 5, "A+"), _graded("M9_market_maker", 6, "B")], False)
+    store.upsert_signals("XAUUSD", "M9", [_graded("M9_market_maker", 5, "A+")], True)
+    store.upsert_signals("XAUUSD", "M2", [_graded("M2_mentorship_2022", 5, "A")], False)
+    r = client.post("/api/v1/mt5/preview", json={"approved": ["M9"], "filters": {"min_grade": "A+", "bias_only": True}}).json()
+    n = {s["step"]: s["n"] for s in r["steps"]}
+    assert n["All signals (every model)"] == 3 and n["Approved by admin for auto-trading"] == 2
+    assert n["Daily bias agrees"] == 1 and n["Grade"] == 1 and len(r["signals"]) == 1

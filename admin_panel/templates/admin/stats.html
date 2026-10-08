@@ -1,0 +1,57 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<div class="mb-3">
+  {% for d in ranges %}<a class="btn btn-sm {% if d == days %}btn-warning{% else %}btn-outline-secondary{% endif %} mr-1" href="?days={{ d }}">Last {{ d }} days</a>{% endfor %}
+  {% if not has_usage %}<span class="text-muted ml-3">Website and terminal counts start after this update reaches the server (they are counted from now on).</span>{% endif %}
+</div>
+<div class="row">
+  {% for c in cards %}
+  <div class="col-xl-3 col-lg-4 col-sm-6"><div class="small-box bg-light border">
+    <div class="inner"><h3 style="font-size:1.6rem">{{ c.1 }}</h3><p class="mb-0"><b>{{ c.0 }}</b><br><small class="text-muted">{{ c.2 }}</small></p></div>
+  </div></div>
+  {% endfor %}
+</div>
+<div class="row">
+  <div class="col-lg-6"><div class="card"><div class="card-header"><b>Website</b> (visitors / page views a day)</div><div class="card-body"><canvas id="c-site" height="140"></canvas></div></div></div>
+  <div class="col-lg-6"><div class="card"><div class="card-header"><b>Terminal</b> (users / opens a day, hours on screen)</div><div class="card-body"><canvas id="c-term" height="140"></canvas></div></div></div>
+  <div class="col-lg-6"><div class="card"><div class="card-header"><b>Accounts</b> (new accounts / logins a day)</div><div class="card-body"><canvas id="c-acc" height="140"></canvas></div></div></div>
+  <div class="col-lg-6"><div class="card"><div class="card-header"><b>Active subscriptions by plan</b></div><div class="card-body p-0">
+    <table class="table table-sm mb-0">{% for r in subs_by_plan %}<tr><td>{{ r.plan__name }}</td><td class="text-right">{{ r.n }}</td></tr>{% empty %}<tr><td class="text-muted">None</td></tr>{% endfor %}</table></div></div></div>
+</div>
+<div class="row">
+  <div class="col-lg-3"><div class="card"><div class="card-header"><b>Top pages</b></div><div class="card-body p-0"><table class="table table-sm mb-0">
+    {% for k, n in pages %}<tr><td>{{ k }}</td><td class="text-right">{{ n }}</td></tr>{% empty %}<tr><td class="text-muted">No data yet</td></tr>{% endfor %}</table></div></div></div>
+  <div class="col-lg-3"><div class="card"><div class="card-header"><b>Visitors came from</b></div><div class="card-body p-0"><table class="table table-sm mb-0">
+    {% for k, n in refs %}<tr><td>{{ k }}</td><td class="text-right">{{ n }}</td></tr>{% empty %}<tr><td class="text-muted">Direct / unknown</td></tr>{% endfor %}</table></div></div></div>
+  <div class="col-lg-3"><div class="card"><div class="card-header"><b>Terminal opened on</b></div><div class="card-body p-0"><table class="table table-sm mb-0">
+    {% for k, n in platforms %}<tr><td>{{ k }}</td><td class="text-right">{{ n }}</td></tr>{% empty %}<tr><td class="text-muted">No data yet</td></tr>{% endfor %}
+    {% for k, n in plans_seen %}<tr class="text-muted"><td>{{ k }} users</td><td class="text-right">{{ n }}</td></tr>{% endfor %}</table></div></div></div>
+  <div class="col-lg-3"><div class="card"><div class="card-header"><b>Logins</b></div><div class="card-body p-0"><table class="table table-sm mb-0">
+    {% for r in login_methods %}<tr><td>{{ r.method }}</td><td class="text-right">{{ r.n }}</td></tr>{% endfor %}
+    {% for r in login_platforms %}<tr class="text-muted"><td>{{ r.platform }}</td><td class="text-right">{{ r.n }}</td></tr>{% empty %}<tr><td class="text-muted">No logins yet</td></tr>{% endfor %}</table></div></div></div>
+</div>
+<div class="card"><div class="card-header"><b>Ads</b> (impressions and clicks since each ad started)</div><div class="card-body p-0"><table class="table table-sm mb-0">
+  <thead><tr><th>Ad</th><th class="text-right">Impressions</th><th class="text-right">Clicks</th><th class="text-right">Click rate</th></tr></thead>
+  {% for a in ads %}<tr><td>{{ a.name }}</td><td class="text-right">{{ a.impressions }}</td><td class="text-right">{{ a.clicks }}</td><td class="text-right">{{ a.ctr }}%</td></tr>{% empty %}<tr><td colspan="4" class="text-muted">No ads</td></tr>{% endfor %}
+</table></div></div>
+<p class="text-muted small">Visitors and terminal users are counted once a day each (by an anonymous daily code, no IP or email is stored), so a person who comes on 3 days counts 3 times in the totals.</p>
+{{ labels|json_script:"st-labels" }}{{ chart|json_script:"st-chart" }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+  var L = JSON.parse(document.getElementById('st-labels').textContent).map(function (d) { return d.slice(5); });
+  var C = JSON.parse(document.getElementById('st-chart').textContent);
+  if (!window.Chart) return;
+  function line(id, sets, extra) {
+    new Chart(document.getElementById(id), { type: 'line', data: { labels: L, datasets: sets.map(function (s) {
+      return Object.assign({ tension: 0.3, pointRadius: 2, borderWidth: 2, fill: false }, s); }) },
+      options: Object.assign({ responsive: true, interaction: { mode: 'index', intersect: false }, scales: { y: { beginAtZero: true } } }, extra || {}) });
+  }
+  line('c-site', [{ label: 'Visitors', data: C.visitors, borderColor: '#2dd4bf' }, { label: 'Page views', data: C.views, borderColor: '#2962ff' }]);
+  line('c-term', [{ label: 'Users', data: C.terminal_users, borderColor: '#f59e0b' }, { label: 'Opens', data: C.opens, borderColor: '#8b5cf6' },
+    { label: 'Hours', data: C.hours, borderColor: '#ef5350', yAxisID: 'y1' }],
+    { scales: { y: { beginAtZero: true }, y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false } } } });
+  line('c-acc', [{ label: 'New accounts', data: C.joined, borderColor: '#26a69a' }, { label: 'Logins', data: C.logins, borderColor: '#64748b' }]);
+})();
+</script>
+{% endblock %}

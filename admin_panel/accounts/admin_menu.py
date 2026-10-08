@@ -46,6 +46,8 @@ ICONS = {
 def jazzmin_icons() -> dict:
     """Icons for settings.JAZZMIN_SETTINGS: the sections and every model in them (keys as the menu builds them)."""
     out = {key: icon for key, _, icon, _ in SECTIONS}
+    out["stats"] = "fas fa-chart-line"
+    out["stats.stats"] = "fas fa-chart-area"
     out["other"] = "fas fa-folder"
     for key, _, _, models in SECTIONS:
         for m in models:
@@ -53,7 +55,7 @@ def jazzmin_icons() -> dict:
     return out
 
 
-SECTION_ORDER = [key for key, *_ in SECTIONS] + ["other"]
+SECTION_ORDER = ["stats"] + [key for key, *_ in SECTIONS] + ["other"]
 
 
 def install(site) -> None:
@@ -69,6 +71,10 @@ def install(site) -> None:
             for m in app["models"]:
                 by_model[f"{app['app_label']}.{m['object_name']}".lower()] = m
         out, used = [], set()
+        if request.user.is_staff:
+            out.append({"name": "Statistics", "app_label": "stats", "app_url": "/admin/stats/", "has_module_perms": True,
+                        "models": [{"name": "Traffic & use", "object_name": "Stats", "admin_url": "/admin/stats/",
+                                    "add_url": None, "view_only": True, "perms": {"view": True}}]})
         for key, title, _, models in SECTIONS:
             items = [by_model[m] for m in models if m in by_model]
             used.update(m for m in models if m in by_model)

@@ -277,10 +277,18 @@ export function ChartPanel(p: ChartPanelProps) {
       const lines: [string, number | null, string, string, boolean][] = o.status === 'open'
         ? [['entry', o.fill_price, '#2962ff', `${dir} ${o.qty}  ${money(o.upnl ?? 0)}`, false]]
         : [['price', o.price, '#8b5cf6', `${dir} ${o.type.toUpperCase()} ${o.qty}`, true]]
-      lines.push(['sl', o.sl, '#ef5350', 'SL', true], ['tp', o.tp, '#26a69a', 'TP', true])
+      // no stop / target yet: a faint line a few bars' range away to drag into place (TradingView's "+SL / +TP")
+      const ref = o.status === 'open' ? o.fill_price : o.price
+      const bars = chart.getDataList().slice(-20)
+      const span = bars.length ? (bars.reduce((x, b) => x + (b.high - b.low), 0) / bars.length) * 3 : 0
+      const hint = (sign: number) => (ref != null && span > 0 ? ref + sign * o.side * span : null)
+      lines.push(['sl', o.sl ?? hint(-1), o.sl == null ? 'rgba(239,83,80,0.55)' : '#ef5350', o.sl == null ? '＋SL drag me' : 'SL', true],
+        ['tp', o.tp ?? hint(1), o.tp == null ? 'rgba(38,166,154,0.55)' : '#26a69a', o.tp == null ? '＋TP drag me' : 'TP', true])
       for (const [kind, v, color, label, drag] of lines) {
         if (v == null) continue
-        chart.createOverlay({ name: 'tradeLine', groupId: 'paper', lock: !drag, points: [{ timestamp: t, value: v }], extendData: { color, label: `${label}  ${v.toFixed(digits)}` },
+        const isHint = label.startsWith('＋')
+        chart.createOverlay({ name: 'tradeLine', groupId: 'paper', lock: !drag, points: [{ timestamp: t, value: v }],
+          extendData: { color, label: isHint ? label : `${label}  ${v.toFixed(digits)}`, dashed: isHint },
           onPressedMoveEnd: e => {
             const nv = e.overlay.points[0]?.value
             if (nv === undefined) return
