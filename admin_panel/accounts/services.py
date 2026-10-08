@@ -393,10 +393,16 @@ def copy_settings_payload(conn, access):
     }
 
 
-def assign_signup_plans(user):
-    """Gives a new account the plans chosen under Registration settings."""
+SIGNUP_FLAGS = {"email": "auto_email", "google": "auto_google", "facebook": "auto_facebook"}
+
+
+def assign_signup_plans(user, method="google"):
+    """Gives a new account the plans switched on for its sign-up method (Plans: Email / Google / Facebook)."""
     created = []
-    for plan in SiteSettings.load().signup_plans.filter(is_active=True):
+    flag = SIGNUP_FLAGS.get(method)
+    if flag is None:
+        return created
+    for plan in Plan.objects.filter(is_active=True, **{flag: True}):
         created.append(Subscription.objects.create(
             user=user, plan=plan, notes="Assigned automatically at registration."))
     return created
@@ -576,8 +582,8 @@ def device_claim(device_id, legacy_id=""):
 
 
 def maybe_grant_trial(user, dev, provider="", ip=None):
-    """Automatic free trial: once per account and once per phone / PC, only in the mobile
-    or Windows app (browser ids are too easy to reset). Returns a message for the customer."""
+    """Automatic plans for a new account (``provider``: email / google / facebook): once per account and,
+    in the apps, once per phone / PC (browser ids are too easy to reset). Returns a message for the customer."""
     site = SiteSettings.load()
     if not site.trial_enabled or TrialGrant.objects.filter(user=user).exists():
         return ""
@@ -591,7 +597,7 @@ def maybe_grant_trial(user, dev, provider="", ip=None):
         record_login("trial", user.email, False, f"trial already used on {dev['device_id']}", user=user, ip=ip,
                      device_id=dev["device_id"], platform=dev.get("platform", ""))
         return "The free trial was already used on this device. Choose a plan to continue with VIP."
-    plans = assign_signup_plans(user)
+    plans = assign_signup_plans(user, provider)
     if not plans:
         return ""
     TrialGrant.objects.create(user=user, device_id=dev.get("device_id", ""), provider=provider, ip=ip)
@@ -715,6 +721,20 @@ def ads_for(user, placement, base_url=""):
 
 
 # ── Giving plans from the admin panel ───────────────────────────────────────
+def give_free_trial(users, plan, days=None, again=False, by=""):
+    """Admin: the free trial for many users at once. A user who already had a free trial is skipped
+    unless ``again``. Records each one under Free trials given. Returns (given, skipped)."""
+    given = skipped = 0
+    for user in users:
+        if not again and TrialGrant.objects.filter(user=user).exists():
+            skipped += 1
+            continue
+        grant_plan([user], plan, days, note=f"Free trial given by {by or 'an admin'}.")
+        TrialGrant.objects.update_or_create(user=user, defaults={"provider": "admin", "device_id": "", "ip": None})
+        given += 1
+    return given, skipped
+
+
 def grant_plan(users, plan, days=None, note=""):
     """Gives `plan` to every user: an existing subscription of that plan is extended (by `days`, else the
     plan's duration; a lifetime plan is just reactivated), otherwise a new one starts now.

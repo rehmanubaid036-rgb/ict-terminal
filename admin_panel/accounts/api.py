@@ -213,13 +213,14 @@ def register(request):
         candidate.set_password(password)
         candidate.save()
         CustomerProfile.objects.create(user=candidate, phone=str(data.get("phone", ""))[:30])
-    services.count_signup(ip)   # free trials are only given to Google / Facebook accounts (services.maybe_grant_trial)
+    services.count_signup(ip)
+    trial_message = services.maybe_grant_trial(candidate, dev, "email", ip)   # plans switched on for email sign-up
 
     token, raw = issue_token(candidate, dev)
     access, _ = services.access_for_token(token, ip=ip, **dev)
     services.record_login("register", email, True, user=candidate, ip=ip,
                           device_id=dev["device_id"], platform=dev["platform"])
-    return ok(**session_payload(token, raw, access))
+    return ok(**session_payload(token, raw, access), **({"trial_message": trial_message} if trial_message else {}))
 
 
 @method("POST")

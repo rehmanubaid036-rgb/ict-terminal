@@ -169,28 +169,24 @@ JAZZMIN_SETTINGS = {
         {"model": "accounts.Subscription"},
         {"model": "accounts.Payment"},
     ],
-    "order_with_respect_to": ["accounts", "accounts.subscription", "accounts.plan", "accounts.eaconnection", "accounts.sitesettings",
-                              "accounts.payment", "accounts.paymentmethod", "accounts.device", "accounts.apitoken", "accounts.loginevent",
-                              "auth"],
-    "icons": {
-        "auth": "fas fa-users-cog",
-        "auth.user": "fas fa-user",
-        "auth.Group": "fas fa-users",
-        "accounts.Plan": "fas fa-layer-group",
-        "accounts.Subscription": "fas fa-id-card",
-        "accounts.Payment": "fas fa-money-bill-wave",
-        "accounts.PaymentMethod": "fas fa-university",
-        "accounts.Device": "fas fa-mobile-alt",
-        "accounts.ApiToken": "fas fa-key",
-        "accounts.LoginEvent": "fas fa-history",
-        "accounts.CustomerProfile": "fas fa-address-card",
-        "accounts.SiteSettings": "fas fa-cogs",
-        "accounts.EaConnection": "fas fa-copy",
-    },
+    # the left menu is grouped into sections in accounts/admin_menu.py (Users, Plans, Payments, Crypto ...)
+    "order_with_respect_to": ["users", "plans", "payments", "crypto", "donations", "community", "alerts", "trading",
+                              "ai", "ads", "settings", "other"],
+    "icons": {},          # filled below from accounts.admin_menu
     "show_ui_builder": False,
     "changeform_format": "horizontal_tabs",
     "related_modal_active": True,
 }
+
+def _menu_icons():
+    try:
+        from accounts.admin_menu import jazzmin_icons
+        return jazzmin_icons()
+    except Exception:      # noqa: BLE001 - never stop the panel over an icon
+        return {}
+
+
+JAZZMIN_SETTINGS["icons"] = _menu_icons()
 
 JAZZMIN_UI_TWEAKS = {
     # AdminLTE's own theme, light or dark following the computer's setting

@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from django.db.models import Q, Sum
 from django.utils import timezone
 
-from accounts.models import LoginEvent, Payment, SiteSettings, Subscription
+from accounts.models import LoginEvent, Payment, Plan, Subscription
 
 register = template.Library()
 
@@ -30,5 +30,7 @@ def dashboard_stats():
         "failed_logins_24h": LoginEvent.objects.filter(success=False, created_at__gte=now - timedelta(days=1)).count(),
         "expiring_soon": active.filter(expires_at__lte=now + timedelta(days=7)).select_related("plan", "user")
                                .order_by("expires_at")[:8],
-        "signup_plans": ", ".join(SiteSettings.load().signup_plans.values_list("name", flat=True)),
+        # plans new accounts get automatically (switched on in the Plans list per sign-up method)
+        "signup_plans": ", ".join(Plan.objects.filter(is_active=True).filter(Q(auto_email=True) | Q(auto_google=True)
+                                                                           | Q(auto_facebook=True)).values_list("name", flat=True)),
     }

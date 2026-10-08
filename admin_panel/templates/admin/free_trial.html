@@ -1,0 +1,41 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<div class="card"><div class="card-body">
+  {% if pick %}
+  <form method="get" class="form-inline mb-3">
+    <input name="q" value="{{ q }}" class="form-control mr-2" placeholder="Search email or name">
+    <button class="btn btn-secondary">Search</button>
+  </form>
+  {% endif %}
+  <form method="post">{% csrf_token %}
+    {% if pick %}
+      <p>Tick the users ({{ count }}{% if count > 500 %}, newest 500 shown{% endif %}).
+        <label class="ml-3"><input type="checkbox" id="all"> Select all</label>
+        <label class="ml-3"><input type="checkbox" id="new"> Select only users without a trial</label></p>
+      <div style="max-height:360px;overflow:auto;border:1px solid #ddd;border-radius:6px;padding:8px">
+      {% for r in rows %}
+        <div><label><input type="checkbox" name="user" value="{{ r.u.pk }}" data-had="{{ r.had|yesno:'1,0' }}">
+          {{ r.u.email|default:r.u.username }} {% if r.had %}<span class="badge badge-secondary">had a trial</span>{% endif %}
+          <small class="text-muted">joined {{ r.u.date_joined|date:"Y-m-d" }}</small></label></div>
+      {% empty %}<p class="text-muted">No users.</p>{% endfor %}
+      </div>
+      <input type="hidden" name="q" value="{{ q }}">
+    {% else %}
+      <p>Give a free trial to <b>{{ count }}</b> user{{ count|pluralize }}{% if count > 30 %} (first 30 shown){% endif %}:</p>
+      <ul>{% for r in rows %}<li>{{ r.u.email|default:r.u.username }}{% if r.had %} <span class="badge badge-secondary">had a trial</span>{% endif %}</li>{% endfor %}</ul>
+      <input type="hidden" name="action" value="{{ action }}">
+      <input type="hidden" name="select_across" value="{{ select_across }}">
+      {% for pk in selected %}<input type="hidden" name="_selected_action" value="{{ pk }}">{% endfor %}
+    {% endif %}
+    <div class="mt-3">{{ form.as_p }}</div>
+    <p class="text-muted">Users who already had a free trial are skipped unless you tick the box above. Each one is listed under Free trials given.</p>
+    <button type="submit" name="apply" value="1" class="btn btn-success">Give the free trial</button>
+    <a href="{% url 'admin:accounts_trialgrant_changelist' %}" class="btn btn-secondary">Cancel</a>
+  </form>
+</div></div>
+<script>
+  var all = document.getElementById('all'), only = document.getElementById('new');
+  if (all) all.addEventListener('change', function () { document.querySelectorAll('input[name=user]').forEach(function (c) { c.checked = all.checked; }); });
+  if (only) only.addEventListener('change', function () { document.querySelectorAll('input[name=user]').forEach(function (c) { c.checked = only.checked && c.dataset.had === '0'; }); });
+</script>
+{% endblock %}

@@ -59,6 +59,13 @@ class Plan(models.Model):
                                               help_text="PCs with the ICT Terminal Windows app. 0 = unlimited")
     max_web = models.PositiveIntegerField("Web terminal browsers", default=1,
                                           help_text="Browsers using the web terminal. 0 = unlimited")
+    # given automatically to a new account, by how it signs up (Settings > Free trial must be on)
+    auto_email = models.BooleanField("Email sign-up", default=False,
+                                     help_text="New accounts made with email + password get this plan automatically.")
+    auto_google = models.BooleanField("Google sign-up", default=False,
+                                      help_text="New accounts made with Google get this plan automatically.")
+    auto_facebook = models.BooleanField("Facebook sign-up", default=False,
+                                        help_text="New accounts made with Facebook get this plan automatically.")
     is_active = models.BooleanField(default=True)
     is_public = models.BooleanField(default=True, help_text="Listed in the app's upgrade screen")
     sort_order = models.PositiveIntegerField(default=0)
@@ -93,10 +100,6 @@ class SiteSettings(models.Model):
     allow_signup = models.BooleanField("Email + password sign-up", default=True,
                                        help_text="Show \"Create account\" with email + password. Off = new accounts "
                                                  "only through Google / Facebook")
-    signup_plans = models.ManyToManyField(
-        Plan, blank=True, related_name="+",
-        verbose_name="Free trial plans",
-        help_text="Plans given as the automatic free trial (e.g. VIP Trial). Empty = no free trial.")
 
     # Broker partnership: shown as a button in the app and desktop dashboard
     broker_name = models.CharField(max_length=60, default="Axi")
@@ -137,9 +140,9 @@ class SiteSettings(models.Model):
 
     # Free trial (automatic, only for Google / Facebook accounts in the mobile or Windows app)
     trial_enabled = models.BooleanField(
-        "Automatic free trial", default=True,
-        help_text="New Google / Facebook accounts get the plans ticked under Registration (e.g. VIP Trial) "
-                  "once, if this phone / PC never had a trial and the account never had one.")
+        "Automatic plans for new accounts", default=True,
+        help_text="New accounts get the plans switched on for their sign-up (Plans list: Email / Google / Facebook "
+                  "sign-up columns), once per account and once per phone / PC. Off = no automatic plans at all.")
     signups_per_ip_hour = models.PositiveIntegerField(
         "New accounts per IP per hour", default=3, help_text="Stops bots creating many accounts. 0 = no limit.")
 
@@ -440,6 +443,7 @@ class TrialGrant(models.Model):
 
     class Meta:
         verbose_name = "Free trial given"
+        verbose_name_plural = "Free trials given"
         ordering = ["-created_at"]
 
     def __str__(self):
@@ -486,6 +490,7 @@ class CryptoWalletChange(models.Model):
     class Meta:
         ordering = ["-changed_at"]
         verbose_name = "Crypto wallet change (audit log)"
+        verbose_name_plural = "Crypto wallet changes (audit log)"
 
 
 class CryptoOrder(models.Model):
@@ -971,6 +976,7 @@ class AlertPrefs(models.Model):
 
     class Meta:
         verbose_name = "Signal alert settings"
+        verbose_name_plural = "Signal alert settings"
 
     def __str__(self):
         return f"Alerts of {self.user}"

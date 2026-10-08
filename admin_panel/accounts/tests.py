@@ -44,9 +44,8 @@ class ApiTests(TestCase):
         self.assertEqual(Subscription.objects.count(), 0)
 
     def test_email_register_gets_no_trial(self):
-        """Free trials are only for Google / Facebook accounts (see SocialLoginTests)."""
-        trial = Plan.objects.create(name="VIP Trial", slug="vip-trial", duration_days=7)
-        SiteSettings.load().signup_plans.set([trial])
+        """A plan switched on for Google / Facebook only is not given to an email sign-up."""
+        Plan.objects.create(name="VIP Trial", slug="vip-trial", duration_days=7, auto_google=True, auto_facebook=True)
         r = self.post("auth/register", {"email": "new@example.com", "password": PASSWORD,
                                         "device_id": "phone-1", "platform": "android"})
         self.assertEqual(r.status_code, 200, r.content)
@@ -622,8 +621,7 @@ class SocialLoginTests(TestCase):
 
     def setUp(self):
         cache.clear()
-        self.trial = Plan.objects.create(name="VIP Trial", slug="vip-trial", duration_days=7)
-        SiteSettings.load().signup_plans.set([self.trial])
+        self.trial = Plan.objects.create(name="VIP Trial", slug="vip-trial", duration_days=7, auto_google=True, auto_facebook=True)
         self.identity = {"uid": "g-1", "email": "ali@gmail.com", "name": "Ali Khan"}
         from unittest import mock
         patcher = mock.patch("accounts.oauth.fetch_identity", side_effect=lambda provider, code: dict(self.identity))
@@ -1796,3 +1794,66 @@ class CryptoDonationTests(CryptoPaymentTests):
         self.assertEqual(self.order()["kind"], "plan")                       # a plan order still works next to it
         SiteSettings.objects.update(donations_enabled=False)
         self.assertEqual(self.donate().status_code, 400)
+
+
+
+class SignupPlansAndAdminMenuTests(TestCase):
+    """Plans switched on per sign-up method, the admin's free-trial page and the left menu in sections."""
+
+    def setUp(self):
+        cache.clear()
+        self.free = Plan.objects.create(name="Free", slug="free-x", duration_days=30, auto_email=True)
+        self.trial = Plan.objects.create(name="VIP Trial", slug="vip-trial-x", duration_days=7, is_vip=True, auto_google=True)
+        self.admin_user = User.objects.create_superuser("boss@example.com", "boss@example.com", PASSWORD)
+
+    def test_email_signup_gets_its_plan_once(self):
+        from .models import TrialGrant
+        r = self.client.post("/api/v1/auth/register", json.dumps({"email": "e@example.com", "password": PASSWORD,
+                                                                   "device_id": "web-1", "platform": "web"}), content_type="application/json")
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertIn("Free", r.json()["trial_message"])
+        u = User.objects.get(email="e@example.com")
+        self.assertEqual([s.plan.name for s in Subscription.objects.filter(user=u)], ["Free"])   # not the Google-only trial
+        self.assertEqual(TrialGrant.objects.get(user=u).provider, "email")
+        SiteSettings.objects.update(trial_enabled=False)
+        self.client.post("/api/v1/auth/register", json.dumps({"email": "f@example.com", "password": PASSWORD}), content_type="application/json")
+        self.assertFalse(Subscription.objects.filter(user__email="f@example.com").exists())     # master switch off
+
+    def test_admin_gives_the_free_trial_to_chosen_users(self):
+        from .models import TrialGrant
+        a = User.objects.create_user("a@example.com", "a@example.com", PASSWORD)
+        b = User.objects.create_user("b@example.com", "b@example.com", PASSWORD)
+        TrialGrant.objects.create(user=b, provider="google")
+        self.client.force_login(self.admin_user)
+        page = self.client.get("/admin/accounts/trialgrant/give/")
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "a@example.com")
+        self.assertContains(page, "had a trial")
+        r = self.client.post("/admin/accounts/trialgrant/give/", {"user": [a.pk, b.pk], "plan": self.trial.pk, "days": "3", "apply": "1"})
+        self.assertEqual(r.status_code, 302)
+        self.assertTrue(Subscription.objects.filter(user=a, plan=self.trial).exists())
+        self.assertFalse(Subscription.objects.filter(user=b, plan=self.trial).exists())        # already had a trial: skipped
+        self.assertEqual(TrialGrant.objects.get(user=a).provider, "admin")
+        # the Users list action asks first, then gives it
+        r = self.client.post("/admin/auth/user/", {"action": "give_free_trial", "_selected_action": [b.pk]})
+        self.assertContains(r, "Give the free trial")
+        self.client.post("/admin/auth/user/", {"action": "give_free_trial", "_selected_action": [b.pk], "plan": self.trial.pk,
+                                               "again": "on", "apply": "1"})
+        self.assertTrue(Subscription.objects.filter(user=b, plan=self.trial).exists())
+
+    def test_plans_list_switches_and_menu_sections(self):
+        self.client.force_login(self.admin_user)
+        r = self.client.get("/admin/accounts/plan/")
+        self.assertContains(r, 'name="form-0-auto_email"')
+        self.assertContains(r, 'name="form-0-auto_google"')
+        home = self.client.get("/admin/")
+        for title in ("Users &amp; logins", "Plans &amp; subscriptions", "Crypto payments", "Community", "Donations", "Settings"):
+            self.assertContains(home, title)
+        from django.contrib import admin as dj_admin
+        from django.test import RequestFactory
+        req = RequestFactory().get("/admin/")
+        req.user = self.admin_user
+        sections = {a["app_label"]: [m["object_name"] for m in a["models"]] for a in dj_admin.site.get_app_list(req)}
+        self.assertEqual(sections["crypto"][:2], ["CryptoOrder", "CryptoWallet"])
+        self.assertIn("ChatMessage", sections["community"])
+        self.assertNotIn("other", sections)

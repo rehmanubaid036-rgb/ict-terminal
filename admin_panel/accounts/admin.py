@@ -34,7 +34,6 @@ def state_badge(sub):
 # ── Registration settings (single row) ──────────────────────────────────────
 @admin.register(SiteSettings)
 class SiteSettingsAdmin(admin.ModelAdmin):
-    filter_horizontal = ("signup_plans",)
 
     def formfield_for_dbfield(self, db_field, request, **kwargs):
         if db_field.name in ("whatsapp_token", "ai_api_key", "telegram_bot_token"):
@@ -52,10 +51,12 @@ class SiteSettingsAdmin(admin.ModelAdmin):
                                                           "has everything on): open Plans > Guest to switch features "
                                                           "on or off. Guest accounts are listed under Users "
                                                           "(username guest-...)."}),
-        ("Free trial (automatic)", {"fields": ("trial_enabled", "signup_plans", "signups_per_ip_hour"),
-                                    "description": "The ticked plans are given once to a new Google / Facebook "
-                                                   "account in the Android or Windows app: one trial per account and "
-                                                   "per phone / PC (see Device locks)."}),
+        ("Free trial / plans for new accounts (automatic)", {"fields": ("trial_enabled", "signups_per_ip_hour"),
+                                    "description": "Which plan a new account gets is switched ON / OFF per sign-up "
+                                                   "method in the Plans list (columns Email / Google / Facebook sign-up). "
+                                                   "Given once per account and once per phone / PC. To give a free "
+                                                   "trial by hand: Free trials given > 'Give a free trial to users', or "
+                                                   "Users > select > Action 'Give a free trial'."}),
         ("Broker partner button", {"fields": ("broker_name", "partner_link", "partner_button_text")}),
         ("Auto-trading (ICT Bridge EA)", {"fields": ("copy_trading_enabled", "auto_trade_models", "copy_magic_numbers", "copy_lot_per_1000")}),
         ("App updates", {"fields": ("min_app_version",),
@@ -124,19 +125,15 @@ class SiteSettingsAdmin(admin.ModelAdmin):
         obj = SiteSettings.load()
         return redirect(reverse("admin:accounts_sitesettings_change", args=[obj.pk]))
 
-    def formfield_for_manytomany(self, db_field, request, **kwargs):
-        if db_field.name == "signup_plans":
-            kwargs["queryset"] = Plan.objects.filter(is_active=True)
-        return super().formfield_for_manytomany(db_field, request, **kwargs)
 
 
 # ── Plans ────────────────────────────────────────────────────────────────────
 @admin.register(Plan)
 class PlanAdmin(admin.ModelAdmin):
     list_display = ("name", "price_label", "duration_label", "is_vip", "devices_label", "active_subscribers",
-                    "given_on_signup", "is_active", "is_public", "sort_order")
-    list_editable = ("is_active", "is_public", "sort_order")
-    list_filter = ("is_active", "is_public", "is_vip")
+                    "auto_email", "auto_google", "auto_facebook", "is_active", "is_public", "sort_order")
+    list_editable = ("auto_email", "auto_google", "auto_facebook", "is_active", "is_public", "sort_order")
+    list_filter = ("is_active", "is_public", "is_vip", "auto_email", "auto_google", "auto_facebook")
     search_fields = ("name", "slug")
     prepopulated_fields = {"slug": ("name",)}
     actions = ["give_to_everyone"]
@@ -158,6 +155,10 @@ class PlanAdmin(admin.ModelAdmin):
         ("Devices per account", {"fields": (("max_mobile", "max_desktop", "max_web"),),
                                  "description": "How many of each a customer on this plan may use at the same "
                                                 "time. 0 = unlimited."}),
+        ("Given automatically to new accounts", {"fields": (("auto_email", "auto_google", "auto_facebook"),),
+                    "description": "ON = a new account made this way gets this plan at once (for the plan's duration). "
+                                   "Settings > Free trial must be on. Use it for a free plan or a trial (e.g. 'VIP Trial', "
+                                   "7 days); paid plans normally stay OFF."}),
         ("Visibility", {"fields": ("is_active", "is_public", "sort_order")}),
     )
 
@@ -180,10 +181,6 @@ class PlanAdmin(admin.ModelAdmin):
     @admin.display(description="Active subscribers", ordering="active_count")
     def active_subscribers(self, obj):
         return obj.active_count
-
-    @admin.display(description="New accounts", boolean=True)
-    def given_on_signup(self, obj):
-        return SiteSettings.load().signup_plans.filter(pk=obj.pk).exists()
 
 
 # ── Subscriptions ────────────────────────────────────────────────────────────
@@ -502,7 +499,7 @@ class UserAdmin(BaseUserAdmin):
     inlines = [ProfileInline, UserSubscriptionInline, UserSocialInline, UserDeviceInline]
     list_display = ("email", "full_name", "current_plans", "is_active", "is_staff", "date_joined", "last_login")
     search_fields = ("email", "username", "first_name", "last_name", "profile__phone")
-    actions = ["reset_devices", "give_plan"]
+    actions = ["give_free_trial", "reset_devices", "give_plan"]
 
     @admin.action(description="Give a plan… (to the selected users)")
     def give_plan(self, request, queryset):
@@ -530,6 +527,11 @@ class UserAdmin(BaseUserAdmin):
 
 
 # ── Google / Facebook logins, device locks, free trials ─────────────────────
+
+    @admin.action(description="Give a free trial…")
+    def give_free_trial(self, request, queryset):
+        return free_trial_view(self, request, queryset.filter(is_active=True))
+
 @admin.register(SocialAccount)
 class SocialAccountAdmin(admin.ModelAdmin):
     list_display = ("provider", "email", "name", "user", "created_at", "last_login")
@@ -566,6 +568,19 @@ class TrialGrantAdmin(admin.ModelAdmin):
     list_filter = ("provider",)
     search_fields = ("user__email", "device_id", "ip")
     readonly_fields = ("user", "provider", "device_id", "ip", "created_at")
+    change_list_template = "admin/trialgrant_changelist.html"
+
+    def has_add_permission(self, request):
+        return False
+
+    def get_urls(self):
+        from django.urls import path
+        return [path("give/", self.admin_site.admin_view(self.give_view), name="accounts_trialgrant_give")] + super().get_urls()
+
+    def give_view(self, request):
+        """Choose users (all, or the ones without a trial yet) and the trial plan, then give it."""
+        users = User.objects.filter(is_active=True).exclude(username__startswith="guest-").order_by("-date_joined")
+        return free_trial_view(self, request, users, pick=True)
 
 
 # ── Crypto payments (automatic, verified on the blockchain) ─────────────────
@@ -990,6 +1005,48 @@ class AIPrefsAdmin(admin.ModelAdmin):
 
 
 
+# ── Free trial for chosen users ─────────────────────────────────────────────
+class FreeTrialForm(forms.Form):
+    plan = forms.ModelChoiceField(queryset=Plan.objects.filter(is_active=True).order_by("name"),
+                                  help_text="The trial plan (e.g. 'VIP Trial').")
+    days = forms.IntegerField(required=False, min_value=1, max_value=3650, help_text="Empty = the plan's own duration.")
+    again = forms.BooleanField(required=False, label="Also to users who already had a free trial")
+
+
+def free_trial_view(model_admin, request, users, pick=False):
+    """Give the free trial to many users. ``pick``: the page lists the users with tick boxes (Free trials given);
+    otherwise the users are the ones selected in the Users list (action)."""
+    from django.template.response import TemplateResponse
+    from .models import TrialGrant as TG
+    default = Plan.objects.filter(is_active=True).filter(Q(auto_email=True) | Q(auto_google=True) | Q(auto_facebook=True)).first()
+    had = set(TG.objects.values_list("user_id", flat=True))
+    q = (request.GET.get("q") or request.POST.get("q") or "").strip()
+    if pick and q:
+        users = users.filter(Q(email__icontains=q) | Q(username__icontains=q) | Q(first_name__icontains=q))
+    if "apply" in request.POST:
+        form = FreeTrialForm(request.POST)
+        chosen = users.filter(pk__in=[int(x) for x in request.POST.getlist("user") if x.isdigit()]) if pick else users
+        if form.is_valid() and chosen.exists():
+            given, skipped = services.give_free_trial(list(chosen), form.cleaned_data["plan"], form.cleaned_data["days"],
+                                                      form.cleaned_data["again"], by=str(request.user))
+            model_admin.message_user(request, f"Free trial ({form.cleaned_data['plan'].name}) given to {given} user(s)"
+                                              + (f"; {skipped} skipped (they already had a trial)." if skipped else "."), messages.SUCCESS)
+            if pick:
+                from django.shortcuts import redirect as _redirect
+                return _redirect("admin:accounts_trialgrant_changelist")
+            return None
+        if form.is_valid():
+            model_admin.message_user(request, "Tick at least one user.", messages.WARNING)
+    else:
+        form = FreeTrialForm(initial={"plan": default})
+    rows = list(users[:500]) if pick else list(users[:30])
+    return TemplateResponse(request, "admin/free_trial.html", {
+        **model_admin.admin_site.each_context(request), "title": "Give a free trial", "form": form, "pick": pick, "q": q,
+        "rows": [{"u": u, "had": u.pk in had} for u in rows], "count": users.count(),
+        "action": request.POST.get("action", ""), "selected": request.POST.getlist("_selected_action"),
+        "select_across": request.POST.get("select_across", "0"), "opts": model_admin.model._meta})
+
+
 # ── Giving a plan to many users at once ─────────────────────────────────────
 class GrantPlanForm(forms.Form):
     plan = forms.ModelChoiceField(queryset=Plan.objects.all().order_by("name"))
@@ -1039,3 +1096,7 @@ class DonationAdmin(admin.ModelAdmin):
     def mark_rejected(self, request, queryset):
         n = queryset.update(status="rejected")
         self.message_user(request, f"{n} donation(s) marked not received.", messages.WARNING)
+
+from .admin_menu import install as _menu_sections  # noqa: E402
+
+_menu_sections(admin.site)   # the left menu in sections
