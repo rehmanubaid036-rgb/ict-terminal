@@ -1044,3 +1044,7 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 .af-n { width: 64px; }
 
 .social-btn { display: flex; align-items: center; justify-content: center; gap: 10px; }
+
+/* Urdu interface: an Arabic-script font for the Urdu words, numbers and symbols stay as they are */
+.lang-ur body, .lang-ur button, .lang-ur input, .lang-ur select { font-family: Inter, "Noto Sans Arabic", system-ui, sans-serif; }
+.lang-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; }

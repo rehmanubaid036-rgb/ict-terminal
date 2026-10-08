@@ -1,3 +1,4 @@
+import { getLang, setLang } from '../i18n'
 import { HotkeysDialog } from './HotkeysDialog'
 import { MAON } from '../chart/indicators2'
 import { useEffect, useRef, useState } from 'react'
@@ -158,6 +159,9 @@ export function TopBar() {
           <button className="btn ghost sm" onClick={() => { close(); t.openSettings() }}><Icon name="gear" size={15} /> Chart settings…</button>
           <div className="menu-sep" />
           <Switch checked={t.theme === 'dark'} onChange={v => t.setTheme(v ? 'dark' : 'light')} label="Dark theme" />
+          <div className="lang-row"><span>Language</span><div className="seg">
+            <button className={getLang() === 'en' ? 'on' : ''} onClick={() => { setLang('en'); close() }}>English</button>
+            <button className={getLang() === 'ur' ? 'on' : ''} onClick={() => { setLang('ur'); close() }}>اردو</button></div></div>
           <Switch checked={t.bottomOpen} onChange={v => { t.setBottomOpen(v); close() }} label="Journal & stats panel" />
           <div className="menu-sep" />
           <button className="btn ghost sm" onClick={() => { close(); setHotkeys(true) }}>⌨ Keyboard shortcuts…</button>

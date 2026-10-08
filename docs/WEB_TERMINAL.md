@@ -97,6 +97,7 @@ It covers what was built, how to build and test it, and what is still open.
 | Indicators 3 + copies | Linear regression curve, Envelope, Auto S/R levels (swing pivots clustered by ATR, strongest first), Standard deviation, Price oscillator (PPO), Correlation with the first compared symbol. '+ Copy' adds another instance of an indicator with its own settings (`EMA#2`: same indicator, its own id; `baseIndicator()` in constants.ts) |
 | Indicator condition alerts | Alerts tab > Indicator condition: RSI, Stoch RSI %K (level), price vs EMA / SMA, MACD vs signal; crossing / above / below on the last closed bar of 1m-4H; once or every bar. Checked in the terminal (chart/indalert.ts, every 30 s) and on the server (`ind_hit` in alert_watch.py, every 60 s) so they reach the phone too |
 | Google / Facebook login | Buttons on the login screen when the admin panel has the keys and the switch on (`app-config` login.google / facebook). The sign-in runs in a new tab: `/api/v1/oauth/<provider>/start?session=...` (the API passes start / callback / finish pages to the panel, redirects included), the terminal polls `oauth/poll` with its secret session and gets the token once. Setup: GOOGLE_CLIENT_ID / SECRET (or FACEBOOK_APP_ID / SECRET) in admin_panel/.env, redirect URI `https://ictapi.iccterminal.trade/api/v1/oauth/<provider>/callback`, Settings > allow Google / Facebook login |
+| Urdu interface | Settings (gear) > Language: English / اردو (kept on the device). src/i18n.ts swaps the interface's words (text, title, placeholder, aria-label) for Urdu from its list as they appear (MutationObserver) and puts the English back; prices, symbols and chart data are untouched. Add a string by adding it to `UR` |
 | Volume profiles | Visible range (VPVR), Session Volume Profile `SVP` (Asia / London / New York or per day, POC + value area) and the Fixed range volume profile drawing (POC, VAH, VAL) - `src/chart/volprofile.ts` |
 | Price scale | Right-click the price scale: Auto (fit), Lock range, Lock price / bar, Regular / Log / Percent, Invert, scale left / right. The lock is saved with the chart (`scaleLock`, a KLineChart `createRange`) |
 | Layouts | 1-8 charts (1, 2 side / stacked, 3, 4, 5, 6, 7, 8); the plan's "Charts per layout" (admin, 1-8) limits them; tablets in portrait show 5-8 charts in two columns, phones 2 x 4; indicator panes size to the chart |
@@ -106,7 +107,7 @@ It covers what was built, how to build and test it, and what is still open.
 | Templates | Top bar Templates: shared chart setups; the default one greets new users; admins save / set default (`/api/v1/templates`, `maketemplate.bat`) |
 | Other | Dark / light theme, keyboard shortcuts (letters = symbol search, digits = interval, Alt+T/H/J/V/F/R tools, Alt+A alert, Alt+S screenshot, Ctrl+Z/Y, Del, Esc), screenshot, full screen, phone layout (tool sheets, bottom tab bar, bottom sheets, one chart at a time with chips) |
 
-Not built yet (plan items): Urdu UI language,
+Not built yet (plan items): nothing in the terminal plan; toast messages and long help texts are English only.
 
 
 ## Build
