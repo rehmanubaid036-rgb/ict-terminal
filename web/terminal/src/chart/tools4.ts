@@ -3,20 +3,22 @@
 // the Judas swing marker. Each reads its look from extendData like the other drawings.
 import { registerOverlay, type Coordinate, type OverlayFigure } from 'klinecharts'
 import type { DrawStyle } from './overlays'
+import { fillLook, labelSize, labelsOn, lineLook, setLook } from './look'
 
 const FONT = 'Inter, -apple-system, "Segoe UI", Roboto, sans-serif'
 const tool = { needDefaultPointFigure: true, needDefaultXAxisFigure: true, needDefaultYAxisFigure: true }
 const look = (o: { extendData: unknown }, color: string) => {
   const e = (o.extendData ?? {}) as DrawStyle
+  setLook(e)
   return { color: e.color ?? color, width: e.width ?? 1, dashed: !!e.dashed, text: e.text ?? '' }
 }
-const ls = (color: string, width = 1, dashed = false) => ({ color, size: width, style: dashed ? 'dashed' : 'solid', dashedValue: [4, 3] })
+const ls = (color: string, width = 1, dashed = false) => lineLook(color, width, dashed)
 const seg = (a: Coordinate, b: Coordinate, color: string, width = 1, dashed = false): OverlayFigure => ({ type: 'line', attrs: { coordinates: [a, b] }, styles: ls(color, width, dashed) })
 const poly = (pts: Coordinate[], color: string, width = 1, dashed = false): OverlayFigure => ({ type: 'line', attrs: { coordinates: pts }, styles: ls(color, width, dashed) })
-const fill = (pts: Coordinate[], color: string): OverlayFigure => ({ type: 'polygon', ignoreEvent: true, attrs: { coordinates: pts }, styles: { style: 'fill', color } })
+const fill = (pts: Coordinate[], color: string): OverlayFigure => ({ type: 'polygon', ignoreEvent: true, attrs: { coordinates: pts }, styles: { style: 'fill', color: fillLook(color) } })
 const label = (x: number, y: number, t: string, color: string, bg = false, align: CanvasTextAlign = 'center'): OverlayFigure =>
-  ({ type: 'text', ignoreEvent: true, attrs: { x, y, text: t, align, baseline: 'middle' },
-    styles: { family: FONT, size: 11, weight: 600, color: bg ? '#fff' : color, backgroundColor: bg ? color : 'transparent', paddingLeft: 4, paddingRight: 4, paddingTop: 2, paddingBottom: 2, borderRadius: 3 } })
+  ({ type: 'text', ignoreEvent: true, attrs: { x, y, text: labelsOn() ? t : '', align, baseline: 'middle' },
+    styles: { family: FONT, size: labelSize(), weight: 600, color: bg ? '#fff' : color, backgroundColor: bg ? color : 'transparent', paddingLeft: 4, paddingRight: 4, paddingTop: 2, paddingBottom: 2, borderRadius: 3 } })
 const rgba = (hex: string, a: number) => {
   if (!/^#[0-9a-f]{6}$/i.test(hex)) return hex
   const n = parseInt(hex.slice(1), 16)

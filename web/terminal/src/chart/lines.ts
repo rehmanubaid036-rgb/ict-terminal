@@ -2,7 +2,7 @@
 // extend left / right, arrow ends, middle point, price labels, stats, text on the line or in the box, background
 // on / off with colour and transparency, middle line. These replace klinecharts' own segment / rayLine /
 // straightLine (saved drawings keep their names, so they open with the new settings).
-import { registerOverlay, type Chart, type Coordinate, type OverlayFigure } from 'klinecharts'
+import { getOverlayClass, registerOverlay, type Chart, type Coordinate, type OverlayFigure } from 'klinecharts'
 import type { DrawStyle } from './overlays'
 import { lineStyle, rgba, type LineKind } from './fib'
 
@@ -113,4 +113,85 @@ export function registerLines() {
       return out
     },
   })
+}
+
+// ---- klinecharts' own line tools, kept (their drawing / dragging rules) and given TradingView's settings --------
+// horizontal / vertical lines and rays, price line, parallel and price channels: line style (dotted too), text
+// with position, price label, and for channels background, middle line and extend left / right.
+const HLINES = new Set(['horizontalStraightLine', 'horizontalRayLine', 'horizontalSegment', 'priceLine'])
+const VLINES = new Set(['verticalStraightLine', 'verticalRayLine', 'verticalSegment'])
+const CHANNELS = new Set(['parallelStraightLine', 'priceChannelLine'])
+export const WRAPPED_TOOLS = new Set([...HLINES, ...VLINES, ...CHANNELS])
+
+type Fig = OverlayFigure & { attrs: any; styles?: any }
+let wrapped = false
+export function wrapBuiltinLines() {
+  if (wrapped) return
+  wrapped = true
+  for (const name of WRAPPED_TOOLS) {
+    const Cls = getOverlayClass(name) as any
+    if (!Cls) continue
+    const base = new Cls()
+    const draw = base.createPointFigures as ((a: any) => Fig | Fig[]) | null
+    if (!draw) continue
+    registerOverlay<E>({
+      name, totalStep: base.totalStep, needDefaultPointFigure: true, needDefaultXAxisFigure: true, needDefaultYAxisFigure: true,
+      ...(base.createXAxisFigures ? { createXAxisFigures: base.createXAxisFigures } : {}),
+      ...(base.createYAxisFigures ? { createYAxisFigures: base.createYAxisFigures } : {}),
+      ...(base.performEventPressedMove ? { performEventPressedMove: base.performEventPressedMove } : {}),
+      ...(base.performEventMoveForDrawing ? { performEventMoveForDrawing: base.performEventMoveForDrawing } : {}),
+      createPointFigures: (args: any) => {
+        const e = (args.overlay.extendData ?? {}) as E
+        const color = e.color ?? '#2962ff', w = e.width ?? 1, kind = kindOf(e)
+        const raw = draw(args)
+        const figs: Fig[] = (Array.isArray(raw) ? raw : raw ? [raw] : []).map(f => ({ ...f }))
+        const c = args.coordinates as Coordinate[], bounding = args.bounding as { width: number; height: number }
+        const out: OverlayFigure[] = []
+        // every line of the tool, styled; a channel's lines may be cut to the drawn width (extend off)
+        const lines: Coordinate[][] = []
+        for (const f of figs) {
+          if (f.type !== 'line') { out.push({ ...f, styles: { ...(f.styles ?? {}), color } } as OverlayFigure); continue }
+          const many = Array.isArray(f.attrs) ? f.attrs : [f.attrs]
+          for (const a of many) lines.push(a.coordinates as Coordinate[])
+        }
+        if (CHANNELS.has(name) && c.length >= 2) {
+          const xa = e.extendLeft ?? true ? 0 : Math.min(...c.map(p => p.x)), xb = e.extendRight ?? true ? bounding.width : Math.max(...c.map(p => p.x))
+          const cut = (l: Coordinate[]) => {
+            const [p, q] = l, k = (q.y - p.y) / ((q.x - p.x) || 1e-9)
+            return p.x === q.x ? l : [{ x: xa, y: p.y + k * (xa - p.x) }, { x: xb, y: p.y + k * (xb - p.x) }]
+          }
+          const cl = lines.map(cut)
+          if (cl.length >= 2 && (e.fillOn ?? true)) {
+            out.push({ type: 'polygon', ignoreEvent: true, attrs: { coordinates: [cl[0][0], cl[0][1], cl[1][1], cl[1][0]] }, styles: { style: 'fill', color: rgba(e.fillColor ?? color, (e.fillOpacity ?? 10) / 100) } })
+          }
+          cl.forEach(l => out.push({ type: 'line', attrs: { coordinates: l }, styles: lineStyle(color, w, kind) }))
+          if (cl.length >= 2 && (e.middleLine ?? name === 'parallelStraightLine')) {
+            const mid = [0, 1].map(i => ({ x: (cl[0][i].x + cl[1][i].x) / 2, y: (cl[0][i].y + cl[1][i].y) / 2 }))
+            out.push({ type: 'line', ignoreEvent: true, attrs: { coordinates: mid }, styles: lineStyle(color, 1, 'dashed') })
+          }
+        } else {
+          lines.forEach(l => out.push({ type: 'line', attrs: { coordinates: l }, styles: lineStyle(color, w, kind) }))
+        }
+        const p = args.overlay.points as { value?: number }[], d = digitsOf(args.chart)
+        if (HLINES.has(name) && lines[0]) {
+          const [s0, s1] = lines[0], y = s0.y, x0 = Math.min(s0.x, s1.x), x1 = Math.max(s0.x, s1.x)
+          if (e.priceLabels && p[0]?.value !== undefined) out.push(text(x1 - 4, y - 3, p[0].value.toFixed(d), { ...e, fontSize: 11 }, color, 'right', 'bottom'))
+          if (e.text) {
+            const h = e.textH ?? 'center', base = e.textV === 'bottom' ? 'top' : e.textV === 'middle' ? 'middle' : 'bottom'
+            const x = h === 'left' ? Math.max(x0, 0) + 6 : h === 'right' ? Math.min(x1, bounding.width) - 6 : (Math.max(x0, 0) + Math.min(x1, bounding.width)) / 2
+            out.push(text(x, y + (base === 'top' ? 4 : base === 'bottom' ? -4 : 0), e.text, e, e.textColor ?? color, h === 'left' ? 'left' : h === 'right' ? 'right' : 'center', base as CanvasTextBaseline))
+          }
+        }
+        if (VLINES.has(name) && lines[0] && e.text) {
+          const x = lines[0][0].x, v = e.textV ?? 'top'
+          const y = v === 'top' ? 8 : v === 'bottom' ? bounding.height - 8 : bounding.height / 2
+          out.push(text(x + 5, y, e.text, e, e.textColor ?? color, 'left', v === 'top' ? 'top' : v === 'bottom' ? 'bottom' : 'middle'))
+        }
+        if (CHANNELS.has(name) && e.text && c.length >= 2) {
+          out.push(text((c[0].x + c[1].x) / 2, (c[0].y + c[1].y) / 2 - 6, e.text, e, e.textColor ?? color, 'center', 'bottom'))
+        }
+        return out
+      },
+    })
+  }
 }

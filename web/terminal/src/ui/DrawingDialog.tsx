@@ -6,9 +6,10 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import type { Overlay } from 'klinecharts'
 import { syncDrawing, applyTfVisibility, drawingsOf, getChart, getEntry, notify, restoreDrawings, snapshot } from '../chart/registry'
-import type { DrawStyle } from '../chart/overlays'
+import type { DrawStyle, PositionOpts } from '../chart/overlays'
 import { FIB_DEFAULTS, FIB_FEATURES, FIB_TOOLS, fibLevels, fibOpts, type FibLevel, type FibOpts, type LineKind } from '../chart/fib'
-import type { LineOpts } from '../chart/lines'
+import { WRAPPED_TOOLS, type LineOpts } from '../chart/lines'
+import type { LookOpts } from '../chart/look'
 import { DRAW_COLORS, TIMEFRAMES, toolDef } from '../constants'
 import { Icon } from './icons'
 import { useTerminal } from '../Terminal'
@@ -16,17 +17,26 @@ import { cleanLook } from '../state'
 import { toast } from './common'
 
 type Tab = 'style' | 'text' | 'coords' | 'visibility'
-type Ext = DrawStyle & FibOpts & LineOpts
+type Ext = DrawStyle & FibOpts & LineOpts & LookOpts & PositionOpts
 // built-in KLineChart line tools: their look is set through ``styles``
-const LINE_TOOLS = new Set(['horizontalStraightLine', 'horizontalRayLine', 'horizontalSegment', 'verticalStraightLine',
-  'verticalRayLine', 'verticalSegment', 'priceLine', 'parallelStraightLine', 'priceChannelLine', 'simpleAnnotation', 'simpleTag', 'brush'])
+const LINE_TOOLS = new Set(['simpleAnnotation', 'simpleTag', 'brush'])
+const HLINE_TOOLS = new Set(['horizontalStraightLine', 'horizontalRayLine', 'horizontalSegment', 'priceLine'])
+const CHANNEL_TOOLS = new Set(['parallelStraightLine', 'priceChannelLine'])
+const POSITION_TOOLS = new Set(['longPosition', 'shortPosition'])
+// tools with a background / with labels (letters, levels, values) that TradingView lets you change
+const FILL_TOOLS = new Set(['pitchfork', 'dateRange', 'regression', 'gannBox', 'gannSquare', 'flatChannel', 'disjointChannel', 'path', 'ellipse',
+  'rotatedRect', 'trianglePattern', 'forecast', 'projection', 'barsPattern', 'priceNote', 'srZone', 'comment', 'sessionBox', 'silverBullet', 'ghostFeed',
+  'ictFvgBox', 'ictObBox', 'ictKillzone'])
+const LABEL_TOOLS = new Set(['gannFan', 'dateRange', 'gannBox', 'infoLine', 'trendAngle', 'trianglePattern', 'forecast', 'projection', 'srZone',
+  'sessionBox', 'silverBullet', 'judasSwing', 'xabcd', 'abcd', 'headShoulders', 'elliottImpulse', 'elliottCorrection', 'threeDrives', 'cypher',
+  'elliottTriangle', 'elliottDoubleCombo', 'elliottTripleCombo'])
 const TREND_TOOLS = new Set(['segment', 'rayLine', 'straightLine'])
 const BOX_TOOLS = new Set(['rectangle'])
 const SHAPE_TOOLS = new Set(['circleShape', 'triangle'])
 const TEXT_TOOLS = new Set(['textLabel', 'note', 'arrowUp', 'arrowDown', 'simpleAnnotation', 'ictKillzone', 'ictFvgBox', 'ictObBox', 'ictLiquidity',
-  'signpost', 'priceNote', 'flagMark', 'sticker', 'anchoredText', 'comment', 'srZone', 'sessionBox', 'judasSwing', ...TREND_TOOLS, ...BOX_TOOLS])
+  'signpost', 'priceNote', 'flagMark', 'sticker', 'anchoredText', 'comment', 'srZone', 'sessionBox', 'judasSwing', ...TREND_TOOLS, ...BOX_TOOLS, ...WRAPPED_TOOLS])
 // tools whose text tab also has font / colour / alignment (the others keep their own label look)
-const RICH_TEXT = new Set([...TREND_TOOLS, ...BOX_TOOLS])
+const RICH_TEXT = new Set([...TREND_TOOLS, ...BOX_TOOLS, ...WRAPPED_TOOLS])
 const FONT_SIZES = [10, 11, 12, 13, 14, 16, 20, 24, 28, 32, 40]
 
 export function DrawingDialog({ chartId, overlayId, onClose }: { chartId: number; overlayId: string; onClose: () => void }) {
@@ -122,6 +132,41 @@ export function DrawingDialog({ chartId, overlayId, onClose }: { chartId: number
     </>
   }
 
+  // ---- Long / Short position (TradingView's Inputs + Style) -----------------------------------
+  const positionPanel = () => {
+    const num = (label: string, key: 'account' | 'risk' | 'lotSize' | 'qtyDigits', def: number, step: string, min: number) => row(label,
+      <input className="dd-price" type="number" step={step} min={min} defaultValue={ext[key] ?? def} onBlur={e => { const v = Number(e.target.value); if (Number.isFinite(v) && v >= min) change({ [key]: v } as Partial<Ext>) }} />)
+    return <>
+      {num('Account size', 'account', 10000, '100', 0)}
+      {row('Risk', <><input className="dd-fib-val" type="number" step="0.1" min={0} defaultValue={ext.risk ?? (ext.riskMode === 'amount' ? 100 : 1)}
+        onBlur={e => { const v = Number(e.target.value); if (Number.isFinite(v) && v >= 0) change({ risk: v }) }} />
+        <select className="cs-select dd-small" value={ext.riskMode ?? 'percent'} onChange={e => change({ riskMode: e.target.value as 'percent' | 'amount' })}><option value="percent">%</option><option value="amount">Amount</option></select></>)}
+      {num('Lot size (contract size)', 'lotSize', 1, 'any', 0.0001)}
+      {num('Qty precision (decimals)', 'qtyDigits', 2, '1', 0)}
+      {row('Profit zone', colorPick(ext.profitColor ?? '#26a69a', c => change({ profitColor: c })))}
+      {row('Stop zone', colorPick(ext.stopColor ?? '#ef5350', c => change({ stopColor: c })))}
+      {row('Zone opacity', <input type="range" min={0} max={100} value={ext.fillOpacity ?? 22} onChange={e => change({ fillOpacity: Number(e.target.value) })} />)}
+      {check('Show prices', ext.showPrices !== false, v => change({ showPrices: v }))}
+      {check('Compact stats', !!ext.compact, v => change({ compact: v }))}
+    </>
+  }
+  // a point's time: picked in local time, snapped to the bar it falls in
+  const setTime = (i: number, local: string) => {
+    const t = new Date(local).getTime()
+    if (!Number.isFinite(t)) return
+    const list = chart.getDataList()
+    let k = list.findIndex(b => b.timestamp > t) - 1
+    if (k < 0) k = t < (list[0]?.timestamp ?? 0) ? 0 : list.length - 1
+    const ts = list[k]?.timestamp ?? t
+    chart.overrideOverlay({ id, points: o.points.map((q, j) => (j === i ? { timestamp: ts, value: q.value } : { timestamp: q.timestamp, value: q.value })) as any })
+    notify(); force(n => n + 1)
+  }
+  const localValue = (ts?: number) => {
+    if (!ts) return ''
+    const dt = new Date(ts), z = (n: number) => String(n).padStart(2, '0')
+    return `${dt.getFullYear()}-${z(dt.getMonth() + 1)}-${z(dt.getDate())}T${z(dt.getHours())}:${z(dt.getMinutes())}`
+  }
+
   return createPortal(
     <div className="modal-back" onMouseDown={e => { if (e.target === e.currentTarget) cancel() }}>
       <div className={`modal dd-modal${isFib ? ' dd-wide' : ''}`} role="dialog" aria-label="Drawing settings">
@@ -129,7 +174,7 @@ export function DrawingDialog({ chartId, overlayId, onClose }: { chartId: number
         <nav className="dd-tabs">{tabs.map(([k, l]) => <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</nav>
         <div className="dd-body">
           {tab === 'style' && <>
-            {isFib ? fibPanel() : <>
+            {isFib ? fibPanel() : POSITION_TOOLS.has(o.name) ? positionPanel() : <>
               {row(isBox || SHAPE_TOOLS.has(o.name) ? 'Border' : 'Line', <div className="dd-colors">{DRAW_COLORS.map(c => <button key={c} className={`swatch${color === c ? ' on' : ''}`} style={{ background: c }} onClick={() => change({ color: c })} title={c} />)}
                 {colorPick(color, c => change({ color: c }), 'Any colour')}</div>)}
               {row('Width', <div className="dd-widths">{[1, 2, 3, 4].map(w => <button key={w} className={(ext.width ?? 1) === w ? 'on' : ''} onClick={() => change({ width: w })}><i style={{ height: w }} /></button>)}</div>)}
@@ -140,6 +185,16 @@ export function DrawingDialog({ chartId, overlayId, onClose }: { chartId: number
                 {colorPick(ext.fillColor ?? color, c => change({ fillColor: c }))}
                 <input type="range" min={0} max={100} value={ext.fillOpacity ?? (isBox ? 15 : 12)} title={`${ext.fillOpacity ?? 15}% opacity`} onChange={e => change({ fillOpacity: Number(e.target.value) })} /></>)}
               {isBox && <>{extendRow(!!ext.extendLeft, !!ext.extendRight)}{check('Middle line', !!ext.middleLine, v => change({ middleLine: v }))}</>}
+              {HLINE_TOOLS.has(o.name) && check('Price label', !!ext.priceLabels, v => change({ priceLabels: v }))}
+              {CHANNEL_TOOLS.has(o.name) && <>
+                {check('Background', ext.fillOn ?? true, v => change({ fillOn: v }), <>{colorPick(ext.fillColor ?? color, c => change({ fillColor: c }))}
+                  <input type="range" min={0} max={100} value={ext.fillOpacity ?? 10} onChange={e => change({ fillOpacity: Number(e.target.value) })} /></>)}
+                {extendRow(ext.extendLeft ?? true, ext.extendRight ?? true)}
+                {check('Middle line', ext.middleLine ?? o.name === 'parallelStraightLine', v => change({ middleLine: v }))}</>}
+              {FILL_TOOLS.has(o.name) && check('Background', ext.fillOn ?? true, v => change({ fillOn: v }), <>{colorPick(ext.fillColor ?? color, c => change({ fillColor: c }))}
+                <input type="range" min={0} max={100} value={ext.fillOpacity ?? 15} onChange={e => change({ fillOpacity: Number(e.target.value) })} /></>)}
+              {LABEL_TOOLS.has(o.name) && check('Labels', ext.showLabels ?? true, v => change({ showLabels: v }),
+                <select className="cs-select dd-small" value={ext.fontSize ?? 11} onChange={e => change({ fontSize: Number(e.target.value) })}>{FONT_SIZES.map(s => <option key={s} value={s}>{s}</option>)}</select>)}
               {isTrend && <>
                 {extendRow(ext.extendLeft ?? o.name === 'straightLine', ext.extendRight ?? o.name !== 'segment')}
                 {row('Left end', <select className="cs-select dd-small" value={ext.leftEnd ?? 'normal'} onChange={e => change({ leftEnd: e.target.value as 'normal' | 'arrow' })}><option value="normal">Normal</option><option value="arrow">Arrow</option></select>)}
@@ -164,14 +219,17 @@ export function DrawingDialog({ chartId, overlayId, onClose }: { chartId: number
             </>}
           </>}
           {tab === 'coords' && o.points.map((p, i) => (
-            <div key={i} className="cs-row">
-              <span className="cs-label">Point {i + 1} <small className="muted">{p.timestamp ? new Date(p.timestamp).toLocaleString() : ''}</small></span>
-              <input className="dd-price" type="number" step="any" defaultValue={p.value} onBlur={e => {
-                const v = Number(e.target.value)
-                if (!Number.isFinite(v)) return
-                chart.overrideOverlay({ id, points: o.points.map((q, j) => (j === i ? { ...q, value: v } : q)) as any })
-                notify(); force(n => n + 1)
-              }} />
+            <div key={`${i}-${p.timestamp}`} className="cs-row dd-coord">
+              <span className="cs-label">#{i + 1}</span>
+              <div className="cs-ctrl">
+                <input className="dd-price" type="number" step="any" title="Price" defaultValue={p.value} onBlur={e => {
+                  const v = Number(e.target.value)
+                  if (!Number.isFinite(v)) return
+                  chart.overrideOverlay({ id, points: o.points.map((q, j) => ({ timestamp: q.timestamp, value: j === i ? v : q.value })) as any })
+                  notify(); force(n => n + 1)
+                }} />
+                <input className="dd-time" type="datetime-local" title="Date and time (snaps to that bar)" defaultValue={localValue(p.timestamp)} onBlur={e => setTime(i, e.target.value)} />
+              </div>
             </div>
           ))}
           {tab === 'visibility' && <>

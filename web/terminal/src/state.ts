@@ -71,7 +71,7 @@ export function cleanLook(x: any): DrawLook {
   for (const k of LOOK_BOOLS) if (typeof x?.[k] === 'boolean') o[k] = x[k]
   for (const [k, [lo, hi]] of Object.entries(LOOK_NUMS)) { const v = Number(x?.[k]); if (x?.[k] !== undefined && Number.isFinite(v)) o[k] = Math.min(hi, Math.max(lo, v)) }
   for (const [k, ok] of Object.entries(LOOK_ENUMS)) if (ok.includes(x?.[k])) o[k] = x[k]
-  for (const k of ['trendColor', 'fillColor', 'textColor']) if (isColor(x?.[k])) o[k] = x[k]
+  for (const k of ['trendColor', 'fillColor', 'textColor', 'profitColor', 'stopColor']) if (isColor(x?.[k])) o[k] = x[k]
   if (Array.isArray(x?.fibLevels)) {
     o.fibLevels = x.fibLevels.slice(0, 40).filter((l: any) => Number.isFinite(Number(l?.v)))
       .map((l: any) => ({ v: Number(l.v), color: isColor(l.color) ? l.color : '#787b86', on: l.on !== false }))
@@ -116,11 +116,12 @@ export interface TerminalState {
 export interface DrawLook { color?: string; width?: number; dashed?: boolean; levels?: number[]; [k: string]: unknown }
 // look settings a template / default keeps besides colour, width and dash (the drawing settings' Style and Text tabs)
 const LOOK_BOOLS = ['oneColor', 'trendOn', 'bgOn', 'extendLeft', 'extendRight', 'reverse', 'showPrices', 'showLevels', 'middlePoint', 'priceLabels',
-  'stats', 'fillOn', 'middleLine', 'bold', 'italic']
-const LOOK_NUMS: Record<string, [number, number]> = { trendWidth: [1, 4], levelWidth: [1, 4], bgOpacity: [0, 100], fillOpacity: [0, 100], fontSize: [8, 40] }
+  'stats', 'fillOn', 'middleLine', 'bold', 'italic', 'showLabels', 'compact', 'showPrices']
+const LOOK_NUMS: Record<string, [number, number]> = { trendWidth: [1, 4], levelWidth: [1, 4], bgOpacity: [0, 100], fillOpacity: [0, 100], fontSize: [8, 40],
+  account: [0, 1e12], risk: [0, 1e9], lotSize: [0.0001, 1e9], qtyDigits: [0, 8] }
 const LOOK_ENUMS: Record<string, string[]> = { lineStyle: ['solid', 'dashed', 'dotted'], trendStyle: ['solid', 'dashed', 'dotted'], levelStyle: ['solid', 'dashed', 'dotted'],
   levelsAs: ['values', 'percents'], labelsH: ['left', 'center', 'right'], labelsV: ['top', 'middle', 'bottom'], leftEnd: ['normal', 'arrow'], rightEnd: ['normal', 'arrow'],
-  textH: ['left', 'center', 'right'], textV: ['top', 'middle', 'bottom'] }
+  textH: ['left', 'center', 'right'], textV: ['top', 'middle', 'bottom'], riskMode: ['percent', 'amount'] }
 const isColor = (v: unknown) => typeof v === 'string' && v.length <= 30
 export interface IndTemplate { name: string; indicators: IndicatorConf[] }
 export interface DrawTemplate { tool: string; name: string; style: DrawLook }

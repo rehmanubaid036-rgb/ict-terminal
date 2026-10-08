@@ -34,6 +34,8 @@ function digits(chart: Chart): number {
   return chart.getSymbol()?.pricePrecision ?? 2
 }
 
+export interface PositionOpts { account?: number; risk?: number; riskMode?: 'percent' | 'amount'; lotSize?: number; qtyDigits?: number
+  profitColor?: string; stopColor?: string; fillOpacity?: number; compact?: boolean; showPrices?: boolean }
 export interface DrawStyle { color?: string; width?: number; dashed?: boolean; text?: string; tfs?: string[]; tfHidden?: boolean; levels?: number[] }
 
 let done = false
@@ -230,7 +232,7 @@ export function registerOverlays() {
       if (c.length < 2) return []
       const s = st(overlay, color), [a, b] = c
       const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y), w = Math.abs(b.x - a.x), h = Math.abs(b.y - a.y)
-      const out = [rect(x, y, w, h, alpha(s.color, 0.16), s.color, false), text(x + 4, y + 3, s.text || label, s.color, { baseline: 'top', weight: 600 })]
+      const out = [rect(x, y, w, h, shapeFill(overlay, s.color, 16), s.color, false), text(x + 4, y + 3, s.text || label, s.color, { baseline: 'top', weight: 600 })]
       if (mid) out.push(line({ x, y: y + h / 2 }, { x: x + w, y: y + h / 2 }, s.color, 1, true), text(x + w + 4, y + h / 2, mid, s.color))
       return out
     },
@@ -249,23 +251,33 @@ export function registerOverlays() {
     },
   })
 
+  // Long / Short position like TradingView's: account size, risk (% or amount), lot size, quantity, P/L in
+  // money, colours and opacity of the profit / stop zones, compact labels
   for (const side of ['long', 'short'] as const) {
     registerOverlay<DrawStyle>({
       name: `${side}Position`, totalStep: 4, ...tool,
       createPointFigures: ({ coordinates: c, overlay, chart }) => {
         if (c.length < 2) return []
-        const p = overlay.points, d = digits(chart)
+        const p = overlay.points, d = digits(chart), e = (overlay.extendData ?? {}) as PositionOpts
         const [en, sl] = c
         const tp = c[2] ?? { x: sl.x, y: en.y - (sl.y - en.y) * 2 }
         const x = Math.min(en.x, sl.x, tp.x), w = Math.max(Math.max(en.x, sl.x, tp.x) - x, 60)
-        const out: OverlayFigure[] = [rect(x, Math.min(en.y, sl.y), w, Math.abs(sl.y - en.y), 'rgba(239,83,80,0.22)', undefined, false),
-          rect(x, Math.min(en.y, tp.y), w, Math.abs(tp.y - en.y), 'rgba(38,166,154,0.22)', undefined, false), line({ x, y: en.y }, { x: x + w, y: en.y }, '#9598a1')]
+        const op = (e.fillOpacity ?? 22) / 100, win = e.profitColor ?? '#26a69a', loss = e.stopColor ?? '#ef5350'
+        const out: OverlayFigure[] = [rect(x, Math.min(en.y, sl.y), w, Math.abs(sl.y - en.y), alpha(loss, op), undefined, false),
+          rect(x, Math.min(en.y, tp.y), w, Math.abs(tp.y - en.y), alpha(win, op), undefined, false), line({ x, y: en.y }, { x: x + w, y: en.y }, '#9598a1')]
         if (p.length >= 2 && p[0].value !== undefined && p[1].value !== undefined) {
-          const e = p[0].value, s = p[1].value, t = p[2]?.value ?? e - (s - e) * 2
-          const risk = Math.abs(e - s), rr = risk > 0 ? Math.abs(t - e) / risk : 0
-          out.push(text(x + w / 2, tp.y, `Target ${fmt(t, d)}  (${(((t - e) / e) * 100).toFixed(2)}%)`, '#ffffff', { align: 'center', baseline: tp.y < en.y ? 'bottom' : 'top', bg: '#26a69a' }),
-            text(x + w / 2, sl.y, `Stop ${fmt(s, d)}  (${(((s - e) / e) * 100).toFixed(2)}%)`, '#ffffff', { align: 'center', baseline: sl.y > en.y ? 'top' : 'bottom', bg: '#ef5350' }),
-            text(x + w / 2, en.y, `${side.toUpperCase()}  ${fmt(e, d)}  ·  RR ${rr.toFixed(2)}`, '#ffffff', { align: 'center', bg: '#475569' }))
+          const ent = p[0].value, stp = p[1].value, tgt = p[2]?.value ?? ent - (stp - ent) * 2
+          const risk = Math.abs(ent - stp), rr = risk > 0 ? Math.abs(tgt - ent) / risk : 0
+          const account = e.account ?? 10000, lot = e.lotSize || 1
+          const riskMoney = e.riskMode === 'amount' ? (e.risk ?? 100) : account * (e.risk ?? 1) / 100
+          const qty = risk > 0 ? riskMoney / (risk * lot) : 0, q = qty.toFixed(e.qtyDigits ?? 2)
+          const money = (v: number) => (v >= 0 ? '+' : '') + v.toFixed(2)
+          const win$ = Math.abs(tgt - ent) * qty * lot, pct = (v: number) => (((v - ent) / ent) * 100).toFixed(2)
+          const compact = !!e.compact, prices = e.showPrices !== false
+          out.push(
+            text(x + w / 2, tp.y, compact ? `${money(win$)}  ${rr.toFixed(2)}R` : `Target: ${prices ? fmt(tgt, d) + '  ' : ''}(${pct(tgt)}%)  ${money(win$)}`, '#ffffff', { align: 'center', baseline: tp.y < en.y ? 'bottom' : 'top', bg: win }),
+            text(x + w / 2, sl.y, compact ? `${money(-riskMoney)}` : `Stop: ${prices ? fmt(stp, d) + '  ' : ''}(${pct(stp)}%)  ${money(-riskMoney)}`, '#ffffff', { align: 'center', baseline: sl.y > en.y ? 'top' : 'bottom', bg: loss }),
+            text(x + w / 2, en.y, compact ? `${side.toUpperCase()} ${q}` : `${side.toUpperCase()}  ${prices ? fmt(ent, d) : ''}  ·  Qty ${q}  ·  Risk ${riskMoney.toFixed(2)}  ·  RR ${rr.toFixed(2)}`, '#ffffff', { align: 'center', bg: '#475569' }))
         }
         return out
       },

@@ -3,18 +3,20 @@
 // (colour / width / dashed / text), like the other drawings, so the drawing settings window works on them.
 import { registerOverlay, type Coordinate, type OverlayFigure, type OverlayTemplate } from 'klinecharts'
 import type { DrawStyle } from './overlays'
+import { fillLook, labelSize, labelsOn, lineLook, setLook } from './look'
 
 const FONT = 'Inter, -apple-system, "Segoe UI", Roboto, sans-serif'
 const tool = { needDefaultPointFigure: true, needDefaultXAxisFigure: true, needDefaultYAxisFigure: true }
 const look = (o: { extendData: unknown }, color: string) => {
   const e = (o.extendData ?? {}) as DrawStyle
+  setLook(e)
   return { color: e.color ?? color, width: e.width ?? 1, dashed: !!e.dashed, text: e.text ?? '' }
 }
 const seg = (a: Coordinate, b: Coordinate, color: string, width = 1, dashed = false): OverlayFigure =>
-  ({ type: 'line', attrs: { coordinates: [a, b] }, styles: { color, size: width, style: dashed ? 'dashed' : 'solid', dashedValue: [4, 3] } })
+  ({ type: 'line', attrs: { coordinates: [a, b] }, styles: lineLook(color, width, dashed) })
 const label = (x: number, y: number, t: string, color: string, bg = false, align: CanvasTextAlign = 'center'): OverlayFigure =>
-  ({ type: 'text', ignoreEvent: true, attrs: { x, y, text: t, align, baseline: 'middle' },
-    styles: { family: FONT, size: 11, weight: 600, color: bg ? '#fff' : color, backgroundColor: bg ? color : 'transparent', paddingLeft: 4, paddingRight: 4, paddingTop: 2, paddingBottom: 2, borderRadius: 3 } })
+  ({ type: 'text', ignoreEvent: true, attrs: { x, y, text: labelsOn() ? t : '', align, baseline: 'middle' },
+    styles: { family: FONT, size: labelSize(), weight: 600, color: bg ? '#fff' : color, backgroundColor: bg ? color : 'transparent', paddingLeft: 4, paddingRight: 4, paddingTop: 2, paddingBottom: 2, borderRadius: 3 } })
 const rgba = (hex: string, a: number) => {
   if (!/^#[0-9a-f]{6}$/i.test(hex)) return hex
   const n = parseInt(hex.slice(1), 16)
@@ -33,7 +35,7 @@ function pattern(name: string, labels: string[], color: string, ratios = false):
     createPointFigures: ({ coordinates: c, overlay }) => {
       if (c.length < 2) return []
       const s = look(overlay, color), out: OverlayFigure[] = []
-      out.push({ type: 'line', attrs: { coordinates: c }, styles: { color: s.color, size: s.width, style: s.dashed ? 'dashed' : 'solid', dashedValue: [4, 3] } })
+      out.push({ type: 'line', attrs: { coordinates: c }, styles: lineLook(s.color, s.width, s.dashed) })
       if (ratios && c.length >= 3) {
         // harmonic patterns: the retracement of each leg against the one before
         const p = overlay.points
@@ -71,7 +73,7 @@ export function registerMoreTools() {
       return [
         seg(b, d, s.color, s.width, true), seg(a, far, s.color, s.width, s.dashed),
         seg(b, { x: b.x + dx, y: b.y + dy }, s.color, s.width, s.dashed), seg(d, { x: d.x + dx, y: d.y + dy }, s.color, s.width, s.dashed),
-        { type: 'polygon', ignoreEvent: true, attrs: { coordinates: [b, { x: b.x + dx, y: b.y + dy }, { x: d.x + dx, y: d.y + dy }, d] }, styles: { style: 'fill', color: rgba(s.color, 0.06) } },
+        { type: 'polygon', ignoreEvent: true, attrs: { coordinates: [b, { x: b.x + dx, y: b.y + dy }, { x: d.x + dx, y: d.y + dy }, d] }, styles: { style: 'fill', color: fillLook(rgba(s.color, 0.06)) } },
       ]
     },
   })
@@ -140,7 +142,7 @@ export function registerMoreTools() {
       const mins = Math.abs(((p[1].timestamp ?? 0) - (p[0].timestamp ?? 0)) / 60000)
       const span = mins >= 1440 ? `${(mins / 1440).toFixed(1)}d` : mins >= 60 ? `${Math.floor(mins / 60)}h ${Math.round(mins % 60)}m` : `${Math.round(mins)}m`
       const x1 = Math.min(a.x, b.x), x2 = Math.max(a.x, b.x)
-      return [{ type: 'rect', attrs: { x: x1, y: Math.min(a.y, b.y), width: x2 - x1, height: Math.abs(b.y - a.y) }, styles: { style: 'fill', color: rgba(s.color, 0.12) } },
+      return [{ type: 'rect', attrs: { x: x1, y: Math.min(a.y, b.y), width: x2 - x1, height: Math.abs(b.y - a.y) }, styles: { style: 'fill', color: fillLook(rgba(s.color, 0.12)) } },
         seg({ x: x1, y: (a.y + b.y) / 2 }, { x: x2, y: (a.y + b.y) / 2 }, s.color, s.width),
         label((x1 + x2) / 2, Math.max(a.y, b.y) + 14, `${bars} bars, ${span}`, s.color, true)]
     },
@@ -164,7 +166,7 @@ export function registerMoreTools() {
       const at = (k: number, off: number) => chart.convertToPixel({ dataIndex: i0 + k, value: fit(k) + off }, { paneId: 'candle_pane' }) as Coordinate
       return [seg(at(0, 0), at(n - 1, 0), s.color, s.width),
         seg(at(0, 2 * sd), at(n - 1, 2 * sd), s.color, s.width, true), seg(at(0, -2 * sd), at(n - 1, -2 * sd), s.color, s.width, true),
-        { type: 'polygon', ignoreEvent: true, attrs: { coordinates: [at(0, 2 * sd), at(n - 1, 2 * sd), at(n - 1, -2 * sd), at(0, -2 * sd)] }, styles: { style: 'fill', color: rgba(s.color, 0.07) } }]
+        { type: 'polygon', ignoreEvent: true, attrs: { coordinates: [at(0, 2 * sd), at(n - 1, 2 * sd), at(n - 1, -2 * sd), at(0, -2 * sd)] }, styles: { style: 'fill', color: fillLook(rgba(s.color, 0.07)) } }]
     },
   })
 
