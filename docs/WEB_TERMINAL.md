@@ -77,7 +77,7 @@ It covers what was built, how to build and test it, and what is still open.
 | Indicator panes | Price-based indicators (MA, EMA, BOLL, VWAP, price scripts) move into a pane of their own and back; oscillator panes move up / down |
 | Watchlist columns | List menu > Columns: Chg, Chg%, today's High, Low, Volume and a day-range bar (`/api/v1/quotes` returns high / low / volume) |
 | Templates | Top bar Templates: shared chart setups; the default one greets new users; admins save / set default (`/api/v1/templates`, `maketemplate.bat`) |
-| Other | Dark / light theme, keyboard shortcuts (letters = symbol search, digits = interval, Alt+T/H/J/V/F/R tools, Alt+A alert, Alt+S screenshot, Ctrl+Z/Y, Del, Esc), screenshot, full screen, phone layout (tool sheets, bottom tab bar, bottom sheets, one chart at a time with chips) |
+| Other | Clock in the top bar (chart time zone, today's UTC offset; click = Chart settings), time-zone list shows the current offset (New York UTC-4 in summer, UTC-5 in winter), dark / light theme, keyboard shortcuts (letters = symbol search, digits = interval, Alt+T/H/J/V/F/R tools, Alt+A alert, Alt+S screenshot, Ctrl+Z/Y, Del, Esc), screenshot, full screen, phone layout (tool sheets, bottom tab bar, bottom sheets, one chart at a time with chips) |
 
 Not built yet (plan items): nothing in the terminal plan; toast messages and long help texts are English only.
 

@@ -67,6 +67,10 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 .tf-group button.on { color: var(--accent); background: var(--accent-soft); }
 .tb-btn { position: relative; display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 8px; border-radius: 6px; color: var(--soft); flex: none; }
 .tb-btn.text span { font-weight: 500; }
+.tb-clock { display: flex; align-items: baseline; gap: 6px; height: 30px; padding: 0 8px; border-radius: 6px; color: var(--text); white-space: nowrap; flex: none; font-variant-numeric: tabular-nums; }
+.tb-clock:hover { background: var(--hover); }
+.tb-clock b { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 13px; font-weight: 500; }
+.tb-clock small { color: var(--muted); font-size: 11px; }
 .tb-btn.lit { color: var(--accent); }
 .tb-btn em { font-style: normal; font: 600 10px var(--mono); background: var(--accent); color: var(--accent-ink); border-radius: 8px; padding: 0 5px; }
 .account-pill { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; margin-left: 4px; border-radius: 15px; color: var(--accent); background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); font-weight: 600; white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis; flex: none; }

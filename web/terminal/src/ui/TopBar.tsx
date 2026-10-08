@@ -15,6 +15,7 @@ import { COMPARE_COLORS, SMT_PARTNER } from '../chart/compare'
 import { Icon } from './icons'
 import { Modal, Popover, Switch, toast, useIsPhone } from './common'
 import { getEntry, undo, redo } from '../chart/registry'
+import { TIMEZONES, utcOffsetLabel } from '../chart/settings'
 
 type Menu = 'tf' | 'type' | 'ict' | 'wolf' | 'compare' | 'layout' | 'templates' | 'more' | null
 
@@ -120,6 +121,7 @@ export function TopBar() {
       <div className="tb-end">
         {donations?.enabled && <button className="tb-btn donate-btn" title={donations.title} onClick={() => setDonate(true)}>❤<span>Donate</span></button>}
         {edge.right && <button className="tb-arrow" aria-label="Scroll the menu right" onClick={() => nudge(1)}>›</button>}
+        <Clock zone={t.state.chart.timezone} short={phone} onClick={() => t.openSettings()} />
         <button className="account-pill" onClick={() => t.openAccount('plan')} title={`${t.access.email ?? ''} · expires ${t.access.expiry ?? '-'}`}>
           <Icon name="user" size={15} />{!phone && <span>{t.access.plan ?? 'Account'}</span>}
         </button>
@@ -181,6 +183,29 @@ export function TopBar() {
       </Popover>}
       {donate && donations && <DonateDialog info={donations} onClose={() => setDonate(false)} />}
     </header>
+  )
+}
+
+/** Live clock in the chart's time zone (Chart settings > Time zone; New York by default), with today's UTC offset. */
+function Clock({ zone, short, onClick }: { zone: string; short: boolean; onClick: () => void }) {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(id)
+  }, [])
+  const tz = zone || 'America/New_York'
+  let time: string
+  try {
+    time = new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', second: short ? undefined : '2-digit', hourCycle: 'h23' }).format(now)
+  } catch {
+    time = new Date(now).toISOString().slice(11, short ? 16 : 19)
+  }
+  const city = (TIMEZONES.find(z => z[0] === tz)?.[1] ?? tz).replace(/^\([^)]*\)\s*/, '')
+  const off = utcOffsetLabel(tz, now)
+  return (
+    <button className="tb-clock" onClick={onClick} title={`${city} time (${off}). Change the time zone in Chart settings.`}>
+      <b>{time}</b>{!short && <small>{city === 'New York' ? 'NY' : city} {off}</small>}
+    </button>
   )
 }
 

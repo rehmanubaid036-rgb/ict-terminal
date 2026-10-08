@@ -54,12 +54,30 @@ export const DEFAULT_SETTINGS: ChartSettings = {
   latestNews: true, newsNotify: false,
 }
 
-export const TIMEZONES: [string, string][] = [
-  ['America/New_York', '(UTC-5) New York'], ['Etc/UTC', 'UTC'], ['Europe/London', '(UTC+0) London'], ['Europe/Berlin', '(UTC+1) Berlin'],
-  ['Asia/Dubai', '(UTC+4) Dubai'], ['Asia/Karachi', '(UTC+5) Karachi'], ['Asia/Kolkata', '(UTC+5:30) Kolkata'], ['Asia/Riyadh', '(UTC+3) Riyadh'],
-  ['Asia/Singapore', '(UTC+8) Singapore'], ['Asia/Tokyo', '(UTC+9) Tokyo'], ['Australia/Sydney', '(UTC+10) Sydney'], ['America/Chicago', '(UTC-6) Chicago'],
-  ['America/Los_Angeles', '(UTC-8) Los Angeles'],
+/** Offset of ``zone`` from UTC right now, e.g. "UTC-4" (New York in summer) or "UTC-5" (winter):
+ * worked out from the browser's own time-zone data, so daylight saving is always right. */
+export function utcOffsetLabel(zone: string, at = Date.now()): string {
+  try {
+    const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: zone, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' })
+      .formatToParts(at).map(x => [x.type, x.value]))
+    const wall = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute)
+    const min = Math.round((wall - Math.floor(at / 60_000) * 60_000) / 60_000)
+    if (!min) return 'UTC'
+    const h = Math.floor(Math.abs(min) / 60), m = Math.abs(min) % 60
+    return `UTC${min < 0 ? '-' : '+'}${h}${m ? `:${String(m).padStart(2, '0')}` : ''}`
+  } catch {
+    return 'UTC'
+  }
+}
+
+const ZONES: [string, string][] = [
+  ['America/New_York', 'New York'], ['Etc/UTC', ''], ['Europe/London', 'London'], ['Europe/Berlin', 'Berlin'],
+  ['Asia/Dubai', 'Dubai'], ['Asia/Karachi', 'Karachi'], ['Asia/Kolkata', 'Kolkata'], ['Asia/Riyadh', 'Riyadh'],
+  ['Asia/Singapore', 'Singapore'], ['Asia/Tokyo', 'Tokyo'], ['Australia/Sydney', 'Sydney'], ['America/Chicago', 'Chicago'],
+  ['America/Los_Angeles', 'Los Angeles'],
 ]
+/** [zone, label] with today's offset in the label ("(UTC-4) New York" in summer, "(UTC-5) New York" in winter). */
+export const TIMEZONES: [string, string][] = ZONES.map(([z, city]) => [z, city ? `(${utcOffsetLabel(z)}) ${city}` : 'UTC'])
 
 const COLOR = /^(#[0-9a-fA-F]{3,8}|rgba?\([\d\s.,%]+\))$/
 
