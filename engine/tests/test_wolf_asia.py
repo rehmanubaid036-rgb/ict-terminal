@@ -82,22 +82,37 @@ def test_entry_stop_and_sd_targets_follow_the_pdf(sig):
 def test_time_first_window(sig):
     created = sig.created_time.tz_convert(NY)
     assert created.strftime("%H:%M") == "19:01"
-    assert sig.expiry.tz_convert(NY).strftime("%H:%M") == "21:00"
+    assert sig.expiry.tz_convert(NY).strftime("%H:%M") == "22:00"    # the author: trade between 1900 and 2200
+    assert sig.window == "wolf_asia_1900_2200"
 
 
-def test_no_trade_outside_the_window():
-    df = ict_example()
-    late = df.copy()
-    # the same pattern two and a half hours later is after 21:00: no setup
+def _shifted(minutes: int) -> Context:
+    """The ICT example with everything from 18:00 moved ``minutes`` later (flat bars in between)."""
+    late = ict_example()
     cut = pd.Timestamp("2024-08-08 18:00", tz=NY).tz_convert("UTC")
     body = late[late.index >= cut]
     shifted = body.copy()
-    shifted.index = shifted.index + pd.Timedelta(minutes=150)
+    shifted.index = shifted.index + pd.Timedelta(minutes=minutes)
     flat = late[late.index < cut]
-    filler_idx = pd.date_range(cut, cut + pd.Timedelta(minutes=149), freq="1min")
+    filler_idx = pd.date_range(cut, cut + pd.Timedelta(minutes=minutes - 1), freq="1min")
     filler = pd.DataFrame({"open": 18555.0, "high": 18555.5, "low": 18554.5, "close": 18555.0, "volume": 1.0}, index=filler_idx)
-    ctx = Context("NAS100", pd.concat([flat, filler, shifted]).sort_index())
-    assert [s for s in wa.scan(ctx) if s.direction == 1 and s.created_time >= EVENING] == []
+    return Context("NAS100", pd.concat([flat, filler, shifted]).sort_index())
+
+
+def test_setup_at_2130_is_inside_the_window():
+    s = [x for x in wa.scan(_shifted(150)) if x.direction == 1 and x.created_time >= EVENING]    # MSS 21:30
+    assert len(s) == 1 and s[0].created_time.tz_convert(NY).strftime("%H:%M") == "21:31"
+
+
+def test_no_trade_after_2200():
+    # the same pattern three hours and ten minutes later (MSS 22:10) is after the window: no setup
+    assert [x for x in wa.scan(_shifted(190)) if x.direction == 1 and x.created_time >= EVENING] == []
+
+
+def test_every_setup_is_inside_1900_2200():
+    for x in wa.scan(Context("NAS100", ict_example())):
+        t = x.created_time.tz_convert(NY)
+        assert 19 <= t.hour < 22, t
 
 
 def test_only_the_pdf_markets():

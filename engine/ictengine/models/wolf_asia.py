@@ -11,9 +11,11 @@ New York time, one trading day (1-minute chart):
        20 pips on forex) its midpoint (CE) is marked.
   p.1  "After gap is formed at 1800 look for initial Buyside liquidity and initial sell side liquidity
        and mark it": the high and the low made from 18:00 until 19:00.
-  p.1  "Wait for 0700 (1900) PM open of Asia, the algorithm will come online at 0700pm": the trade window
-       is 19:00-21:00 (title) - "Markets operates on TIME first" (p.2); journal 19-08: "There is a setup
-       but after our time window" = no trade.
+  p.1  "Wait for 0700 (1900) PM open of Asia, the algorithm will come online at 0700pm". The trade window
+       is 19:00-22:00 New York: the PDF's author confirmed (8 Oct 2026) that the trade must be between 1900
+       and 2200 - the setup forms in it and the entry order is cancelled at 22:00 if not filled.
+       "Markets operates on TIME first" (p.2); journal 19-08: "There is a setup but after our time window"
+       = no trade.
   p.4-8 The setup in the journal: price makes a low, a candle breaks the short-term swing high before it
        (MSS) and the displacement leaves a BISI (orange box with its dotted middle). The entry is the BISI's
        middle; the stop is the "Wick C.E" of the candle that made the low.
@@ -43,7 +45,7 @@ from ..core import clock
 from ..signals import Signal
 
 MODEL = "M17_wolf_asia_ndog"
-WINDOW = "wolf_asia_1900_2100"
+WINDOW = "wolf_asia_1900_2200"
 SYMBOLS = ("NAS100", "US500", "EURUSD", "GBPUSD")      # the PDF's markets: indices (NQ / ES) and forex
 HANDLE = {"NAS100": 1.0, "US500": 1.0, "EURUSD": 0.0001, "GBPUSD": 0.0001}   # one handle (point / pip)
 
@@ -51,7 +53,7 @@ HANDLE = {"NAS100": 1.0, "US500": 1.0, "EURUSD": 0.0001, "GBPUSD": 0.0001}   # o
 @dataclass(frozen=True)
 class WolfConfig:
     window_start: str = "19:00"                       # p.1: the algorithm comes online
-    window_end: str = "21:00"                         # title: 1900 to 2100
+    window_end: str = "22:00"                         # the author: the trade is between 1900 and 2200
     ndog_handles: float = 20.0                        # p.1: "check if its over 20 handle"
     sd_targets: tuple[float, ...] = (1.0, 1.25, 1.5)  # p.2-3: 1 SD, ICT's 1.25 SD, 1.5 SD
     sd_split: tuple[float, ...] = (0.5, 0.25, 0.25)   # p.2: "close half at 1 standard deviation"
@@ -116,7 +118,7 @@ def _find(ctx: Context, d: int, o18: int, ws: int, we: int, w1: pd.Timestamp, ga
     O, H, L, C = (b[k].to_numpy(dtype=float) for k in ("open", "high", "low", "close"))
     # "long" arrays: a short is the mirror (prices negated, highs <-> lows)
     hi, lo, op, cl = (H, L, O, C) if d == 1 else (-L, -H, -O, -C)
-    for i in range(ws, min(we, len(b))):                            # i = the MSS candle, closing inside 19:00-21:00
+    for i in range(ws, min(we, len(b))):                            # i = the MSS candle, closing inside 19:00-22:00
         # MSS: the latest short-term swing high (3-bar) since 18:00 that candle i is the first to close above,
         # with the low (x) made after it
         k = x = None
@@ -141,7 +143,10 @@ def _find(ctx: Context, d: int, o18: int, ws: int, we: int, w1: pd.Timestamp, ga
             continue
         f_lo, f_hi, ready = fvg
         if ready >= we:
-            return None                                             # completes after 21:00: "time first", no trade
+            return None                                             # completes after 22:00: "time first", no trade
+        # the setup is known when both the MSS and its BISI have closed: never before 19:00 (a BISI made
+        # before the window still waits for the MSS inside it)
+        ready = max(ready, i)
         sig = _signal(ctx, d, x, k, i, ready, f_lo, f_hi, hi, lo, op, cl, o18, gap, initial, w1, cfg)
         if sig is not None:
             return sig
@@ -178,7 +183,7 @@ def _signal(ctx, d, x, k, i, ready, f_lo, f_hi, hi, lo, op, cl, o18, gap, initia
     checklist = {
         "ndog_over_20_handles": bool(gap and gap.over_20),         # p.1
         "initial_liquidity_marked": initial is not None,           # p.1
-        "mss_in_1900_2100": True,                                  # title / p.2 time first
+        "mss_in_1900_2200": True,                                  # the author / p.2 time first
         "bisi_from_displacement": True,                            # p.2 / journal
         "initial_liquidity_taken": took_initial,                   # journal: the low runs the initial liquidity
         "breakaway_through_ndog": breakaway,                       # p.2
