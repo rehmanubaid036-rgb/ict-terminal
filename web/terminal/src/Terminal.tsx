@@ -14,6 +14,7 @@ import { registerEvents, loadCalendar } from './chart/events'
 import { registerCompare } from './chart/compare'
 import { registerMoreTools } from './chart/tools2'
 import { registerTools3, setPictureRedraw } from './chart/tools3'
+import { registerTools4 } from './chart/tools4'
 import { registerVolumeProfiles } from './chart/volprofile'
 import { registerChartTypes } from './chart/charttypes'
 import type { ChartSettings } from './chart/settings'
@@ -41,6 +42,7 @@ registerEvents()
 registerCompare()
 registerMoreTools()
 registerTools3()
+registerTools4()
 setPictureRedraw(() => allIds().forEach(id => getChart(id)?.resize()))
 registerVolumeProfiles()
 registerChartTypes()

@@ -23,7 +23,10 @@ export interface ChartConf {
   compare?: string[]           // other symbols drawn on this chart (SMT)
   invert?: boolean             // price scale upside down
   scaleLock?: ScaleLock | null  // price scale not fitted to the data: a fixed range, or a fixed price per bar
+  modelSet?: Record<string, ModelSet>   // per model on this chart (the model indicator's settings)
 }
+/** A model indicator's settings: which grades it draws, its target lines and labels. */
+export interface ModelSet { grade?: 'all' | 'A' | 'A+'; targets?: boolean; rr?: boolean; color?: string }
 
 export interface AlertPoint { t: number; v: number }
 export interface PriceAlert {
@@ -179,6 +182,10 @@ export function parse(data: any, maxCharts: number): { state: TerminalState; dra
       invert: !!c.invert,
       scaleLock: validLock(c.scaleLock),
       compare: Array.isArray(c.compare) ? c.compare.filter((x: unknown) => typeof x === 'string').slice(0, 4) : [],
+      modelSet: c.modelSet && typeof c.modelSet === 'object' ? Object.fromEntries(Object.entries(c.modelSet as Record<string, any>).slice(0, 40)
+        .filter(([k, v]) => /^M\d{1,2}$/.test(k) && v && typeof v === 'object')
+        .map(([k, v]) => [k, { grade: ['all', 'A', 'A+'].includes(v.grade) ? v.grade : undefined, targets: v.targets === false ? false : undefined,
+          rr: !!v.rr || undefined, color: typeof v.color === 'string' && v.color.length < 20 ? v.color : undefined }])) : undefined,
     } as ChartConf
   })
   const sync: Sync = v1

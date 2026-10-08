@@ -216,6 +216,9 @@ export const TOOL_GROUPS: ToolGroup[] = [
     { id: 'fibTimeZones', label: 'Fib Time Zones', icon: 'vline' },
     { id: 'fibFan', label: 'Fib Speed Fan', icon: 'gann' },
     { id: 'fibCircles', label: 'Fib Circles', icon: 'circle' },
+    { id: 'fibSpiral', label: 'Fib Spiral', icon: 'curve' },
+    { id: 'fibArcs', label: 'Fib Speed Resistance Arcs', icon: 'curve' },
+    { id: 'fibWedge', label: 'Fib Wedge', icon: 'gann' },
   ] },
   { id: 'ict', label: 'ICT tools', tools: [
     { id: 'ictFvgBox', label: 'FVG box (CE line)', icon: 'fvg' },
@@ -224,6 +227,10 @@ export const TOOL_GROUPS: ToolGroup[] = [
     { id: 'ictOte', label: 'OTE tool (0.62 / 0.705 / 0.79 + SD)', icon: 'ote' },
     { id: 'ictDealingRange', label: 'Dealing Range (premium / discount)', icon: 'range' },
     { id: 'ictKillzone', label: 'Killzone / session box', icon: 'kz' },
+    { id: 'sessionBox', label: 'Session range box (high / low / 50% found)', icon: 'kz' },
+    { id: 'silverBullet', label: 'Silver Bullet windows (click a day)', icon: 'kz' },
+    { id: 'judasSwing', label: 'Judas swing marker', icon: 'short' },
+    { id: 'srZone', label: 'Support / resistance zone', icon: 'rect' },
   ] },
   { id: 'patterns', label: 'Pitchfork, Gann & patterns', tools: [
     { id: 'pitchfork', label: 'Pitchfork', icon: 'pitchfork' },
@@ -256,6 +263,9 @@ export const TOOL_GROUPS: ToolGroup[] = [
     { id: 'arcShape', label: 'Arc', icon: 'curve' },
     { id: 'rotatedRect', label: 'Rotated Rectangle', icon: 'rect' },
     { id: 'path', label: 'Path (6 points)', icon: 'arrow' },
+    { id: 'polyline', label: 'Polyline (8 points)', icon: 'trend' },
+    { id: 'doubleCurve', label: 'Double Curve', icon: 'curve' },
+    { id: 'highlighter', label: 'Highlighter (12 points)', icon: 'brush' },
   ] },
   { id: 'measure', label: 'Forecasting & measure', tools: [
     { id: 'longPosition', label: 'Long Position', icon: 'long' },
@@ -270,6 +280,7 @@ export const TOOL_GROUPS: ToolGroup[] = [
     { id: 'cyclicLines', label: 'Cyclic Lines', icon: 'vline' },
     { id: 'timeCycles', label: 'Time Cycles', icon: 'curve' },
     { id: 'sineLine', label: 'Sine Line', icon: 'wave' },
+    { id: 'ghostFeed', label: 'Ghost Feed (8 points)', icon: 'candles' },
   ] },
   { id: 'text', label: 'Annotations', tools: [
     { id: 'textLabel', label: 'Text', icon: 'text' },
@@ -283,6 +294,8 @@ export const TOOL_GROUPS: ToolGroup[] = [
     { id: 'flagMark', label: 'Flag Mark', icon: 'long' },
     { id: 'sticker', label: 'Sticker (emoji)', icon: 'text' },
     { id: 'picture', label: 'Picture (from your files)', icon: 'data' },
+    { id: 'anchoredText', label: 'Anchored Text (stays on screen)', icon: 'text' },
+    { id: 'comment', label: 'Comment', icon: 'callout' },
   ] },
 ]
 export const ALL_TOOLS = TOOL_GROUPS.flatMap(g => g.tools)

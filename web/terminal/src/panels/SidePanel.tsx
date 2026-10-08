@@ -7,7 +7,7 @@ import { ICT_LAYERS, toolDef, INDICATORS, modelTag, SESSION_ALERTS, ICT_ALERT_EV
 import { WL_COLS, type IctEvent, type WlCol } from '../state'
 import { Icon } from '../ui/icons'
 import { Empty, Switch, fmtPrice, nyTime, toast, useIsPhone } from '../ui/common'
-import { DRAWINGS, drawingHooks, getChart, getEntry, notify, onRegistryChange, snapshot } from '../chart/registry'
+import { cloneDrawing, DRAWINGS, drawingHooks, getChart, getEntry, notify, onRegistryChange, snapshot } from '../chart/registry'
 import { JournalView, StatsView, EngineView } from './BottomPanel'
 import { CalendarPanel, NewsPanel } from './MarketPanels'
 import { TradePanel } from './Paper'
@@ -652,15 +652,35 @@ function ObjectTree() {
     <div className="tree">
       <div className="tree-group">Drawings ({drawings.length})</div>
       {!drawings.length && <Empty>No drawings on this chart.</Empty>}
-      {drawings.map(o => (
-        <div key={o.id} className={`tree-row${sel === o.id ? ' sel' : ''}`}>
-          <Icon name={toolDef(o.name)?.icon ?? 'trend'} size={16} />
-          <span className="grow-text">{toolDef(o.name)?.label ?? o.name}{(o.extendData as any)?.text ? ` · ${(o.extendData as any).text}` : ''}</span>
-          <button className="icon-btn" title={o.visible ? 'Hide' : 'Show'} onClick={() => act(o, { visible: !o.visible })}><Icon name={o.visible ? 'eye' : 'eyeOff'} size={15} /></button>
-          <button className="icon-btn" title={o.lock ? 'Unlock' : 'Lock'} onClick={() => act(o, { lock: !o.lock })}><Icon name={o.lock ? 'lock' : 'unlock'} size={15} /></button>
-          <button className="icon-btn" title="Delete" onClick={() => { snapshot(id); chart?.removeOverlay({ id: o.id }); notify() }}><Icon name="trash" size={15} /></button>
-        </div>
-      ))}
+      {(() => {
+        // drawings grouped by the user's group name (extendData.group); a group hides / locks together
+        const ext = (o: Overlay) => ((o.extendData ?? {}) as { title?: string; group?: string; text?: string })
+        const groups = [...new Set(drawings.map(o => ext(o).group ?? ''))].sort((a, b) => (a === '' ? 1 : b === '' ? -1 : a.localeCompare(b)))
+        const row = (o: Overlay) => (
+          <div key={o.id} className={`tree-row${sel === o.id ? ' sel' : ''}`} onClick={() => { const en = getEntry(id); if (en) { en.selected = o.id; notify() } }}>
+            <Icon name={toolDef(o.name)?.icon ?? 'trend'} size={16} />
+            <span className="grow-text">{ext(o).title || toolDef(o.name)?.label || o.name}{!ext(o).title && ext(o).text ? ` · ${ext(o).text}` : ''}</span>
+            <button className="icon-btn" title="Rename" onClick={e => { e.stopPropagation(); const n = window.prompt('Name in the object tree:', ext(o).title ?? toolDef(o.name)?.label ?? ''); if (n !== null) act(o, { extendData: { ...ext(o), title: n.trim().slice(0, 60) || undefined } }) }}>✎</button>
+            <button className="icon-btn" title="Put in a group" onClick={e => { e.stopPropagation(); const g = window.prompt('Group name (empty = no group):', ext(o).group ?? ''); if (g !== null) act(o, { extendData: { ...ext(o), group: g.trim().slice(0, 40) || undefined } }) }}>▤</button>
+            <button className="icon-btn" title="Clone" onClick={e => { e.stopPropagation(); cloneDrawing(id, o.id) }}>⧉</button>
+            <button className="icon-btn" title={o.visible ? 'Hide' : 'Show'} onClick={e => { e.stopPropagation(); act(o, { visible: !o.visible }) }}><Icon name={o.visible ? 'eye' : 'eyeOff'} size={15} /></button>
+            <button className="icon-btn" title={o.lock ? 'Unlock' : 'Lock'} onClick={e => { e.stopPropagation(); act(o, { lock: !o.lock }) }}><Icon name={o.lock ? 'lock' : 'unlock'} size={15} /></button>
+            <button className="icon-btn" title="Delete" onClick={e => { e.stopPropagation(); snapshot(id); chart?.removeOverlay({ id: o.id }); notify() }}><Icon name="trash" size={15} /></button>
+          </div>)
+        return groups.map(g => {
+          const items = drawings.filter(o => (ext(o).group ?? '') === g)
+          if (!g) return <div key="__none">{items.map(row)}</div>
+          const vis = items.some(o => o.visible), locked = items.every(o => o.lock)
+          return <div key={g} className="tree-sub">
+            <div className="tree-row tree-gh"><b className="grow-text">▾ {g} <small>({items.length})</small></b>
+              <button className="icon-btn" title={vis ? 'Hide the group' : 'Show the group'} onClick={() => { snapshot(id); items.forEach(o => chart?.overrideOverlay({ id: o.id, visible: !vis })); notify() }}><Icon name={vis ? 'eye' : 'eyeOff'} size={15} /></button>
+              <button className="icon-btn" title={locked ? 'Unlock the group' : 'Lock the group'} onClick={() => { snapshot(id); items.forEach(o => chart?.overrideOverlay({ id: o.id, lock: !locked })); notify() }}><Icon name={locked ? 'lock' : 'unlock'} size={15} /></button>
+              <button className="icon-btn" title="Delete the group" onClick={() => { if (window.confirm(`Delete the ${items.length} drawings of "${g}"?`)) { snapshot(id); items.forEach(o => chart?.removeOverlay({ id: o.id })); notify() } }}><Icon name="trash" size={15} /></button>
+            </div>
+            {items.map(row)}
+          </div>
+        })
+      })()}
       <div className="tree-group">Indicators ({t.active.indicators.length})</div>
       {t.active.indicators.map(i => (
         <div key={i.name} className="tree-row"><Icon name="indicators" size={16} /><span className="grow-text">{i.name} <small>{INDICATORS.find(x => x.name === i.name)?.title}</small></span>

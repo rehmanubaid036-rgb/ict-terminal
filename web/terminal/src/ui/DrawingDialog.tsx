@@ -16,7 +16,7 @@ type Tab = 'style' | 'text' | 'coords' | 'visibility'
 const LINE_TOOLS = new Set(['segment', 'rayLine', 'straightLine', 'horizontalStraightLine', 'horizontalRayLine', 'horizontalSegment', 'verticalStraightLine',
   'verticalRayLine', 'verticalSegment', 'priceLine', 'parallelStraightLine', 'priceChannelLine', 'fibonacciLine', 'simpleAnnotation', 'simpleTag', 'brush'])
 const TEXT_TOOLS = new Set(['textLabel', 'note', 'arrowUp', 'arrowDown', 'simpleAnnotation', 'ictKillzone', 'ictFvgBox', 'ictObBox', 'ictLiquidity',
-  'signpost', 'priceNote', 'flagMark', 'sticker'])
+  'signpost', 'priceNote', 'flagMark', 'sticker', 'anchoredText', 'comment', 'srZone', 'sessionBox', 'judasSwing'])
 // a trend line's extension is its kind: segment (none), ray (one side), straight line (both)
 const EXTEND = { segment: 'none', rayLine: 'right', straightLine: 'both' } as Record<string, string>
 const ICT_FIB_DEFAULT = '1, 0.79, 0.705, 0.62, 0.5, 0, -0.27, -0.5, -1, -2, -2.5, -4'

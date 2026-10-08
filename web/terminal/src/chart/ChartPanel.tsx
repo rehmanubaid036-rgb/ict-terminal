@@ -407,10 +407,12 @@ export function ChartPanel(p: ChartPanelProps) {
         ])
         if (id !== req.current || !chartRef.current) return
         chart.removeOverlay({ groupId: ICT })
+        const ms = props.current.conf.modelSet ?? {}
+        const gradeOk = (g: string, want: string | undefined) => !want || want === 'all' || (want === 'A' ? ['A', 'A+'] : ['A+']).includes(g)
         const shown = sg.signals.filter(x => (tf.label === '1m' || !ONE_MINUTE_MODELS.has(x.model_id)) && !isClosed(x.id)
-          && (ideas.ideasGrade === 'all' || (ideas.ideasGrade === 'A' ? ['A', 'A+'] : ['A+']).includes(x.grade)))
+          && gradeOk(x.grade, ideas.ideasGrade) && gradeOk(x.grade, ms[x.model_id]?.grade))
         // a click on a trade box opens its small menu (show lines / close)
-        const boxes = shown.flatMap(s => signalBoxes([s], ICT).map(o => (o.name !== 'signalBox' ? o
+        const boxes = shown.flatMap(s => signalBoxes([s], ICT, id => ms[id] ?? {}).map(o => (o.name !== 'signalBox' ? o
           : { ...o, onClick: (e: any) => { setPop({ s, x: e.pageX ?? 0, y: e.pageY ?? 0 }) } })))
         chart.createOverlay([...engineOverlays(ov.objects, ICT), ...boxes])
         setBias(ict.includes('bias') ? biasOf(ov.objects) : null)
@@ -439,7 +441,7 @@ export function ChartPanel(p: ChartPanelProps) {
     refreshOverlays.current(50)
     return () => chart.unsubscribeAction('onVisibleRangeChange', onRange)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conf.ict.join(), conf.models.join(), conf.requireBias, conf.ticker, tf.label, st.ideas, st.ideasGrade])
+  }, [conf.ict.join(), conf.models.join(), conf.requireBias, conf.ticker, tf.label, st.ideas, st.ideasGrade, JSON.stringify(conf.modelSet ?? {})])
 
   useEffect(() => {
     const again = () => { setPop(null); refreshOverlays.current(0) }
@@ -485,6 +487,11 @@ export function ChartPanel(p: ChartPanelProps) {
     const extendData: DrawStyle = { ...(look ?? {}) }
     if (name === 'textLabel' || name === 'note') {
       const t = window.prompt('Text:', '')
+      if (!t) { props.current.onToolDone(); return }
+      extendData.text = t
+    }
+    if (name === 'anchoredText' || name === 'comment') {
+      const t = window.prompt(name === 'comment' ? 'Comment:' : 'Text (it stays at this place on the screen):', '')
       if (!t) { props.current.onToolDone(); return }
       extendData.text = t
     }

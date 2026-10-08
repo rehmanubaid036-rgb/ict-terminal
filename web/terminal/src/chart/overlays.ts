@@ -113,7 +113,7 @@ export function registerOverlays() {
       const [en, st, tp] = c, e = overlay.extendData
       const x = Math.min(en.x, st.x), w = Math.max(Math.abs(st.x - en.x), 6)
       return [rect(x, Math.min(en.y, st.y), w, Math.abs(st.y - en.y), 'rgba(239,83,80,0.22)', undefined, false), rect(x, Math.min(en.y, tp.y), w, Math.abs(tp.y - en.y), 'rgba(38,166,154,0.22)', undefined, false),
-        line({ x, y: en.y }, { x: x + w, y: en.y }, '#2962ff'), text(x, tp.y, e.label, '#ffffff', { baseline: e.long ? 'bottom' : 'top', bg: e.long ? '#26a69a' : '#ef5350' })]
+        line({ x, y: en.y }, { x: x + w, y: en.y }, e.color ?? '#2962ff'), text(x, tp.y, e.label, '#ffffff', { baseline: e.long ? 'bottom' : 'top', bg: e.color ?? (e.long ? '#26a69a' : '#ef5350') })]
     },
   })
 
@@ -443,15 +443,17 @@ function targetLabel(s: Signal, i: number): string {
 }
 
 /** Model setups as boxes on the chart (entry, stop, last target). */
-export function signalBoxes(signals: Signal[], groupId: string): OverlayCreate[] {
+export function signalBoxes(signals: Signal[], groupId: string, opts: (modelId: string) => { targets?: boolean; rr?: boolean; color?: string } = () => ({})): OverlayCreate[] {
   return signals.flatMap(s => {
+    const o = opts(s.model_id)
     const t = new Date(s.created_time).getTime(), end = new Date(s.expiry).getTime()
     const last = s.targets[s.targets.length - 1][0]
-    const boxed: OverlayCreate = { name: 'signalBox', groupId, lock: true, extendData: { label: `${modelTag(s.model_id)} ${s.direction > 0 ? 'LONG' : 'SHORT'} ${s.grade}`, long: s.direction > 0 },
+    const risk = Math.abs(s.entry - s.stop), rr = risk ? Math.abs(last - s.entry) / risk : 0
+    const boxed: OverlayCreate = { name: 'signalBox', groupId, lock: true, extendData: { label: `${modelTag(s.model_id)} ${s.direction > 0 ? 'LONG' : 'SHORT'} ${s.grade}${o.rr && rr ? ` · ${rr.toFixed(1)}R` : ''}`, long: s.direction > 0, ...(o.color ? { color: o.color } : {}) },
       points: [{ timestamp: t, value: s.entry }, { timestamp: Math.max(end, t + 60000), value: s.stop }, { timestamp: t, value: last }] }
     // every target as a labelled line across the box (TP1, TP2 ...), selected or not
     const right = Math.max(end, t + 60000)
-    const tps: OverlayCreate[] = s.targets.map(([v], i) => ({ name: 'ictLine', groupId, lock: true,
+    const tps: OverlayCreate[] = o.targets === false ? [] : s.targets.map(([v], i) => ({ name: 'ictLine', groupId, lock: true,
       points: [{ timestamp: t, value: v }, { timestamp: right, value: v }], extendData: { color: '#26a69a', label: targetLabel(s, i), dashed: true } }))
     return [...(WOLF_MODELS.has(s.model_id) ? wolfLevels(s, groupId, false) : []), boxed, ...tps]
   })

@@ -1028,3 +1028,15 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
   border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--text); text-align: left; width: 100%; }
 .mt5 .up { color: #26a69a; } .mt5 .down { color: #ef5350; }
 .mt5-ev { font-size: 12px; border-bottom: 1px solid var(--line); padding: 2px 0; }
+
+/* model indicator settings */
+.model-row { position: relative; }
+.model-row .model-gear { position: absolute; right: 52px; top: 8px; }
+.model-set { border: 1px solid var(--line2); border-radius: 10px; padding: 8px; margin: 4px 0 8px; display: flex; flex-direction: column; gap: 6px; }
+.model-colors { display: flex; gap: 6px; }
+.model-colors .swatch { width: 20px; height: 20px; border-radius: 50%; border: 2px solid transparent; }
+.model-colors .swatch.on { border-color: var(--text); }
+
+/* object tree groups */
+.tree-sub { border-left: 2px solid var(--line2); margin: 4px 0 4px 4px; padding-left: 4px; }
+.tree-gh { background: var(--panel2); border-radius: 6px; }

@@ -15,6 +15,8 @@ export function Screener({ onClose }: { onClose: () => void }) {
   const [sort, setSort] = useState<Sort>('setups')
   const [bias, setBias] = useState<'all' | 'bull' | 'bear'>('all')
   const [onlyA, setOnlyA] = useState(false)
+  const [view, setView] = useState<'symbols' | 'setups'>('symbols')
+  const [grade, setGrade] = useState<'A' | 'A+' | 'all'>('A')
   useEffect(() => {
     let gone = false
     const load = () => api.screener().then(r => { if (!gone) { setRows(r.rows); setErr('') } }).catch(e => { if (!gone) { setErr(errorText(e)); setRows(x => x ?? []) } })
@@ -38,6 +40,14 @@ export function Screener({ onClose }: { onClose: () => void }) {
   const th = (k: Sort, label: string) => <th className={sort === k ? 'on' : ''} onClick={() => setSort(k)}>{label}</th>
   return (
     <Modal title="ICT Screener" onClose={onClose} wide className="scr-modal">
+      <div className="seg scr-view"><button className={view === 'symbols' ? 'on' : ''} onClick={() => setView('symbols')}>Symbols</button>
+        <button className={view === 'setups' ? 'on' : ''} onClick={() => setView('setups')}>All-models scanner</button></div>
+      {view === 'setups' ? <SetupsView rows={rows} grade={grade} setGrade={setGrade} onOpen={(sym, model) => {
+        const feed = t.active.ticker.split(':')[0]
+        t.setTicker(`${feed}:${sym}`)
+        t.updateActive(c => ({ models: c.models.includes(model) ? c.models : [...c.models, model] }))
+        onClose()
+      }} /> : <>
       <div className="scr-bar">
         <div className="seg">{(['all', 'bull', 'bear'] as const).map(b => <button key={b} className={bias === b ? 'on' : ''} onClick={() => setBias(b)}>{b === 'all' ? 'All' : b === 'bull' ? 'Bullish bias' : 'Bearish bias'}</button>)}</div>
         <label className="cs-check"><input type="checkbox" checked={onlyA} onChange={e => setOnlyA(e.target.checked)} /><span>Only with A / A+ setups today</span></label>
@@ -66,7 +76,31 @@ export function Screener({ onClose }: { onClose: () => void }) {
           </table>
         </div>
       )}
+      </>}
       <p className="note">The engine refreshes these every 5 minutes for the symbols it watches. Click a row to open its chart. Not financial advice.</p>
     </Modal>
   )
+}
+
+/** Every model's setups today on every watched symbol, best grades first (the All-Models Scanner). */
+function SetupsView({ rows, grade, setGrade, onOpen }: { rows: ScreenerRow[] | null; grade: 'A' | 'A+' | 'all'; setGrade: (g: 'A' | 'A+' | 'all') => void; onOpen: (sym: string, model: string) => void }) {
+  const list = (rows ?? []).flatMap(r => r.setups.map(s => ({ ...s, symbol: r.symbol, bias: r.bias })))
+    .filter(s => grade === 'all' || (grade === 'A' ? ['A', 'A+'] : ['A+']).includes(s.grade))
+    .sort((a, b) => (b.created_time > a.created_time ? 1 : -1))
+  return <>
+    <div className="scr-bar"><div className="seg">{(['A+', 'A', 'all'] as const).map(g => <button key={g} className={grade === g ? 'on' : ''} onClick={() => setGrade(g)}>{g === 'A+' ? 'A+ only' : g === 'A' ? 'A and A+' : 'All grades'}</button>)}</div></div>
+    {rows === null ? <Empty>Loading…</Empty> : !list.length ? <Empty>No setup of this grade today.</Empty> : (
+      <div className="scr-wrap"><table className="scr">
+        <thead><tr><th>Time (NY)</th><th>Symbol</th><th>Model</th><th>Side</th><th>Grade</th><th>Entry</th><th>With bias</th></tr></thead>
+        <tbody>{list.map((s, i) => (
+          <tr key={i} onClick={() => onOpen(s.symbol, s.model_id)}>
+            <td>{new Date(s.created_time).toLocaleTimeString('en-GB', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit' })}</td>
+            <td><b>{s.symbol}</b></td><td>{modelTag(s.model_id)}</td>
+            <td className={s.direction > 0 ? 'up' : 'down'}>{s.direction > 0 ? 'LONG' : 'SHORT'}</td>
+            <td><span className={`grade g${s.grade.replace('+', 'p')}`}>{s.grade}</span></td>
+            <td className="num">{fmtPrice(s.entry)}</td>
+            <td>{s.bias === 0 ? '–' : (s.bias > 0) === (s.direction > 0) ? '✓' : '✕'}</td>
+          </tr>))}</tbody>
+      </table></div>)}
+  </>
 }

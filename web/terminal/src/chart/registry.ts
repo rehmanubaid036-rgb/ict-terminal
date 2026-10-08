@@ -207,6 +207,22 @@ export function syncDrawing(fromId: number, overlayId: string, what: 'create' | 
   notify()
 }
 
+/** A copy of a drawing a few bars later on the same chart (to drag into place). Returns the new id. */
+export function cloneDrawing(id: number, overlayId: string): string | null {
+  const e = entries.get(id)
+  const src = e?.chart.getOverlays({ id: overlayId })[0]
+  if (!e || !src) return null
+  snapshot(id)
+  const l = e.chart.getDataList(), step = l.length > 1 ? l[l.length - 1].timestamp - l[l.length - 2].timestamp : 60_000
+  const ext = { ...((src.extendData as object) ?? {}) } as Record<string, unknown>
+  delete ext.syncId
+  const made = e.chart.createOverlay({ name: src.name, groupId: DRAWINGS, lock: false, visible: src.visible,
+    points: src.points.map(p => ({ timestamp: (p.timestamp ?? 0) + 5 * step, value: p.value })), extendData: ext as any,
+    styles: src.styles ?? undefined, ...hooks(id) } as OverlayCreate)
+  notify()
+  return typeof made === 'string' ? made : null
+}
+
 /** The mounted charts (for "copy to"): id and symbol / interval. */
 export function chartList(): { id: number; ticker: string; tf: string }[] {
   return [...entries.entries()].map(([id, e]) => ({ id, ticker: e.feed.ticker, tf: e.tf ?? '' }))
