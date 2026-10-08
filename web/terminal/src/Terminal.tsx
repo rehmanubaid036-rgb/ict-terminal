@@ -8,7 +8,7 @@ import { ChartPanel } from './chart/ChartPanel'
 import { registerOverlays } from './chart/overlays'
 import { registerIndicators } from './chart/indicators'
 import { registerIndicators2 } from './chart/indicators2'
-import { allIds, setDrawDefaults, drawingsOf, getChart, getEntry, notify, setDrawingHooks, setPending, snapshot, undo, redo, removeSelected } from './chart/registry'
+import { syncDrawing, setDrawingSync, allIds, setDrawDefaults, drawingsOf, getChart, getEntry, notify, setDrawingHooks, setPending, snapshot, undo, redo, removeSelected } from './chart/registry'
 import { chartBackground, type Theme } from './chart/theme'
 import { registerEvents, loadCalendar } from './chart/events'
 import { registerCompare } from './chart/compare'
@@ -175,6 +175,23 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
   useEffect(() => { document.documentElement.dataset.theme = theme }, [theme])
   useEffect(() => setAlertToastSeconds(state.chart.alertToastSec), [state.chart.alertToastSec])
   useEffect(() => setDrawDefaults(state.drawDefaults), [state.drawDefaults])
+  useEffect(() => setDrawingSync(!!state.sync.drawings), [state.sync.drawings])
+  // time sync: when the active chart scrolls or zooms, the others show the same time at their right edge
+  useEffect(() => {
+    if (!state.sync.time) return
+    const on = (ev: Event) => {
+      const { id, ts } = (ev as CustomEvent).detail as { id: number; ts: number }
+      const s = stateRef.current
+      if (id !== s.charts[Math.min(s.active, layoutCharts(s.layout) - 1)].id) return    // only the chart the user moves leads
+      for (const c of s.charts.slice(0, layoutCharts(s.layout))) {
+        const ch = getChart(c.id)
+        if (c.id === id || !ch?.getDataList().length) continue        // a chart with no bars yet cannot scroll
+        try { ch.scrollToTimestamp(ts, 0) } catch { /* ignore */ }
+      }
+    }
+    window.addEventListener('ict:timesync', on)
+    return () => window.removeEventListener('ict:timesync', on)
+  }, [state.sync.time])
   // links from the website: /terminal/?symbol=XAUUSD&tf=5m opens that chart, ?community=ideas|chat|publish the community
   const linked = useRef(false)
   useEffect(() => {
@@ -275,11 +292,11 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
       onSelected: e => { const en = getEntry(id); if (en) { en.selected = e.overlay.id; notify() } },
       onDeselected: e => { const en = getEntry(id); if (en && en.selected === e.overlay.id) { en.selected = null; notify() } },
       onPressedMoveStart: () => snapshot(id),
-      onPressedMoveEnd: () => notify(),
+      onPressedMoveEnd: e => { notify(); syncDrawing(id, e.overlay.id, 'update') },
       onRightClick: e => { e.preventDefault?.(); const en = getEntry(id); if (en) { en.selected = e.overlay.id; notify() } },
       onDoubleClick: e => { window.dispatchEvent(new CustomEvent('ict:drawing-props', { detail: { chartId: id, overlayId: e.overlay.id } })) },
       onClick: e => {
-        if (toolRef.current === 'eraser') { snapshot(id); getChart(id)?.removeOverlay({ id: e.overlay.id }); notify() }
+        if (toolRef.current === 'eraser') { snapshot(id); const o = e.overlay; getChart(id)?.removeOverlay({ id: o.id }); syncDrawing(id, o.id, 'remove', o); notify() }
       },
     }))
   }, [])

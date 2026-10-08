@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import type { Overlay } from 'klinecharts'
-import { DRAWINGS, applyTfVisibility, drawingHooks, drawingsOf, getChart, getEntry, notify, restoreDrawings, snapshot } from '../chart/registry'
+import { syncDrawing, DRAWINGS, applyTfVisibility, drawingHooks, drawingsOf, getChart, getEntry, notify, restoreDrawings, snapshot } from '../chart/registry'
 import type { DrawStyle } from '../chart/overlays'
 import { DRAW_COLORS, TIMEFRAMES, toolDef } from '../constants'
 import { Icon } from './icons'
@@ -146,7 +146,7 @@ export function DrawingDialog({ chartId, overlayId, onClose }: { chartId: number
               </div>
             })()}
           </div>
-          <span className="grow" /><button className="btn ghost" onClick={cancel}>Cancel</button><button className="btn primary" onClick={onClose}>Ok</button></div>
+          <span className="grow" /><button className="btn ghost" onClick={cancel}>Cancel</button><button className="btn primary" onClick={() => { syncDrawing(chartId, id, 'update'); onClose() }}>Ok</button></div>
       </div>
     </div>,
     document.body,

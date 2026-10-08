@@ -124,7 +124,9 @@ export function removeSelected(id: number): boolean {
   const e = entries.get(id)
   if (!e?.selected) return false
   snapshot(id)
+  const gone = e.chart.getOverlays({ id: e.selected })[0]
   e.chart.removeOverlay({ id: e.selected })
+  if (gone) syncDrawing(id, gone.id, 'remove', gone)
   e.selected = null
   notify()
   return true
@@ -178,6 +180,31 @@ export function copyDrawing(fromId: number, overlayId: string, toIds: number[]):
   if (n) notify()
   for (const id of toIds) if (entries.get(id)?.tf) applyTfVisibility(id)
   return n
+}
+
+// ---- drawings sync: a drawing made on one chart appears on every chart of the same symbol and stays
+// linked (moved, restyled or deleted together) through extendData.syncId
+let drawSync = false
+export const setDrawingSync = (on: boolean) => { drawSync = on }
+export function syncDrawing(fromId: number, overlayId: string, what: 'create' | 'update' | 'remove', removed?: Overlay) {
+  if (!drawSync) return
+  const from = entries.get(fromId)
+  const src = removed ?? from?.chart.getOverlays({ id: overlayId })[0]
+  if (!from || !src || src.groupId !== DRAWINGS) return
+  let sid = (src.extendData as { syncId?: string } | null)?.syncId
+  if (!sid && what !== 'create') return
+  if (!sid) { sid = Math.random().toString(36).slice(2, 10); from.chart.overrideOverlay({ id: src.id, extendData: { ...((src.extendData as object) ?? {}), syncId: sid } as any }) }
+  const ext = { ...((src.extendData as object) ?? {}), syncId: sid }
+  for (const [id, e] of entries) {
+    if (id === fromId || e.feed.ticker !== from.feed.ticker) continue
+    const mine = e.chart.getOverlays({ groupId: DRAWINGS }).filter(o => (o.extendData as { syncId?: string } | null)?.syncId === sid)
+    if (what === 'remove') { mine.forEach(o => e.chart.removeOverlay({ id: o.id })); continue }
+    const points = src.points.map(p => ({ timestamp: p.timestamp, value: p.value }))
+    if (mine.length) mine.forEach(o => e.chart.overrideOverlay({ id: o.id, points, extendData: ext as any, styles: (src.styles ?? null) as any, lock: src.lock, visible: src.visible }))
+    else e.chart.createOverlay({ name: src.name, groupId: DRAWINGS, lock: src.lock, visible: src.visible, points, extendData: ext as any, styles: src.styles ?? undefined, ...hooks(id) } as OverlayCreate)
+    if (e.tf) applyTfVisibility(id)
+  }
+  notify()
 }
 
 /** The mounted charts (for "copy to"): id and symbol / interval. */

@@ -47,7 +47,7 @@ export interface PriceAlert {
 export type IctEvent = 'mss' | 'bos' | 'fvg' | 'sweep'
 export interface AlertLogEntry { at: number; text: string }
 
-export interface Sync { symbol: boolean; interval: boolean; crosshair: boolean; drawings: boolean }
+export interface Sync { symbol: boolean; interval: boolean; crosshair: boolean; drawings: boolean; time?: boolean }
 
 /** The Signals tab's choices, saved with the layout (autosave and named layouts, so every device). */
 export interface SignalsPrefs {

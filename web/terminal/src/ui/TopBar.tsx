@@ -235,6 +235,8 @@ function LayoutMenu({ anchor, onClose }: { anchor: React.RefObject<HTMLButtonEle
       <Switch checked={t.state.sync.symbol} onChange={v => t.setSync({ symbol: v })} label="Symbol" />
       <Switch checked={t.state.sync.interval} onChange={v => t.setSync({ interval: v })} label="Interval" />
       <Switch checked={t.state.sync.crosshair} onChange={v => t.setSync({ crosshair: v })} label="Crosshair" />
+      <Switch checked={!!t.state.sync.time} onChange={v => t.setSync({ time: v })} label="Time (scroll together)" />
+      <Switch checked={t.state.sync.drawings} onChange={v => t.setSync({ drawings: v })} label="Drawings (same symbol)" />
       {t.state.layout !== '1' && <Switch checked={t.maximized} onChange={v => t.setMaximized(v)} label="Show only the active chart" />}
       <div className="menu-sep" />
       <div className="menu-head"><span>Saved layouts (on your account)</span>

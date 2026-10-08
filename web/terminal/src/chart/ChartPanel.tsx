@@ -15,7 +15,7 @@ import { EVENTS, loadCalendar, relTime, eventAt } from './events'
 import { COMPARE, COMPARE_COLORS, loadCompare } from './compare'
 import { closeSignal, isClosed } from './closed'
 import type { CalendarEvent } from '../api'
-import { drawDefault, DRAWINGS, register, unregister, getEntry, snapshot, notify, drawingHooks, removeSelected, onRegistryChange, applyTfVisibility, copyDrawing, chartList } from './registry'
+import { syncDrawing, drawDefault, DRAWINGS, register, unregister, getEntry, snapshot, notify, drawingHooks, removeSelected, onRegistryChange, applyTfVisibility, copyDrawing, chartList } from './registry'
 import { DrawingDialog } from '../ui/DrawingDialog'
 import { toast } from '../ui/common'
 import { paperModify, paperOrder, usePaper } from '../panels/Paper'
@@ -424,7 +424,17 @@ export function ChartPanel(p: ChartPanelProps) {
   useEffect(() => {
     const chart = chartRef.current
     if (!chart) return
-    const onRange = () => refreshOverlays.current()
+    let raf = 0
+    const onRange = () => {
+      refreshOverlays.current()
+      if (!props.current.active) return
+      window.clearTimeout(raf)
+      raf = window.setTimeout(() => {
+        const l = chart.getDataList(), r = chart.getVisibleRange()
+        const last = l[Math.min(l.length - 1, Math.max(0, r.to - 1))]
+        if (last) window.dispatchEvent(new CustomEvent('ict:timesync', { detail: { id: conf.id, ts: last.timestamp } }))
+      }, 16)
+    }
     chart.subscribeAction('onVisibleRangeChange', onRange)
     refreshOverlays.current(50)
     return () => chart.unsubscribeAction('onVisibleRangeChange', onRange)
@@ -514,7 +524,7 @@ export function ChartPanel(p: ChartPanelProps) {
     const id = chart.createOverlay({
       name, groupId: DRAWINGS, mode: p.magnet, extendData: extendData as any, ...drawingHooks(conf.id),
       ...(look && LINE_TOOLS.has(name) ? { styles: lineStyles(extendData) as any } : {}),
-      onDrawEnd: () => { notify(); props.current.onToolDone() },
+      onDrawEnd: () => { notify(); if (typeof id === 'string') syncDrawing(conf.id, id, 'create'); props.current.onToolDone() },
     })
     return () => {
       // tool switched before the drawing finished: drop the half-drawn one
@@ -543,6 +553,7 @@ export function ChartPanel(p: ChartPanelProps) {
     const builtin = LINE_TOOLS.has(selected.name)
     chart.overrideOverlay({ id: selected.id, extendData: ext as any, ...(builtin ? { styles: lineStyles(ext) as any } : {}) })
     notify()
+    syncDrawing(conf.id, selected.id, 'update')
   }
   const selStyle = (selected?.extendData ?? {}) as DrawStyle
   const isHorizontal = selected && /horizontal|priceLine|ictLiquidity/.test(selected.name)
