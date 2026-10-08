@@ -114,7 +114,7 @@ export interface Mt5Position { ticket: string; symbol: string; side: 1 | -1; vol
 export interface Mt5Order { ticket: string; symbol: string; type: number; volume: number; price: number; sl: number | null; tp: number | null; magic: string }
 export interface Mt5Account { mt5_login: string; server: string; currency: string; balance: number | null; equity: number | null; ea_version: string; magic: string; positions: Mt5Position[]; orders: Mt5Order[]; updated_at: string }
 export interface EaEvent { id: number; mt_login: string; signal_id: number; event: string; price: number; volume: number; profit: number; detail: string; at: string }
-export interface DonationInfo { enabled: boolean; title: string; text: string; amounts: number[]; currency: string; methods: PaymentMethod[] }
+export interface DonationInfo { enabled: boolean; title: string; text: string; amounts: number[]; currency: string; methods: PaymentMethod[]; crypto?: { network: string; label: string; token: string }[] }
 export interface AskAnswer { text: string; intent: string; data: Record<string, any>; llm: boolean; llm_by?: string }
 export interface AiSettings { enabled: boolean; provider: string; model: string; has_key: boolean; providers: { id: string; name: string }[] }
 export interface Quote { symbol: string; price: number | null; change: number | null; change_pct: number | null; time?: number; high?: number; low?: number; volume?: number | null }
@@ -265,6 +265,10 @@ export const api = {
     token: () => post<{ ea_token: string; copy: CopyStatus; message: string }>('/api/v1/copy/token', {}),
   },
   mt5State: () => get<{ accounts: Mt5Account[]; events: EaEvent[] }>('/api/v1/mt5/state'),
+  donateCrypto: (d: { amount: string; network: string; name: string; message: string; public: boolean }) =>
+    post<{ order: CryptoOrder & { key: string } }>('/api/v1/donations/crypto', { ...d, source: 'web' }),
+  donateCryptoStatus: (id: number, key: string) => get<{ order: CryptoOrder }>(`/api/v1/donations/crypto/${id}`, { key }),
+  donateCryptoTxid: (id: number, key: string, txid: string) => post<{ order: CryptoOrder }>(`/api/v1/donations/crypto/${id}/txid`, { key, txid }),
   donationInfo: () => get<DonationInfo>('/api/v1/donations/info'),
   donate: (d: { amount: string; method: number | null; reference: string; name: string; message: string; public: boolean; source: string }) =>
     post<{ id: number; message: string }>('/api/v1/donations', d),

@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Support ICT Terminal | Donate</title>
+  <meta name="description" content="Why donations keep ICT Terminal independent and growing, where the money goes, and how to give by crypto (automatic) or bank / wallet.">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap">
+  <link rel="stylesheet" href="/style.css?v=7">
+</head>
+<body>
+<header class="nav"><div class="wrap nav-in"><a class="logo" href="/"><img class="logo-mark" src="/favicon.svg" alt=""><span><b>ICT</b> Terminal</span></a>
+<a class="btn btn-primary" href="/terminal/">Open terminal</a></div></header>
+
+<main class="wrap doc donate-page">
+  <p class="kicker">Support the project</p>
+  <h1>Why your donation matters</h1>
+  <p class="lead">ICT Terminal is built and run by a small team. Plans pay for part of it, but not all of it. Donations
+    are what keep the free tools free, the servers running and new features coming, even in months when few people
+    buy a plan.</p>
+
+  <nav class="donate-jump"><a class="btn btn-primary" href="#give">Donate now</a><a class="btn btn-ghost" href="#where">Where the money goes</a></nav>
+
+  <h2>What it costs to run a trading terminal</h2>
+  <p>A chart that looks simple on your screen sits on a lot of moving parts that cost money every single month,
+    whether anyone pays for a plan or not:</p>
+  <ul>
+    <li><b>Servers.</b> The engine that finds ICT setups, the chart data, alerts and the website run 24 hours a day on
+      our own server, and every new user and every new chart needs more of it.</li>
+    <li><b>Market data.</b> Live prices come from broker terminals and data feeds. More markets and longer history
+      mean more terminals, more memory and more storage.</li>
+    <li><b>Messages and alerts.</b> WhatsApp, Telegram and email alerts are sent through paid services, per message.</li>
+    <li><b>AI assistant.</b> The chart assistant can use AI models that are billed for every answer they write.</li>
+    <li><b>Security and delivery.</b> Domain names, encryption certificates, protection against attacks and the
+      network that makes pages load fast around the world.</li>
+    <li><b>Development.</b> Most of the cost is people: hundreds of hours of research, coding, testing every ICT
+      model against real data, fixing bugs and writing guides in 14 languages.</li>
+  </ul>
+
+  <h2>Why plans alone are not enough</h2>
+  <p>Subscriptions are the main income, but they go up and down. Many traders use only the free tools, many are
+    students, and in some countries a monthly plan is a lot of money. Some months new subscriptions are few, while
+    the bills stay the same. We do not want to solve that by filling the terminal with ads, selling data or
+    hiding basic tools behind a paywall.</p>
+  <p>Donations close that gap. They let us:</p>
+  <ul>
+    <li>keep a <b>free tier</b> with real ICT tools for people who cannot pay;</li>
+    <li>keep <b>prices low</b> instead of raising them when costs grow;</li>
+    <li>stay <b>independent</b>: no investors pushing us to sell signals, data or "get rich quick" products;</li>
+    <li>keep the servers running during <b>slow months</b>, so nobody wakes up to a terminal that is offline.</li>
+  </ul>
+
+  <h2 id="where">Where the money goes</h2>
+  <div class="cards three donate-uses">
+    <article class="card"><h3>Running costs</h3><p>Servers, market data, broker terminals, alert messages, AI answers, domains and security.</p></article>
+    <article class="card"><h3>New features</h3><p>More ICT models and indicators, more markets, the mobile app, guides and better backtests.</p></article>
+    <article class="card"><h3>Free access</h3><p>Keeping free tools free and helping students and traders who cannot afford a plan.</p></article>
+  </div>
+
+  <h2>Things to know before you give</h2>
+  <ul>
+    <li><b>A donation is a gift, not a purchase.</b> It does not buy, extend or change a plan. To get plan features,
+      choose a plan on the <a href="/#pricing">pricing page</a>.</li>
+    <li><b>It is not an investment</b> and gives no share, return or profit of any kind.</li>
+    <li>ICT Terminal is not a registered charity, so donations are <b>not tax deductible</b>.</li>
+    <li>Any amount helps, from the price of a coffee upwards. Please only give what you can comfortably spare.</li>
+    <li>If you like, your name can appear as a supporter. Otherwise your donation stays private.</li>
+  </ul>
+
+  <h2>Other ways to help</h2>
+  <ul>
+    <li>Tell a friend or your trading group about ICT Terminal.</li>
+    <li>Share your ideas in the <a href="/community.html">community</a> and report bugs you find.</li>
+    <li>Choose a paid plan if the tools help your trading: that is the most direct support of all.</li>
+  </ul>
+
+  <section id="give" class="donate-give">
+    <h2 id="donate-title">Donate</h2>
+    <p class="muted" id="donate-text"></p>
+    <div id="donate-off" class="card"><p>Donations are not open right now. Thank you for thinking of us!</p></div>
+    <div id="donate-box" hidden>
+      <div class="donate-tabs" id="donate-tabs">
+        <button type="button" class="on" data-how="crypto">Crypto (automatic)</button>
+        <button type="button" data-how="manual">Bank / wallet (manual)</button>
+      </div>
+      <div class="donate-row">
+        <label>Your name (optional)<input id="d-name" maxlength="80"></label>
+        <label>Email (optional, for a thank you)<input id="d-email" type="email" maxlength="254"></label>
+      </div>
+      <label class="donate-full">Message (optional)<input id="d-message" maxlength="300"></label>
+      <label class="donate-check"><input type="checkbox" id="d-public"> Show my name as a supporter</label>
+      <div class="donate-amounts" id="d-amounts"></div>
+
+      <div id="pane-crypto">
+        <p class="muted small">Sent in stablecoins (1 USDT / USDC = 1 USD). You get an exact amount and an address; the
+          blockchain is checked by itself and your donation is confirmed automatically, no form to fill.</p>
+        <div class="donate-nets" id="d-nets"></div>
+        <div class="card crypto-box" id="d-order" hidden></div>
+      </div>
+
+      <div id="pane-manual" hidden>
+        <div class="cards three" id="donate-methods"></div>
+        <form class="donate-form" id="donate-form">
+          <div class="donate-row">
+            <label>Sent with<select name="method" id="donate-method"></select></label>
+            <label>Transaction ID<input name="reference" required placeholder="or sender name / number"></label>
+          </div>
+          <button class="btn btn-primary" type="submit">I have sent it</button>
+        </form>
+      </div>
+      <p class="muted small" id="donate-msg">Donations are separate from plans and do not change any plan.</p>
+    </div>
+  </section>
+</main>
+
+<footer class="footer"><div class="wrap foot-in"><span>&copy; 2026 ICT Terminal</span>
+<nav><a href="/">Home</a><a href="/donate.html">Donate</a><a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a><a href="/risk.html">Risk disclaimer</a></nav></div></footer>
+<script src="/site.js?v=7"></script>
+</body>
+</html>

@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap">
-  <link rel="stylesheet" href="/style.css?v=6">
+  <link rel="stylesheet" href="/style.css?v=7">
 </head>
 <body>
 <header class="nav" id="nav">
@@ -301,21 +301,9 @@
         <h2 id="donate-title">Support ICT Terminal</h2>
         <p class="sub" id="donate-text"></p>
       </div>
-      <div class="cards three" id="donate-methods"></div>
-      <form class="donate-form" id="donate-form">
-        <div class="donate-row">
-          <label>Amount <span id="donate-cur"></span><input name="amount" inputmode="decimal" required></label>
-          <label>Sent with<select name="method" id="donate-method"></select></label>
-          <label>Transaction ID<input name="reference" required placeholder="or sender name / number"></label>
-        </div>
-        <div class="donate-row">
-          <label>Your name (optional)<input name="name" maxlength="80"></label>
-          <label>Message (optional)<input name="message" maxlength="300"></label>
-        </div>
-        <label class="donate-check"><input type="checkbox" name="public"> Show my name as a supporter</label>
-        <button class="btn btn-primary" type="submit">I have sent it</button>
-        <p class="muted small" id="donate-msg">Donations are separate from plans and do not change any plan.</p>
-      </form>
+      <p class="donate-cta"><a class="btn btn-primary" href="/donate.html#give">Donate</a>
+        <a class="btn btn-ghost" href="/donate.html">Why it matters</a></p>
+      <p class="muted small">Crypto (automatic) or bank / wallet. Donations are separate from plans.</p>
     </div>
   </section>
 
@@ -363,6 +351,6 @@
   </div>
   <div class="wrap foot-bottom"><span>&copy; <span id="year">2026</span> ICT Terminal. All rights reserved.</span><span>Not financial advice.</span></div>
 </footer>
-<script src="/site.js?v=6"></script>
+<script src="/site.js?v=7"></script>
 </body>
 </html>

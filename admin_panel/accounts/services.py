@@ -755,7 +755,17 @@ def donation_info():
     return {"enabled": site.donations_enabled, "title": site.donation_title, "text": site.donation_text,
             "amounts": amounts[:8], "currency": site.donation_currency,
             "methods": [m.as_dict() for m in PaymentMethod.objects.filter(is_active=True, for_donations=True)]
-            if site.donations_enabled else []}
+            if site.donations_enabled else [],
+            # automatic crypto (the same wallets as plan payments): stablecoins, so the amount is in USD
+            "crypto": _crypto_networks() if site.donations_enabled else []}
+
+
+def _crypto_networks():
+    from . import crypto
+    try:
+        return crypto.active_networks()
+    except Exception:  # noqa: BLE001 - donations still work by hand
+        return []
 
 
 def submit_donation(data, user=None, source=""):

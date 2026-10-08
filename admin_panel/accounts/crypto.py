@@ -74,7 +74,8 @@ def _unique_amount(price, network):
 
 def open_order(user):
     expire_old_orders(user)
-    return CryptoOrder.objects.select_related("plan").filter(user=user, status__in=OPEN).order_by("-created_at").first()
+    # only plan checkouts: an open donation never blocks buying a plan
+    return CryptoOrder.objects.select_related("plan").filter(user=user, kind="plan", status__in=OPEN).order_by("-created_at").first()
 
 
 def _open_order_message(order):
@@ -112,6 +113,44 @@ def create_order(user, plan_slug, network, source="app"):
     return order, "", "created"
 
 
+DONATION_MIN, DONATION_MAX = Decimal("1"), Decimal("100000")
+MAX_OPEN_DONATIONS = 200          # never more open donation orders than this (spam guard)
+
+
+def create_donation_order(user, amount, network, data=None, source="web"):
+    """A crypto donation: the same checkout as plans (unique amount, verified on the blockchain), but it
+    gives no plan: once paid, the Donation is marked received by itself. Works without an account."""
+    import secrets
+    from .models import Donation
+    site = SiteSettings.load()
+    data = data or {}
+    if not site.donations_enabled:
+        return None, "Donations are not open right now."
+    try:
+        amount = Decimal(str(amount).strip()).quantize(Decimal("0.01"))
+    except Exception:  # noqa: BLE001 - any bad number
+        return None, "Enter an amount in US dollars."
+    if not (DONATION_MIN <= amount <= DONATION_MAX):
+        return None, f"Crypto donations are from {DONATION_MIN} to {DONATION_MAX:,.0f} USD."
+    wallet = CryptoWallet.objects.filter(network=str(network), is_active=True).first()
+    if wallet is None or crypto_chain.valid_address(wallet.network, wallet.address):
+        return None, "This crypto network is not available right now."
+    expire_old_orders()
+    if CryptoOrder.objects.filter(kind="donation", status__in=OPEN).count() >= MAX_OPEN_DONATIONS:
+        return None, "Too many open donations right now. Please try again later."
+    d = Donation.objects.create(user=user, name=str(data.get("name", "")).strip()[:80],
+                                email=str(data.get("email", "") or (user.email if user else "")).strip()[:254],
+                                amount=amount, currency="USD", message=str(data.get("message", "")).strip()[:300],
+                                public=bool(data.get("public")), source=("crypto-" + str(source or "web"))[:12])
+    now = timezone.now()
+    order = CryptoOrder.objects.create(
+        kind="donation", user=user, plan=None, donation=d, key=secrets.token_urlsafe(18)[:24], network=wallet.network,
+        address=wallet.address, price=amount, amount=_unique_amount(amount, wallet.network),
+        expires_at=now + timedelta(minutes=ORDER_MINUTES), source=source if source in ("app", "desktop", "web") else "web")
+    log.info("Crypto donation order #%s: %s %s", order.pk, order.amount, order.network)
+    return order, ""
+
+
 def cancel_order(order):
     """The customer closes an unpaid order (to choose another network). Returns (order, error)."""
     if order.status == "cancelled":
@@ -144,7 +183,20 @@ def _to_decimal(network, value):
 
 
 def _activate(order):
-    """Records the paid Payment and gives the plan (once, even if two processes try)."""
+    """Records the paid Payment and gives the plan (once, even if two processes try).
+    A donation order only marks its Donation received."""
+    if order.kind == "donation":
+        from .models import Donation
+        with transaction.atomic():
+            won = (CryptoOrder.objects.filter(pk=order.pk).exclude(status__in=("paid", "rejected"))
+                   .update(status="paid", paid_at=timezone.now()))
+            order = CryptoOrder.objects.select_related("donation").get(pk=order.pk)
+            if won and order.donation_id:
+                Donation.objects.filter(pk=order.donation_id).update(
+                    status="received", received_at=timezone.now(), reference=(order.txid or "")[:120],
+                    amount=order.paid_amount or order.price)
+        log.info("Crypto donation #%s received (%s)", order.pk, order.txid)
+        return order
     with transaction.atomic():
         won = (CryptoOrder.objects.filter(pk=order.pk, payment__isnull=True)
                .exclude(status__in=("paid", "rejected")).update(status="paid", paid_at=timezone.now()))
@@ -191,7 +243,7 @@ def _claim_tx(order, tx):
 def _watch_orders(network):
     """Orders a new transfer may belong to: open ones, and closed unpaid ones for LATE_GRACE_HOURS."""
     horizon = timezone.now() - timedelta(hours=LATE_GRACE_HOURS)
-    return (CryptoOrder.objects.select_related("plan", "user")
+    return (CryptoOrder.objects.select_related("plan", "user", "donation")
             .filter(network=network, txid__isnull=True)
             .filter(Q(status="waiting") | Q(status__in=("expired", "cancelled"), expires_at__gte=horizon)))
 
@@ -285,7 +337,7 @@ def _match_transfer(t):
     # link it; the customer can paste the transaction id (then their order goes to review).
     maybe = near or [o for o in orders if o.amount * FAR_LOW <= paid <= o.amount * FAR_HIGH]
     t.status = "unmatched"
-    t.note = ("Could be for order " + ", ".join(f"#{o.pk} ({o.user.email}, expected {o.amount})" for o in maybe)
+    t.note = ("Could be for order " + ", ".join(f"#{o.pk} ({o.who}, expected {o.amount})" for o in maybe)
               + f": paid {_fmt(paid)}. Check who paid, then link the order." if maybe
               else "No open order fits this payment.")[:250]
     t.save(update_fields=["status", "note"])
@@ -462,7 +514,8 @@ def order_dict(order):
     return {
         "id": order.pk, "status": order.status, "status_label": order.get_status_display(),
         "network": order.network, "network_label": net["label"], "token": net["token"],
-        "address": order.address, "amount": str(order.amount), "plan": order.plan.name,
+        "address": order.address, "amount": str(order.amount), "plan": order.plan.name if order.plan else "Donation",
+        "kind": order.kind,
         "paid_amount": str(order.paid_amount) if order.paid_amount is not None else "",
         "expires_at": order.expires_at.isoformat(), "created_at": order.created_at.isoformat(),
         "seconds_left": max(0, int((order.expires_at - timezone.now()).total_seconds())) if order.status == "waiting" else 0,

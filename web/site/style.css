@@ -367,3 +367,23 @@ body.cm-lock { overflow: hidden; }
 .donate-form .donate-check { flex-direction: row; align-items: center; }
 .donate-form .btn { align-self: flex-start; }
 #donate code { word-break: break-all; }
+
+/* donate page */
+.donate-page .lead { font-size: 18px; color: var(--soft); }
+.donate-jump { display: flex; gap: 10px; flex-wrap: wrap; margin: 16px 0 8px; }
+.donate-uses { margin: 12px 0; }
+.donate-give { margin-top: 36px; padding: 22px; border: 1px solid var(--line2); border-radius: 16px; background: var(--panel); }
+.donate-tabs { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+.donate-tabs button, .donate-amounts button { padding: 8px 14px; border-radius: 10px; border: 1px solid var(--line2); background: transparent; color: var(--text); font: inherit; cursor: pointer; }
+.donate-tabs button.on, .donate-amounts button.on { border-color: #ec4899; color: #ec4899; }
+.donate-amounts { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.donate-amounts input { width: 110px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line2); background: var(--panel); color: var(--text); font: inherit; }
+.donate-give label { display: flex; flex-direction: column; gap: 6px; font-size: 14px; color: var(--soft); }
+.donate-give input:not([type=checkbox]), .donate-give select { padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line2); background: var(--panel); color: var(--text); font: inherit; }
+.donate-give .donate-check { flex-direction: row; align-items: center; margin-top: 8px; }
+.donate-full { margin-top: 10px; }
+.donate-nets { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+.crypto-box { margin-top: 12px; }
+.crypto-box code { word-break: break-all; cursor: pointer; }
+.crypto-box .warn { color: #f59e0b; }
+.donate-cta { display: flex; gap: 10px; flex-wrap: wrap; }

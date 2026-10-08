@@ -77,8 +77,11 @@ class SiteSettingsAdmin(admin.ModelAdmin):
                                       "Community messages / members."}),
         ("Donations", {
             "fields": ("donations_enabled", "donation_title", "donation_text", ("donation_amounts", "donation_currency")),
-            "description": "Separate from plans. Choose which payment methods are shown for donations under "
-                           "Payment methods ('Show for donations'). Reported donations are listed under Donations."}),
+            "description": "Separate from plans. Crypto donations are automatic: they use the same crypto wallets as "
+                           "plan payments (Crypto wallets), are found on the blockchain and marked received by themselves "
+                           "(Crypto payments, type Donation). Bank / wallet methods: tick 'Show for donations' under Payment "
+                           "methods; those donations are reported by the donor and checked by you. All are listed under "
+                           "Donations. The website page is /donate.html."}),
         ("AI chart assistant", {
             "fields": (("ai_provider", "ai_model"), "ai_api_key"),
             "description": "Optional. The assistant always answers from the engine's data; with a provider and key the "
@@ -632,8 +635,8 @@ CRYPTO_BADGES = {"waiting": "#6c757d", "confirming": "#17a2b8", "paid": "#28a745
 
 @admin.register(CryptoOrder)
 class CryptoOrderAdmin(admin.ModelAdmin):
-    list_display = ("created_at", "user", "plan", "amount_col", "network", "status_col", "tx_link", "confirmations")
-    list_filter = ("status", "network", "plan")
+    list_display = ("created_at", "kind", "who_col", "plan", "amount_col", "network", "status_col", "tx_link", "confirmations")
+    list_filter = ("kind", "status", "network", "plan")
     search_fields = ("user__email", "txid", "from_address")
     date_hierarchy = "created_at"
     readonly_fields = [f.name for f in CryptoOrder._meta.fields]
@@ -641,6 +644,10 @@ class CryptoOrderAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+    @admin.display(description="Customer / donor")
+    def who_col(self, obj):
+        return obj.who
 
     @admin.display(description="Amount")
     def amount_col(self, obj):
@@ -712,7 +719,7 @@ class CryptoTransferAdmin(admin.ModelAdmin):
         if not obj.order_id:
             return "-"
         return format_html('<a href="../cryptoorder/{}/change/">#{} {}</a>', obj.order_id, obj.order_id,
-                           obj.order.user.email if obj.order else "")
+                           obj.order.who if obj.order else "")
 
     @admin.display(description="Transaction")
     def tx_link(self, obj):
@@ -726,7 +733,7 @@ class CryptoTransferAdmin(admin.ModelAdmin):
             if problem:
                 self.message_user(request, f"{t.txid[:12]}…: {problem}", messages.ERROR)
             else:
-                self.message_user(request, f"Order #{order.pk} paid: plan active for {order.user.email}.",
+                self.message_user(request, f"Order #{order.pk} paid: {'donation received' if order.kind == 'donation' else 'plan active'} for {order.who}.",
                                   messages.SUCCESS)
 
 

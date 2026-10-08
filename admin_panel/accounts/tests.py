@@ -1753,3 +1753,46 @@ class ServerChartAlertTests(TestCase):
         n = alerts.run_once(path=db, sender=lambda *a: wa.append(a), tg_sender=lambda chat, text, site: tg.append((chat, text)))
         self.assertEqual((n, len(wa), tg[0][0]), (2, 1, "777"))
         self.assertIn("XAUUSD M1 BUY", tg[0][1])
+
+
+class CryptoDonationTests(CryptoPaymentTests):
+    """Crypto donations: the plan checkout's watcher, no plan, no account needed, Donation marked received."""
+
+    def setUp(self):
+        super().setUp()
+        s = SiteSettings.load()
+        s.donations_enabled = True
+        s.save()
+
+    def donate(self, amount="25", headers=None, **extra):
+        return self.client.post("/api/v1/donations/crypto", json.dumps({"amount": amount, "network": "bep20_usdt", "name": "Ali", **extra}),
+                                content_type="application/json", **({"headers": headers} if headers else {}))
+
+    def test_visitor_donation_is_received_automatically(self):
+        from .models import CryptoOrder, Donation, Payment
+        info = self.client.get("/api/v1/donations/info").json()
+        self.assertEqual([n["network"] for n in info["crypto"]], ["bep20_usdt"])
+        r = self.donate().json()["order"]
+        self.assertEqual((r["kind"], r["plan"]), ("donation", "Donation"))
+        self.assertTrue(25 < float(r["amount"]) < 26)
+        self.assertEqual(self.client.get(f"/api/v1/donations/crypto/{r['id']}?key=wrong").status_code, 404)
+        self.pay(r["amount"])
+        from .models import CryptoScanState
+        CryptoScanState.objects.update(scanned_at=None)
+        st = self.client.get(f"/api/v1/donations/crypto/{r['id']}?key={r['key']}").json()["order"]
+        self.assertEqual(st["status"], "paid")
+        d = Donation.objects.get()
+        self.assertEqual((d.status, d.name, d.user), ("received", "Ali", None))
+        self.assertTrue(d.reference.startswith("0x"))
+        self.assertFalse(Payment.objects.exists())                          # no plan payment, no plan
+        self.assertEqual(CryptoOrder.objects.get().who, "Ali")
+
+    def test_limits_and_switched_off(self):
+        self.assertEqual(self.donate(amount="0.2").status_code, 400)
+        self.assertEqual(self.donate(network="nope").status_code, 400)
+        r = self.donate(headers=self.auth).json()["order"]                 # logged in: the order belongs to the user
+        from .models import CryptoOrder
+        self.assertEqual(CryptoOrder.objects.get(pk=r["id"]).user, self.user)
+        self.assertEqual(self.order()["kind"], "plan")                       # a plan order still works next to it
+        SiteSettings.objects.update(donations_enabled=False)
+        self.assertEqual(self.donate().status_code, 400)

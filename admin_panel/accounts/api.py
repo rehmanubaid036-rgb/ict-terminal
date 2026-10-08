@@ -563,6 +563,49 @@ def crypto_order_txid(request, order_id):
     return ok(order=crypto.order_dict(order))
 
 
+# ── crypto donations (no account needed; the order key lets the donor follow it) ─────────
+def _donation_order(request, order_id):
+    from .models import CryptoOrder
+    key = str(request.GET.get("key") or body(request).get("key") or "")
+    o = CryptoOrder.objects.select_related("donation").filter(pk=order_id, kind="donation").first()
+    return o if o and key and hmac.compare_digest(o.key, key) else None
+
+
+@method("POST")
+def donation_crypto(request):
+    """{amount (USD), network, name, email, message, public, source} -> a crypto order to pay."""
+    ip = client_ip(request) or "?"
+    if rate_limited(f"dcrypto:{ip}"):
+        return error("Too many attempts. Try again in 15 minutes.", 429)
+    token = services.resolve_token(bearer(request))
+    data = body(request)
+    order, problem = crypto.create_donation_order(token.user if token else None, data.get("amount"), data.get("network"),
+                                                  data, source=str(data.get("source") or "web"))
+    if problem:
+        return error(problem)
+    count_failure(f"dcrypto:{ip}")          # max 10 new orders per 15 minutes from one address
+    return ok(order={**crypto.order_dict(order), "key": order.key})
+
+
+@method("GET")
+def donation_crypto_status(request, order_id):
+    order = _donation_order(request, order_id)
+    if order is None:
+        return error("Order not found.", 404)
+    return ok(order=crypto.order_dict(crypto.check_order(order)))
+
+
+@method("POST")
+def donation_crypto_txid(request, order_id):
+    order = _donation_order(request, order_id)
+    if order is None:
+        return error("Order not found.", 404)
+    order, problem = crypto.submit_txid(order, body(request).get("txid"))
+    if problem:
+        return error(problem, order=crypto.order_dict(order))
+    return ok(order=crypto.order_dict(order))
+
+
 # ── community chat (nickname only; accounts only) ───────────────────────────
 def _community(call):
     try:

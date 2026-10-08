@@ -154,34 +154,118 @@
   }
 
   // ---- donations (shown only when the admin turns them on) --------------------------------
+  // Home page: a short "Support" band linking to /donate.html. Donate page: crypto (automatic, checked on
+  // the blockchain) or bank / wallet (the donor reports the transfer).
+  function postJSON(url, body) {
+    return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); });
+  }
+  function problem(j) { return j.detail || j.error || j.message || 'Please check the form.'; }
+
   function showDonations(d) {
-    if (!d || !d.enabled || !$('donate')) return;
-    $('donate').hidden = false;
-    $('donate-title').textContent = d.title || 'Support ICT Terminal';
+    if (!d || !d.enabled) return;
+    if ($('donate')) {                       // home page band
+      $('donate').hidden = false;
+      $('donate-title').textContent = d.title || 'Support ICT Terminal';
+      $('donate-text').textContent = d.text || '';
+      var link = document.querySelector('.foot-grid a[href="/guide/"]');
+      if (link && !document.querySelector('.foot-grid a[href="/donate.html"]')) link.insertAdjacentHTML('afterend', '<a href="/donate.html">Donate</a>');
+    }
+    if ($('donate-box')) donatePage(d);
+  }
+
+  function donatePage(d) {
+    var crypto = d.crypto || [], manual = d.methods || [];
+    if (!crypto.length && !manual.length) return;
+    $('donate-off').hidden = true;
+    $('donate-box').hidden = false;
+    $('donate-title').textContent = d.title || 'Donate';
     $('donate-text').textContent = d.text || '';
-    $('donate-cur').textContent = d.currency ? '(' + d.currency + ')' : '';
-    $('donate-methods').innerHTML = (d.methods || []).map(function (m) {
+    var amount = String(d.amounts && d.amounts.length ? d.amounts[Math.min(1, d.amounts.length - 1)] : 10);
+    var cur = d.currency || 'USD';
+    function drawAmounts(unit) {
+      $('d-amounts').innerHTML = (d.amounts || []).map(function (a) {
+        return '<button type="button" data-a="' + a + '" class="' + (String(a) === amount ? 'on' : '') + '">' + esc(a) + ' ' + esc(unit) + '</button>';
+      }).join('') + '<input id="d-amount" inputmode="decimal" value="' + esc(amount) + '" aria-label="Amount">';
+      $('d-amount').addEventListener('input', function (e) { amount = e.target.value; });
+    }
+    $('d-amounts').addEventListener('click', function (e) {
+      var a = e.target.getAttribute && e.target.getAttribute('data-a');
+      if (a) { amount = a; drawAmounts(how === 'crypto' ? 'USD' : cur); }
+    });
+    var how = crypto.length ? 'crypto' : 'manual';
+    function setHow(h) {
+      how = h;
+      $('pane-crypto').hidden = h !== 'crypto';
+      $('pane-manual').hidden = h !== 'manual';
+      [].forEach.call($('donate-tabs').querySelectorAll('button'), function (b) { b.classList.toggle('on', b.getAttribute('data-how') === h); });
+      drawAmounts(h === 'crypto' ? 'USD' : cur);
+    }
+    $('donate-tabs').hidden = !(crypto.length && manual.length);
+    $('donate-tabs').addEventListener('click', function (e) { var h = e.target.getAttribute && e.target.getAttribute('data-how'); if (h) setHow(h); });
+    setHow(how);
+    function who() { return { name: $('d-name').value, email: $('d-email').value, message: $('d-message').value, public: $('d-public').checked }; }
+
+    // crypto
+    $('d-nets').innerHTML = crypto.map(function (n) {
+      return '<button type="button" class="btn btn-ghost" data-net="' + esc(n.network) + '"><b>' + esc(n.token) + '</b> <small>' + esc(n.label) + '</small></button>';
+    }).join('');
+    var order = null, timer = 0;
+    function drawOrder() {
+      var box = $('d-order');
+      if (!order) { box.hidden = true; return; }
+      box.hidden = false;
+      var paid = order.status === 'paid';
+      box.innerHTML = '<p><b>' + (paid ? 'Received. Thank you! &#10084;' : esc(order.status_label)) + '</b></p>' +
+        '<p>Send exactly <code class="copy" data-copy="' + esc(order.amount) + '">' + esc(order.amount) + ' ' + esc(order.token) + '</code></p>' +
+        '<p>to <code class="copy" data-copy="' + esc(order.address) + '">' + esc(order.address) + '</code></p>' +
+        '<p class="muted small">Network: ' + esc(order.network_label) + (order.status === 'waiting' ? ' · ' + Math.ceil(order.seconds_left / 60) + ' min left' : '') + '</p>' +
+        '<p class="warn small">' + esc(order.warning) + '</p><p class="muted small">' + esc(order.exchange_tip) + '</p>' +
+        (order.explorer ? '<p><a href="' + esc(order.explorer) + '" target="_blank" rel="noopener">View on the blockchain explorer</a></p>' : '') +
+        (order.status === 'waiting' ? '<p class="muted small">This page checks the blockchain every 15 seconds.</p>' : '');
+    }
+    $('d-order').addEventListener('click', function (e) {
+      var v = e.target.getAttribute && e.target.getAttribute('data-copy');
+      if (v && navigator.clipboard) { navigator.clipboard.writeText(v); $('donate-msg').textContent = 'Copied.'; }
+    });
+    function poll() {
+      clearTimeout(timer);
+      if (!order || (order.status !== 'waiting' && order.status !== 'confirming')) return;
+      timer = setTimeout(function () {
+        getJSON('/api/v1/donations/crypto/' + order.id + '?key=' + encodeURIComponent(order.key)).then(function (r) {
+          r.order.key = order.key; order = r.order; drawOrder(); poll();
+        }).catch(poll);
+      }, 15000);
+    }
+    $('d-nets').addEventListener('click', function (e) {
+      var b = e.target.closest && e.target.closest('button[data-net]');
+      if (!b) return;
+      b.disabled = true;
+      var body = who(); body.amount = amount; body.network = b.getAttribute('data-net'); body.source = 'web';
+      postJSON('/api/v1/donations/crypto', body).then(function (x) {
+        b.disabled = false;
+        if (!x.ok) { $('donate-msg').textContent = problem(x.j); return; }
+        order = x.j.order; drawOrder(); poll();
+        $('donate-msg').textContent = 'Send the exact amount above. Your donation is confirmed automatically.';
+      }).catch(function () { b.disabled = false; $('donate-msg').textContent = 'Could not start. Please try again.'; });
+    });
+
+    // bank / wallet: the donor sends, then reports it
+    $('donate-methods').innerHTML = manual.map(function (m) {
       return '<article class="card"><h3>' + esc(m.name) + '</h3>' + (m.account_title ? '<p>' + esc(m.account_title) + '</p>' : '') +
         '<p><code>' + esc(m.account_number) + '</code></p>' + (m.details ? '<p class="muted small">' + esc(m.details) + '</p>' : '') +
         (m.instructions ? '<p class="muted small">' + esc(m.instructions) + '</p>' : '') + '</article>';
     }).join('');
-    $('donate-method').innerHTML = (d.methods || []).map(function (m) { return '<option value="' + m.id + '">' + esc(m.name) + '</option>'; }).join('');
-    var form = $('donate-form');
-    if (d.amounts && d.amounts.length) form.amount.value = d.amounts[Math.min(1, d.amounts.length - 1)];
-    form.addEventListener('submit', function (e) {
+    $('donate-method').innerHTML = manual.map(function (m) { return '<option value="' + m.id + '">' + esc(m.name) + '</option>'; }).join('');
+    $('donate-form').addEventListener('submit', function (e) {
       e.preventDefault();
-      var body = { amount: form.amount.value, method: Number(form.method.value), reference: form.reference.value,
-        name: form.name.value, message: form.message.value, public: form.public.checked, source: 'website' };
-      fetch('/api/v1/donations', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-        .then(function (x) {
-          $('donate-msg').textContent = x.ok ? (x.j.message || 'Thank you!') : (x.j.detail || x.j.error || x.j.message || 'Please check the form.');
-          if (x.ok) form.reset();
-        })
-        .catch(function () { $('donate-msg').textContent = 'Could not send. Please try again.'; });
+      var f = e.target, body = who();
+      body.amount = amount; body.method = Number(f.method.value); body.reference = f.reference.value; body.source = 'website';
+      postJSON('/api/v1/donations', body).then(function (x) {
+        $('donate-msg').textContent = x.ok ? (x.j.message || 'Thank you!') : problem(x.j);
+        if (x.ok) f.reset();
+      }).catch(function () { $('donate-msg').textContent = 'Could not send. Please try again.'; });
     });
-    var link = document.querySelector('.foot-grid a[href="/guide/"]');
-    if (link && !document.querySelector('.foot-grid a[href="#donate"]')) link.insertAdjacentHTML('afterend', '<a href="#donate">Donate</a>');
   }
 
   getJSON('/api/v1/donations/info').then(showDonations).catch(function () { /* donations off or server down */ });
