@@ -19,6 +19,8 @@ from typing import Callable
 import pandas as pd
 
 from .context import Context
+from .data.dxy import alpha_extras
+from .models.alpha_gold import SYMBOLS as ALPHA_SYMBOLS
 from .models.registry import MODELS
 from .screener import screener_row
 from .news import blackouts, filter_signals, fomc_flat, us_high_impact_history
@@ -81,7 +83,10 @@ def run_once(store: Store, load: Loader, cfg: RunnerConfig = RunnerConfig(), now
             if symbol in cfg.partners:
                 p = load(cfg.partners[symbol], start, now)
                 partner = p if len(p) else None
-            ctx = Context(symbol, df, partner=partner, history=history if len(history) else None)
+            extras = {}
+            if symbol in ALPHA_SYMBOLS and "M18" in cfg.models:      # M18 reads silver and the dollar index too
+                extras = alpha_extras(load, now - pd.Timedelta(days=max(cfg.history_days, cfg.lookback_days)), now)
+            ctx = Context(symbol, df, partner=partner, history=history if len(history) else None, extras=extras)
             count = 0
             for mid in cfg.models:
                 for rb in (True, False):

@@ -410,6 +410,7 @@ const FIB_COLORS: Record<string, string> = { '0': '#9ca3af', '1': '#9ca3af', '1.
  * last opposite leg, and for the selected setup the MSS level and the wick C.E stop). */
 function wolfLevels(s: Signal, groupId: string, full: boolean): OverlayCreate[] {
   const n = (s.notes ?? {}) as Record<string, any>
+  if (n.session_start && n.m5_swing != null) return alphaLevels(s, n, groupId, full)
   if (!n.ndog_time) return []
   const t0 = new Date(n.ndog_time).getTime(), t1 = new Date(n.window_end ?? s.expiry).getTime()
   const lineAt = (v: number, color: string, label: string, dashed = true, from = t0): OverlayCreate =>
@@ -433,6 +434,23 @@ function wolfLevels(s: Signal, groupId: string, full: boolean): OverlayCreate[] 
     out.push(lineAt(n.wick_ce, '#ef5350', 'Wick C.E', true, new Date(n.wick_time ?? s.created_time).getTime()))
   if (full && n.mss_level != null)
     out.push(lineAt(n.mss_level, '#f59e0b', 'MSS', false, new Date(n.wick_time ?? s.created_time).getTime()))
+  return out
+}
+
+/** M18 The Alpha Model Gold: the M15 / M5 swings marked at the session open and the M1 gap that failed. */
+function alphaLevels(s: Signal, n: Record<string, any>, groupId: string, full: boolean): OverlayCreate[] {
+  const t0 = new Date(n.session_start).getTime(), t1 = new Date(n.window_end ?? s.expiry).getTime()
+  const side = s.direction > 0 ? 'low' : 'high'
+  const lineAt = (v: number, color: string, label: string, dashed = true): OverlayCreate =>
+    ({ name: 'ictLine', groupId, lock: true, points: [{ timestamp: t0, value: v }, { timestamp: t1, value: v }], extendData: { color, label, dashed, labelStart: true } })
+  const b = (n.bias ?? {}) as Record<string, number>, w = (v: number) => (v > 0 ? 'bull' : v < 0 ? 'bear' : 'neutral')
+  const bias = n.bias ? `  ·  ${n.scenario}: DXY ${w(b.DXY)}, Silver ${w(b.XAGUSD)}, Gold ${w(b.XAUUSD)}` : ''
+  const out: OverlayCreate[] = [lineAt(n.m15_swing, '#f59e0b', `M15 swing ${side}`), lineAt(n.m5_swing, '#fb923c', `M5 swing ${side}${full ? bias : ''}`)]
+  if (full && Array.isArray(n.fvg) && n.fvg_time) {
+    const ft = new Date(n.fvg_time).getTime(), [lo, hi] = n.fvg as number[]
+    out.push({ name: 'ictBox', groupId, lock: true, points: [{ timestamp: ft - 120_000, value: hi }, { timestamp: new Date(s.created_time).getTime() + 60_000, value: lo }, { timestamp: ft, value: (lo + hi) / 2 }],
+      extendData: { color: 'rgba(148,163,184,0.15)', border: '#94a3b8', label: s.direction > 0 ? 'Failed bearish FVG' : 'Failed bullish FVG' } })
+  }
   return out
 }
 

@@ -16,10 +16,19 @@ It covers what was built, how to build and test it, and what is still open.
 3. **API** (`api/ictapi/main.py`): the customer's crypto order status / cancel / txid calls are now
    forwarded to the admin panel (`FORWARD_PATTERNS`). Needs an API restart to take effect.
 
+5. **Model M18 · The Alpha Model Gold** (`engine/ictengine/models/alpha_gold.py`), built only from the PDF
+   "The_Alpha_Model_Gold": XAUUSD, London 02:00-05:00 and New York 07:00-10:00. Bias of DXY, silver and gold from the
+   previous day's body vs the 50 % of a daily (60 days) / weekly FVG it traded into, confirmed on H1 (last gap of that
+   direction not failed by a body); gold opposite DXY; grade A+ / A / B by silver. Entry: previous M5 swing broken in the
+   session, then on M1 the last opposite FVG fails with a body (a candle opening inside the gap is ignored); stop beyond
+   the M1 extreme since the break; target the previous M15 swing before the session. DXY: the feed's own index, else
+   rebuilt from its six pairs (`ictengine/data/dxy.py`); the runner and the API pass it with silver as `Context.extras`.
+   Wolf Models button, 1m charts; the chart shows the M15 / M5 swing lines, the failed FVG and the bias.
+
 4. **Model M17 · Wolf Asia Session (NDOG)** (`engine/ictengine/models/wolf_asia.py`), rebuilt on 2026-10-08
    strictly from the PDF "ASIA SESSION MODEL FOR INDICIES NQ/ES" (TheWolfTrades): NAS100, US500, EURUSD,
    GBPUSD. NDOG 17:00 close → 18:00 open, over 20 handles (points / pips) its CE is marked; initial BSL / SSL of
-   18:00-19:00; trades 19:00-21:00 NY only ("time first"); low → MSS → BISI of the displacement, entry at the
+   18:00-19:00; trades 19:00-22:00 NY only (the author, 8 Oct 2026) ("time first"); low → MSS → BISI of the displacement, entry at the
    BISI's middle, stop at the Wick C.E of the low candle (NDOG CE on a breakaway through a marked NDOG);
    targets -1 SD (half), -1.25 SD, -1.5 SD of the last opposite leg (from the highest high since the previous
    lower low to the low). Removed because the PDF does not have them: the 22:30 time exit, the 1R minimum,

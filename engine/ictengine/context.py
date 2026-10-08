@@ -44,6 +44,8 @@ class Context:
     # daily bias) then reach further back (old unfilled FVGs, swings), while the 1m / 5m work stays on the short
     # base (the costly part).
     history: pd.DataFrame | None = None
+    # other instruments a model reads (e.g. M18: "XAGUSD" and "DXY"), any timeframe up to 1h, as long as history
+    extras: dict[str, pd.DataFrame] = field(default_factory=dict)
 
     def __post_init__(self):
         validate(self.base)

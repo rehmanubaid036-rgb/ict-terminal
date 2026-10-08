@@ -354,7 +354,7 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
             if len(df) < 2000:
                 raise HTTPException(400, "Not enough data for this symbol.")
             partner = _partner_1m(i, start - pd.Timedelta(days=45), end) if model == "M16" else None
-            ctx = Context(i.symbol, df, partner=partner)
+            ctx = Context(i.symbol, df, partner=partner, extras=_alpha_extras(i, start - pd.Timedelta(days=45), end, [model]))
             sigs = [s for s in MODELS[model].scan(ctx, require_bias=bias) if s.created_time >= start]
             spread = SPECS[i.symbol].spread if i.symbol in SPECS else 0.0
             trades = bt_run(sigs, df, spread=spread)
@@ -522,6 +522,20 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
         except Exception:  # noqa: BLE001 - no partner data: M16 just finds nothing
             return None
         return pdf if len(pdf) else None
+
+    def _alpha_extras(i, start: pd.Timestamp, end: pd.Timestamp, ids) -> dict:
+        """Silver and the dollar index on the same feed, for M18 (The Alpha Model Gold)."""
+        from ictengine.data.dxy import alpha_extras
+        from ictengine.models.alpha_gold import SYMBOLS as ALPHA
+        if "M18" not in ids or i.symbol not in ALPHA:
+            return {}
+
+        def load(sym: str, a: pd.Timestamp, b: pd.Timestamp) -> pd.DataFrame:
+            info = provider.symbols().get(f"{i.feed}:{sym}")
+            if info is None:
+                raise KeyError(sym)
+            return provider.candles(info.ticker, a, b)
+        return alpha_extras(load, start, end)
 
     def _owner(a: dict) -> str:
         return str(a.get("email") or a.get("user") or "")
@@ -902,7 +916,7 @@ img{{max-width:100%;height:auto;border-radius:10px;border:1px solid #232c45}}a{{
         out = []
         if len(df) >= 1000:
             partner = _partner_1m(i, start - pd.Timedelta(days=30), end) if "M16" in ids else None
-            ctx = Context(i.symbol, df, partner=partner)
+            ctx = Context(i.symbol, df, partner=partner, extras=_alpha_extras(i, start - pd.Timedelta(days=30), end, ids))
             for mid in ids:
                 for s in MODELS[mid].scan(ctx, require_bias=require_bias):
                     if start <= s.created_time < end:
