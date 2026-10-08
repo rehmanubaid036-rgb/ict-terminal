@@ -517,7 +517,7 @@ def apply_payment(payment):
 
 
 def whatsapp_link(text):
-    number = "".join(ch for ch in settings.SUPPORT_WHATSAPP if ch.isdigit())
+    number = "".join(ch for ch in support_whatsapp() if ch.isdigit())
     return f"https://wa.me/{number}?text={quote(text)}"
 
 
@@ -586,8 +586,21 @@ def json_error(message, status=400, **extra):
     return JsonResponse({"success": False, "detail": message, **extra}, status=status)
 
 
+def support_email():
+    """Admin > Settings > Support email, else the server's SUPPORT_EMAIL."""
+    return SiteSettings.load().support_email.strip() or settings.SUPPORT_EMAIL
+
+
+def support_whatsapp():
+    return SiteSettings.load().support_whatsapp.strip() or settings.SUPPORT_WHATSAPP
+
+
+def support_contacts():
+    return {"whatsapp": support_whatsapp(), "email": support_email()}
+
+
 def support_info():
-    return {"whatsapp": settings.SUPPORT_WHATSAPP, "email": settings.SUPPORT_EMAIL,
+    return {**support_contacts(),
             "whatsapp_url": whatsapp_link("Assalam o Alaikum, I need help with my ICT Terminal account.")}
 
 

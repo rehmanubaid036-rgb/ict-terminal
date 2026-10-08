@@ -209,6 +209,15 @@ class ApiTests(TestCase):
         conn = ea_connection_for(user); conn.copy_enabled = True; conn.save()
         self.assertEqual(copy_settings_payload(conn, access)["models"], ["M9:BIAS"])
 
+    def test_support_contact_from_settings(self):
+        from django.conf import settings as dj
+        cfg = self.get("app-config").json()["support"]
+        self.assertEqual(cfg["email"], dj.SUPPORT_EMAIL)              # empty in Settings: the server's value
+        site = SiteSettings.load(); site.support_email = "help@example.com"; site.support_whatsapp = "+92 300 1112223"; site.save()
+        cfg = self.get("app-config").json()["support"]
+        self.assertEqual((cfg["email"], cfg["whatsapp"]), ("help@example.com", "+92 300 1112223"))
+        self.assertEqual(self.get("payments/methods").json()["support"]["email"], "help@example.com")
+
     def test_copy_endpoints_need_login_and_secret(self):
         self.assertEqual(self.get("copy/settings").status_code, 401)
         self.assertEqual(self.post("copy/token").status_code, 401)

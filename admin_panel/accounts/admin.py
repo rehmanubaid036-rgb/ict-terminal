@@ -57,6 +57,8 @@ class SiteSettingsAdmin(admin.ModelAdmin):
                                                    "Given once per account and once per phone / PC. To give a free "
                                                    "trial by hand: Free trials given > 'Give a free trial to users', or "
                                                    "Users > select > Action 'Give a free trial'."}),
+        ("Support contact", {"fields": ("support_email", "support_whatsapp"),
+                             "description": "Shown to customers in the app, web terminal, website and login pages."}),
         ("Broker partner button", {"fields": ("broker_name", "partner_link", "partner_button_text")}),
         ("Auto-trading (ICT Bridge EA)", {"fields": ("copy_trading_enabled", "auto_trade_models", "copy_magic_numbers", "copy_lot_per_1000")}),
         ("App updates", {"fields": ("min_app_version",),

@@ -108,6 +108,12 @@ class SiteSettings(models.Model):
                                    help_text="Your partner / referral sign-up link. Empty hides the button.")
     partner_button_text = models.CharField(max_length=60, default="Open Axi Account")
 
+    # Support contact shown in the app, terminal, website and login pages
+    support_email = models.EmailField("Support email", blank=True,
+                                      help_text="Shown to customers. Empty = the server's SUPPORT_EMAIL setting.")
+    support_whatsapp = models.CharField("Support WhatsApp", max_length=30, blank=True,
+                                        help_text="Number with country code, e.g. 923001234567. Empty = the server's SUPPORT_WHATSAPP setting.")
+
     # Auto-trading (ICT Bridge EA)
     copy_trading_enabled = models.BooleanField(
         "Auto-trading on", default=True, help_text="Master switch. Off = no ICT Bridge EA opens trades.")

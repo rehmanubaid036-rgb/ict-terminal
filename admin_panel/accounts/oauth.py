@@ -106,7 +106,7 @@ def page(icon, title, body, status=200):
 def contact_html(problem):
     text = f"Assalam o Alaikum, I need help with ICT Terminal login. {problem}"
     wa = services.whatsapp_link(text)
-    mail = f"mailto:{settings.SUPPORT_EMAIL}?subject=ICC%20Terminal%20login"
+    mail = f"mailto:{services.support_email()}?subject=ICT%20Terminal%20login"
     return (f'<a class="btn wa" href="{html.escape(wa)}">💬 WhatsApp admin</a>'
             f'<a class="btn mail" href="{html.escape(mail)}">✉️ Email admin</a>')
 

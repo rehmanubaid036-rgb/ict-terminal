@@ -148,7 +148,7 @@ def app_config(request):
     return ok(
         broker={"name": site.broker_name, "partner_link": site.partner_link,
                 "button_text": site.partner_button_text},
-        support={"whatsapp": settings.SUPPORT_WHATSAPP, "email": settings.SUPPORT_EMAIL},
+        support=services.support_contacts(),
         copy_trading_enabled=site.copy_trading_enabled,
         login=services.login_methods(),
         min_app_version=site.min_app_version.strip(),
@@ -167,7 +167,7 @@ def plans(request):
         "max_devices": 0 if 0 in p.device_limits.values() else sum(p.device_limits.values()),
         "device_limits": p.device_limits,
         "features": services.features_of_plan(p),
-    } for p in rows], support={"whatsapp": settings.SUPPORT_WHATSAPP, "email": settings.SUPPORT_EMAIL})
+    } for p in rows], support=services.support_contacts())
 
 
 @method("POST")
@@ -446,7 +446,7 @@ def copy_token(request):
 def payment_methods(request):
     """Public: where to send money, plus the support WhatsApp (app, desktop, website)."""
     return ok(methods=[m.as_dict() for m in PaymentMethod.objects.filter(is_active=True, for_plans=True)],
-              support={"whatsapp": settings.SUPPORT_WHATSAPP, "email": settings.SUPPORT_EMAIL})
+              support=services.support_contacts())
 
 
 @method("GET")
