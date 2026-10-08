@@ -180,3 +180,34 @@ def test_discover_skips_names_without_history(monkeypatch):
     assert d["feed"] == "AXI" and not d["demo"]
     assert d["symbols"]["XAUUSD"]["broker"] == "XAUUSD"          # .pro has no data on this account
     assert d["symbols"]["NAS100"]["broker"] == "NAS100" and d["offset"] == 7
+
+
+def test_native_timeframes_and_empty_months(monkeypatch, tmp_path):
+    """H1 (and M3 .. M30) are read as they are, cached in their own folder; a finished month without bars
+    (before the broker's history) is not asked again for EMPTY_TTL."""
+    import types
+    from ictengine.data import mt5 as m5
+    asked = []
+
+    def rates(s, tf, frm, to):
+        asked.append(tf)
+        if tf == 16385 and pd.Timestamp(frm).year >= 2025:          # H1 history from 2025 only
+            server = pd.date_range("2025-03-01 07:00", periods=48, freq="1h")    # NY 00:00 = server 07:00
+            return np.array([(int(t.timestamp()), 1.0, 2.0, 0.5, 1.5, 1, 0, 0) for t in server],
+                            dtype=[("time", "i8"), ("open", "f8"), ("high", "f8"), ("low", "f8"), ("close", "f8"),
+                                   ("tick_volume", "i8"), ("spread", "i4"), ("real_volume", "i8")])
+        return np.array([], dtype=[("time", "i8"), ("open", "f8"), ("high", "f8"), ("low", "f8"), ("close", "f8"),
+                                   ("tick_volume", "i8"), ("spread", "i4"), ("real_volume", "i8")])
+    fake = types.SimpleNamespace(TIMEFRAME_M1=1, TIMEFRAME_H1=16385, symbol_select=lambda *a: True, last_error=lambda: (0, ""),
+                                 copy_rates_range=rates)
+    monkeypatch.setattr(m5, "resolve_symbol", lambda mt5, b, s: "XAUUSD")
+    monkeypatch.setattr(m5, "_empty_months", {})
+    h1 = m5.fetch_month("axi_demo", "XAUUSD", 2025, 3, cache_dir=tmp_path, mt5=fake, timeframe="H1")
+    assert len(h1) == 48 and (tmp_path / "axi_demo" / "XAUUSD" / "H1" / "2025-03.pkl").exists()
+    assert h1.index[0].tz_convert("America/New_York").hour == 0        # server clock = NY + 7: whole NY hours
+    assert m5.fetch_month("axi_demo", "XAUUSD", 2010, 1, cache_dir=tmp_path, mt5=fake, timeframe="H1").empty
+    n = len(asked)
+    assert m5.fetch_month("axi_demo", "XAUUSD", 2010, 1, cache_dir=tmp_path, mt5=fake, timeframe="H1").empty
+    assert len(asked) == n                                               # remembered: MT5 not asked again
+    with pytest.raises(ValueError):
+        m5.fetch_month("axi_demo", "XAUUSD", 2025, 3, cache_dir=tmp_path, mt5=fake, timeframe="D1")

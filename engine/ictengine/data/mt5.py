@@ -137,7 +137,13 @@ def _connect(broker: Broker):
 
 _current: str | None = None      # terminal the package is connected to
 LIVE_TTL = 2.0                   # seconds a running month is reused before asking MT5 again
-_live: dict[tuple, tuple[float, pd.DataFrame]] = {}   # (broker, symbol, year, month) -> (fetched at, bars)
+_live: dict[tuple, tuple[float, pd.DataFrame]] = {}   # (broker, symbol, year, month, tf) -> (fetched at, bars)
+# MT5 timeframes read directly (charts): M1 .. H1. The broker's server clock is New York + whole hours, so these
+# bars start on New York minutes / hours; 2h, 4h, day and week are built from H1 on the New York 18:00 day.
+NATIVE_TF = {"M1": "TIMEFRAME_M1", "M3": "TIMEFRAME_M3", "M5": "TIMEFRAME_M5", "M15": "TIMEFRAME_M15",
+             "M30": "TIMEFRAME_M30", "H1": "TIMEFRAME_H1"}
+EMPTY_TTL = 6 * 3600              # a finished month with no bars (before the broker's history) is not asked again for 6 h
+_empty_months: dict[tuple, float] = {}
 
 
 def server_minus_ny(mt5, symbols, default: int = 7) -> int:
@@ -221,31 +227,41 @@ def discover(terminal: str) -> dict:
 
 
 def fetch_month(broker_key: str, symbol: str, year: int, month: int, cache_dir: Path = DEFAULT_CACHE,
-                mt5=None) -> pd.DataFrame:
+                mt5=None, timeframe: str = "M1") -> pd.DataFrame:
     broker = BROKERS[broker_key]
     if symbol not in broker.symbols and symbol not in ALIASES:
         raise KeyError(f"{symbol} is not mapped for broker {broker_key}")
-    path = Path(cache_dir) / broker_key / symbol / f"{year:04d}-{month:02d}.pkl"
+    if timeframe not in NATIVE_TF:
+        raise ValueError(f"unsupported MT5 timeframe {timeframe}")
+    # M1 keeps its old place (existing caches); other timeframes get their own folder
+    folder = Path(cache_dir) / broker_key / symbol if timeframe == "M1" else Path(cache_dir) / broker_key / symbol / timeframe
+    path = folder / f"{year:04d}-{month:02d}.pkl"
     if path.exists():
         return pd.read_pickle(path)
     start = datetime(year, month, 1, tzinfo=timezone.utc)
     end = datetime(year + (month == 12), month % 12 + 1, 1, tzinfo=timezone.utc)
     complete = pd.Timestamp(end) <= pd.Timestamp.now(tz="UTC") - pd.Timedelta(days=1)
-    key = (broker_key, symbol, year, month)
+    key = (broker_key, symbol, year, month, timeframe)
+    if complete and time.monotonic() - _empty_months.get(key, -1e18) < EMPTY_TTL:
+        return _empty()                      # known to have no history: do not ask MT5 again yet
     live = None if complete else _live.get(key)
     if live and time.monotonic() - live[0] < LIVE_TTL:
         return live[1]                       # charts poll every few seconds: share one fetch
     mt5 = mt5 or _connect(broker)
+    tf_const = getattr(mt5, NATIVE_TF[timeframe])
     bsym = resolve_symbol(mt5, broker, symbol)
     mt5.symbol_select(bsym, True)
     if live is not None and len(live[1]):
         # the running month: only the newest bars (12 h back covers any server-clock offset)
         frm = (live[1].index[-1] - pd.Timedelta(hours=12)).to_pydatetime()
-        rates = mt5.copy_rates_range(bsym, mt5.TIMEFRAME_M1, frm, end + pd.Timedelta(days=1))
+        rates = mt5.copy_rates_range(bsym, tf_const, frm, end + pd.Timedelta(days=1))
     else:
         # request a day either side: server time is ahead of UTC, the frame is trimmed after conversion
-        rates = mt5.copy_rates_range(bsym, mt5.TIMEFRAME_M1, start - pd.Timedelta(days=1), end + pd.Timedelta(days=1))
+        rates = mt5.copy_rates_range(bsym, tf_const, start - pd.Timedelta(days=1), end + pd.Timedelta(days=1))
     if rates is None:
+        if complete and timeframe != "M1":
+            _empty_months[key] = time.monotonic()      # before the broker's history: an empty month, not an error
+            return _empty()
         raise MT5Error(f"copy_rates_range {bsym} {year}-{month:02d}: {mt5.last_error()}")
     df = rates_to_frame(rates, broker.server_minus_ny_hours)
     df = df[(df.index >= pd.Timestamp(start)) & (df.index < pd.Timestamp(end))]
@@ -256,6 +272,8 @@ def fetch_month(broker_key: str, symbol: str, year: int, month: int, cache_dir: 
         path.parent.mkdir(parents=True, exist_ok=True)
         df.to_pickle(path)
         _live.pop(key, None)
+    elif complete:
+        _empty_months[key] = time.monotonic()
     elif not complete:
         _live[key] = (time.monotonic(), df)
     return df

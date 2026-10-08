@@ -77,6 +77,7 @@ _INTRADAY = ("1m", "3m", "5m", "15m", "30m", "1h", "2h", "4h")
 TIME_LAYER_TFS = {"sessions": _INTRADAY[:6], "quarters": _INTRADAY[:5], "projections": _INTRADAY[:6],
                   "key_levels": _INTRADAY, "opening_gaps": _INTRADAY + ("1d",), "ipda": _INTRADAY + ("1d",)}
 TIME_LAYERS = TIME_LAYERS_ENGINE
+MAX_HISTORY_DAYS = {"1m": 20, "3m": 45, "5m": 75, "15m": 200, "30m": 400, "1h": 800, "2h": 1500, "4h": 3000, "1d": 12000, "1w": 40000}
 MAX_TIME_DAYS = {"1m": 3, "3m": 5, "5m": 7, "15m": 12, "30m": 15, "1h": 20, "2h": 20, "4h": 20, "1d": 20, "1w": 20}
 # ICT's main markets first in search and as the default chart (most reliable model results)
 MAIN_PAIRS = ("XAUUSD", "NAS100", "US500", "EURUSD", "GBPUSD", "XAGUSD", "US30", "GER40", "BTCUSD",
@@ -220,6 +221,8 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
         start, end = utc_range(frm, to)
         if end <= start:
             raise HTTPException(400, "'to' must be after 'from'")
+        # one request reads at most this much history (the terminal asks again for older bars while scrolling)
+        start = max(start, end - pd.Timedelta(days=MAX_HISTORY_DAYS.get(tf, 40000)))
         df = _bars(i.ticker, tf, start, end)
         if countback:
             df = df.tail(countback)

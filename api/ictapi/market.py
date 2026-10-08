@@ -147,6 +147,28 @@ class MT5Provider(Provider):
         df = m5.load(self._broker_key[info.feed], info.symbol, start.date(), end.date())
         return df[(df.index >= start) & (df.index < end)]
 
+    # chart intervals read from MT5's own timeframes (much longer history, a fraction of the data): minutes and
+    # the hour as they are (the server clock is New York + whole hours), 2h / 4h / day / week built from H1 on the
+    # New York 18:00 trading day, like every other candle in ICT
+    NATIVE = {"1m": "M1", "3m": "M3", "5m": "M5", "15m": "M15", "30m": "M30", "1h": "H1", "2h": "H1", "4h": "H1", "1d": "H1", "1w": "H1"}
+
+    def bars(self, ticker, tf, start, end):
+        if tf.endswith("s"):
+            return self.seconds(ticker, int(tf[:-1]), start, end)
+        native = self.NATIVE.get(tf)
+        info = self.symbols().get(ticker)
+        if native is None or info is None:
+            return super().bars(ticker, tf, start, end)
+        # read a little earlier so the first day / week is whole; a day or week that began before ``start``
+        # is kept (it holds ``start``)
+        lead = pd.Timedelta(days=7) if tf == "1w" else pd.Timedelta(days=1) if tf == "1d" else pd.Timedelta(0)
+        df = m5.load(self._broker_key[info.feed], info.symbol, (start - lead - pd.Timedelta(days=1)).date(), end.date(), timeframe=native)
+        if df.empty:
+            return df
+        if native == "H1" and tf != "1h":
+            df = resample(df, tf).drop(columns="n_bars")
+        return df[(df.index >= start - lead) & (df.index < end)]
+
     def seconds(self, ticker, sec, start, end):
         info = self.symbols().get(ticker)
         if info is None:

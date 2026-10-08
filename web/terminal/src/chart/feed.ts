@@ -114,11 +114,18 @@ export class Feed {
   /** Renko / line break have their own bar count: no paging back, new bars only add bricks. */
   get priceBars() { return this.kind === 'renko' || this.kind === 'linebreak' || this.kind === 'range' || this.kind === 'pnf' || this.kind === 'kagi' }
 
-  private async fetch(to: number, count: number, signal?: AbortSignal): Promise<KLineData[]> {
+  private async fetch(to: number, count: number, signal?: AbortSignal, retry = true): Promise<KLineData[]> {
     const tf = this.tf!
     const base = tf.monthly ? 86400 : tf.seconds / tf.group
     const n = Math.min(5000, tf.monthly ? 3000 : count * tf.group)
-    const bars = toBars(await api.history(this.ticker, tf.resolution, to - base * n * 3, to, n, signal))
+    // intraday asks for three times the span (nights, weekends, holidays have no bars); days and weeks barely gap.
+    // Nothing back (a weekend or holiday longer than that): ask again further back, so scrolling goes on
+    const spans = !retry ? [3] : base >= 86400 ? [1.6, 6] : [3, 12, 40]
+    let bars: KLineData[] = []
+    for (const span of spans) {
+      bars = toBars(await api.history(this.ticker, tf.resolution, Math.floor(to - base * n * span), to, n, signal))
+      if (bars.length) break
+    }
     return tf.group > 1 || tf.monthly ? groupBars(bars, tf.seconds, tf.monthly) : bars
   }
 
@@ -195,7 +202,7 @@ export class Feed {
     if (this.tf.group === 1 && !this.tf.monthly && stream.live(this.ticker, this.tf.resolution)) return   // the socket brings them
     try {
       const to = Math.floor(Date.now() / 1000) + this.tf.seconds
-      this.apply((await this.fetch(to, 3)).slice(-2))
+      this.apply((await this.fetch(to, 3, undefined, false)).slice(-2))
     } catch (e) {
       this.onError(e)
     }
