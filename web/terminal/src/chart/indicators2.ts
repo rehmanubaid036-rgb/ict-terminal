@@ -421,6 +421,109 @@ export function registerIndicators2() {
   })
 }
 
+// ---- regression, envelope, standard deviation, PPO, correlation, auto S/R --------------------------------
+let done5 = false
+export function registerIndicators3() {
+  if (done5) return
+  done5 = true
+  registerIndicator<Record<string, number | undefined>, number>({
+    name: 'LINREG', shortName: 'LinReg', series: 'price', calcParams: [100], precision: 2, figures: [line('v', 'LinReg', '#ff9800')],
+    calc: (list, ind) => {
+      const n = Math.max(2, Math.round(ind.calcParams[0] ?? 100)), c = P(list, b => b.close)
+      const xm = (n - 1) / 2, den = Array.from({ length: n }, (_, k) => (k - xm) ** 2).reduce((a, b) => a + b, 0)
+      return rows(list.length, { v: c.map((_, i) => {
+        const w = win(c, i, n)
+        if (!w) return NaN
+        const ym = w.reduce((a, b) => a + b, 0) / n
+        const slope = w.reduce((a, y, k) => a + (k - xm) * (y - ym), 0) / den
+        return ym + slope * (n - 1 - xm)
+      }) })
+    },
+  })
+  registerIndicator<Record<string, number | undefined>, number>({
+    name: 'ENVELOPE', shortName: 'Env', series: 'price', calcParams: [20, 2.5], precision: 2,
+    figures: [line('up', 'Upper', '#2962ff'), line('mid', 'Basis', '#ff6d00'), line('dn', 'Lower', '#2962ff')],
+    calc: (list, ind) => {
+      const [n = 20, pct = 2.5] = ind.calcParams, mid = smaS(P(list, b => b.close), Math.round(n))
+      return rows(list.length, { up: mid.map(v => v * (1 + pct / 100)), mid, dn: mid.map(v => v * (1 - pct / 100)) })
+    },
+  })
+  registerIndicator<Record<string, number | undefined>, number>({
+    name: 'STDDEV', shortName: 'StdDev', calcParams: [20], precision: 4, figures: [line('sd', 'StdDev', '#2962ff')],
+    calc: (list, ind) => {
+      const n = Math.max(2, Math.round(ind.calcParams[0] ?? 20)), c = P(list, b => b.close)
+      return rows(list.length, { sd: c.map((_, i) => { const w = win(c, i, n); if (!w) return NaN; const m = w.reduce((a, b) => a + b, 0) / n; return Math.sqrt(w.reduce((a, b) => a + (b - m) ** 2, 0) / n) }) })
+    },
+  })
+  registerIndicator<Record<string, number | undefined>, number>({
+    name: 'PPO', shortName: 'PPO', calcParams: [12, 26, 9], precision: 3,
+    figures: [line('ppo', 'PPO', '#2962ff'), line('sig', 'Signal', '#ff6d00'), { key: 'hist', title: 'Hist: ', type: 'bar', baseValue: 0,
+      styles: ({ data }: any) => ({ color: (data.current?.hist ?? 0) >= 0 ? 'rgba(38,166,154,0.6)' : 'rgba(239,83,80,0.6)' }) } as any],
+    calc: (list, ind) => {
+      const [f = 12, s = 26, g = 9] = ind.calcParams.map(Math.round), c = P(list, b => b.close)
+      const ef = emaS(c, f), es = emaS(c, s), ppo = ef.map((v, i) => ((v - es[i]) / es[i]) * 100), sig = emaS(ppo, g)
+      return rows(list.length, { ppo, sig, hist: ppo.map((v, i) => v - sig[i]) })
+    },
+  })
+  // correlation of the closes with another symbol's (the chart's first compared symbol, given in extendData)
+  registerIndicator<Record<string, number | undefined>, number, { other?: Record<number, number>; ticker?: string }>({
+    name: 'CORREL', shortName: 'Correl', calcParams: [20], precision: 3, minValue: -1, maxValue: 1, figures: [line('r', 'r', '#9c27b0')],
+    calc: (list, ind) => {
+      const n = Math.max(3, Math.round(ind.calcParams[0] ?? 20)), other = ind.extendData?.other ?? {}
+      const a = P(list, b => b.close), b = list.map(x => (other[x.timestamp] ?? NaN))
+      return rows(list.length, { r: a.map((_, i) => {
+        if (i < n - 1) return NaN
+        const xa = a.slice(i - n + 1, i + 1), xb = b.slice(i - n + 1, i + 1)
+        if (xb.some(v => !Number.isFinite(v))) return NaN
+        const ma = xa.reduce((p, q) => p + q, 0) / n, mb = xb.reduce((p, q) => p + q, 0) / n
+        let num = 0, da = 0, db = 0
+        for (let k = 0; k < n; k++) { num += (xa[k] - ma) * (xb[k] - mb); da += (xa[k] - ma) ** 2; db += (xb[k] - mb) ** 2 }
+        return da && db ? num / Math.sqrt(da * db) : NaN
+      }) })
+    },
+    createTooltipDataSource: ({ indicator, crosshair }) => {
+      const r = (indicator.result as Record<string, number | undefined>[])[crosshair?.dataIndex ?? indicator.result.length - 1]?.r
+      const t = (indicator.extendData as { ticker?: string } | undefined)?.ticker
+      return { name: `Correl(${indicator.calcParams[0]})${t ? ' vs ' + (t.split(':')[1] ?? t) : ' · add a symbol with Compare'}`, calcParamsText: '', features: [],
+        legends: [{ title: { text: 'r: ', color: '#9c27b0' }, value: { text: r === undefined ? 'n/a' : r.toFixed(3), color: '#9c27b0' } }] }
+    },
+  })
+  // auto support / resistance: swing highs / lows clustered into the strongest levels, drawn to the right edge
+  registerIndicator<Record<string, number | undefined>, number>({
+    name: 'AUTOSR', shortName: 'Auto S/R', series: 'price', calcParams: [10, 6], precision: 2, figures: [],
+    calc: list => list.map(() => ({})),
+    draw: ({ ctx, chart, indicator, bounding, yAxis, xAxis }) => {
+      const list = chart.getDataList(), n = Math.max(2, Math.round(indicator.calcParams[0] ?? 10)), want = Math.max(1, Math.round(indicator.calcParams[1] ?? 6))
+      if (list.length < 2 * n + 1) return true
+      const piv: { v: number; i: number }[] = []
+      for (let i = n; i < list.length - n; i++) {
+        let hi = true, lo = true
+        for (let k = 1; k <= n; k++) { if (list[i - k].high >= list[i].high || list[i + k].high > list[i].high) hi = false; if (list[i - k].low <= list[i].low || list[i + k].low < list[i].low) lo = false }
+        if (hi) piv.push({ v: list[i].high, i }); if (lo) piv.push({ v: list[i].low, i })
+      }
+      const atr = list.slice(-100).reduce((a, b) => a + (b.high - b.low), 0) / Math.min(100, list.length)
+      const zones: { v: number; n: number; last: number }[] = []
+      for (const p of piv) {
+        const z = zones.find(z => Math.abs(z.v - p.v) <= atr * 0.6)
+        if (z) { z.v = (z.v * z.n + p.v) / (z.n + 1); z.n++; z.last = Math.max(z.last, p.i) } else zones.push({ v: p.v, n: 1, last: p.i })
+      }
+      const best = zones.sort((a, b) => b.n - a.n || b.last - a.last).slice(0, want)
+      ctx.save()
+      ctx.font = '10px Inter, sans-serif'
+      const close = list[list.length - 1].close
+      for (const z of best) {
+        const y = yAxis.convertToPixel(z.v), x = Math.max(0, xAxis.convertToPixel(z.last))
+        const col = z.v >= close ? '#ef5350' : '#26a69a'
+        ctx.strokeStyle = col; ctx.globalAlpha = Math.min(1, 0.35 + z.n * 0.12); ctx.lineWidth = Math.min(3, z.n)
+        ctx.setLineDash([6, 4]); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(bounding.width, y); ctx.stroke()
+        ctx.globalAlpha = 1; ctx.fillStyle = col; ctx.fillText(`${z.v >= close ? 'R' : 'S'} ×${z.n}`, bounding.width - 46, y - 3)
+      }
+      ctx.restore()
+      return true
+    },
+  })
+}
+
 /** "MA on <indicator>": a moving average of another indicator's first line, in that indicator's pane.
  *  Registered per base (MAON_RSI, MAON_MACD ...); params [length, type 0 SMA / 1 EMA, line number]. */
 const maOnDone = new Set<string>()
@@ -430,7 +533,7 @@ export function registerMaOn(base: string) {
   if (maOnDone.has(name)) return name
   maOnDone.add(name)
   const series = (chart: any, ind: any): number[] => {
-    const b = chart.getIndicators({ name: base })[0]
+    const b = chart.getIndicators({ id: base })[0] ?? chart.getIndicators({ name: base })[0]
     if (!b?.result?.length) return []
     const keys: string[] = (b.figures ?? []).map((f: any) => f.key).filter((k: string) => k !== 'volume')
     const key = keys[Math.max(0, Math.min(keys.length - 1, Math.round(ind.calcParams[2] ?? 1) - 1))] ?? keys[0]
@@ -439,12 +542,12 @@ export function registerMaOn(base: string) {
     return Math.round(ind.calcParams[1] ?? 0) === 1 ? emaS(x, n) : smaS(x, n)
   }
   registerIndicator<unknown, number>({
-    name, shortName: `MA on ${base}`, calcParams: [9, 0, 1], figures: [],
+    name, shortName: `MA on ${base.replace('#', ' ')}`, calcParams: [9, 0, 1], figures: [],
     calc: list => list.map(() => ({})),
     createTooltipDataSource: ({ chart, indicator, crosshair }) => {
       const s = series(chart, indicator), i = crosshair?.dataIndex ?? s.length - 1
       const v = s[i]
-      return { name: `${Math.round(Number(indicator.calcParams[1] ?? 0)) === 1 ? 'EMA' : 'SMA'}(${indicator.calcParams[0]}) on ${base}`, calcParamsText: '', features: [],
+      return { name: `${Math.round(Number(indicator.calcParams[1] ?? 0)) === 1 ? 'EMA' : 'SMA'}(${indicator.calcParams[0]}) on ${base.replace('#', ' ')}`, calcParamsText: '', features: [],
         legends: [{ title: { text: '', color: '#ff9800' }, value: { text: Number.isFinite(v) ? v.toFixed(2) : 'n/a', color: '#ff9800' } }] }
     },
     draw: ({ ctx, chart, indicator, xAxis, yAxis }) => {

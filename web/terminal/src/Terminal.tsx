@@ -7,7 +7,7 @@ import { AUTOSAVE, defaultState, parse, serialize, type AlertLogEntry, type Char
 import { ChartPanel } from './chart/ChartPanel'
 import { registerOverlays } from './chart/overlays'
 import { registerIndicators } from './chart/indicators'
-import { registerIndicators2 } from './chart/indicators2'
+import { registerIndicators2, registerIndicators3 } from './chart/indicators2'
 import { syncDrawing, setDrawingSync, allIds, setDrawDefaults, drawingsOf, getChart, getEntry, notify, setDrawingHooks, setPending, snapshot, undo, redo, removeSelected } from './chart/registry'
 import { chartBackground, type Theme } from './chart/theme'
 import { registerEvents, loadCalendar } from './chart/events'
@@ -38,6 +38,7 @@ registerOverlays()
 export const POPOUT = new URLSearchParams(window.location.search).get('popout') === '1'
 registerIndicators()
 registerIndicators2()
+registerIndicators3()
 registerEvents()
 registerCompare()
 registerMoreTools()

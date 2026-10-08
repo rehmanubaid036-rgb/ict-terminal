@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTerminal, POPOUT } from '../Terminal'
 import type { IndicatorConf } from '../state'
 import { api, type SearchItem } from '../api'
-import { CHART_TYPES, FAVORITE_TFS, INDICATORS, PRICE_ONLY, indicatorDef, LAYOUTS, TIMEFRAMES, parseTimeframe, timeframeByLabel, type LayoutId, WOLF_MODELS } from '../constants'
+import { baseIndicator, CHART_TYPES, FAVORITE_TFS, INDICATORS, PRICE_ONLY, indicatorDef, LAYOUTS, TIMEFRAMES, parseTimeframe, timeframeByLabel, type LayoutId, WOLF_MODELS } from '../constants'
 import { IctPanel, ModelSection } from '../panels/IctPanel'
 import { Screener } from './Screener'
 import { ScriptEditor } from './ScriptEditor'
@@ -314,13 +314,13 @@ function IndicatorsDialog({ onClose }: { onClose: () => void }) {
   const a = t.active
   const scripts = t.state.scripts
   const titleOf = (name: string) => (name.startsWith(MAON) ? `Moving average of ${name.slice(MAON.length)} (length, 0 SMA / 1 EMA, line no.)` : undefined)
-    ?? INDICATORS.find(x => x.name === name)?.title ?? scripts.find(s => scriptIndicatorName(s.id) === name)?.name
+    ?? indicatorDef(name)?.title ?? scripts.find(s => scriptIndicatorName(s.id) === name)?.name
   const on = new Set(a.indicators.map(i => i.name))
   const list = INDICATORS.filter(i => !q || (i.name + ' ' + i.title).toLowerCase().includes(q.toLowerCase()))
   const toggle = (name: string) => t.updateActive(c => ({ indicators: c.indicators.some(i => i.name === name) ? c.indicators.filter(i => i.name !== name) : [...c.indicators, { name }] }))
   const setInd = (name: string, patch: Partial<IndicatorConf>) => t.updateActive(c => ({ indicators: c.indicators.map(x => (x.name === name ? { ...x, ...patch } : x)) }))
   const params = (name: string) => {
-    const ind = getEntry(a.id)?.chart.getIndicators({ name })[0]
+    const ind = getEntry(a.id)?.chart.getIndicators({ id: name })[0]
     return (a.indicators.find(i => i.name === name)?.params ?? (ind?.calcParams as number[] | undefined) ?? []).join(', ')
   }
   return (
@@ -349,7 +349,14 @@ function IndicatorsDialog({ onClose }: { onClose: () => void }) {
           <div className="menu-head"><span>On this chart</span><button className="link" onClick={() => { t.updateActive({ indicators: a.indicators }, 'all'); toast('Indicators copied to every chart.') }}>Apply to all charts</button></div>
           {a.indicators.map(i => (
             <div key={i.name} className="ind-row on">
-              <b>{i.name.startsWith('SCRIPT_') ? 'Script' : i.name.startsWith(MAON) ? 'MA on' : i.name}</b><span>{titleOf(i.name)}</span>
+              <b>{i.name.startsWith('SCRIPT_') ? 'Script' : i.name.startsWith(MAON) ? 'MA on' : i.name.replace('#', ' ')}</b><span>{titleOf(i.name)}</span>
+              {!i.name.startsWith(MAON) && !i.name.startsWith('SCRIPT_') && !PRICE_ONLY.has(baseIndicator(i.name)) &&
+                <button className="link" title="Add another copy with its own settings (e.g. EMA 20, 50 and 200)" onClick={() => t.updateActive(c => {
+                  const b = baseIndicator(i.name)
+                  let k = 2
+                  while (c.indicators.some(x => x.name === `${b}#${k}`)) k++
+                  return { indicators: [...c.indicators, { name: `${b}#${k}` }] }
+                })}>+ Copy</button>}
               {edit === i.name ? (
                 <input className="param-input" autoFocus defaultValue={params(i.name)} onKeyDown={e => {
                   if (e.key === 'Enter') {
@@ -360,9 +367,9 @@ function IndicatorsDialog({ onClose }: { onClose: () => void }) {
                   if (e.key === 'Escape') { e.stopPropagation(); setEdit(null) }
                 }} onBlur={() => setEdit(null)} />
               ) : <button className="link" onClick={() => setEdit(i.name)}>Settings {params(i.name) && <small>({params(i.name)})</small>}</button>}
-              {!i.name.startsWith(MAON) && !PRICE_ONLY.has(i.name) && !a.indicators.some(x => x.name === MAON + i.name) && !i.name.startsWith('SCRIPT_') &&
+              {!i.name.startsWith(MAON) && !PRICE_ONLY.has(baseIndicator(i.name)) && !a.indicators.some(x => x.name === MAON + i.name) && !i.name.startsWith('SCRIPT_') &&
                 <button className="link" title="Add a moving average of this indicator (indicator on indicator)" onClick={() => t.updateActive(c => ({ indicators: [...c.indicators, { name: MAON + i.name, params: [9, 0, 1] }] }))}>+ MA on it</button>}
-              {!i.name.startsWith(MAON) && !PRICE_ONLY.has(i.name) && (() => {
+              {!i.name.startsWith(MAON) && !PRICE_ONLY.has(baseIndicator(i.name)) && (() => {
                 // price-based indicators (MA, EMA, BOLL, VWAP, price scripts) move between the price chart and a
                 // pane of their own; oscillators (RSI, MACD, VOL ...) keep their own scale and move up / down
                 const src = scripts.find(s => scriptIndicatorName(s.id) === i.name)?.src

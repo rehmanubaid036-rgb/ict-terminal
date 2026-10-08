@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { init, dispose, type Chart, type Crosshair, type Overlay, type OverlayMode } from 'klinecharts'
 import { api, errorText, isAbort, type Signal } from '../api'
-import { timeframeByLabel, indicatorDef, PRICE_ONLY, DRAW_COLORS, ONE_MINUTE_MODELS, modelTag } from '../constants'
+import { timeframeByLabel, indicatorDef, baseIndicator, PRICE_ONLY, DRAW_COLORS, ONE_MINUTE_MODELS, modelTag } from '../constants'
 import type { ChartConf, PriceAlert } from '../state'
 import { Feed } from './feed'
 import { engineOverlays, signalBoxes, signalLines, biasOf, type Bias, type DrawStyle } from './overlays'
@@ -249,6 +249,7 @@ export function ChartPanel(p: ChartPanelProps) {
         loadedFrom = from
         chart.overrideIndicator({ name: COMPARE, paneId: 'candle_pane',
           extendData: { series: tickers.map((t, i) => ({ ticker: t, color: COMPARE_COLORS[i % COMPARE_COLORS.length], close: maps[i] })) } })
+        for (const i of chart.getIndicators({ name: 'CORREL' })) chart.overrideIndicator({ name: 'CORREL', id: i.id, extendData: { other: maps[0] ?? {}, ticker: tickers[0] } } as any)
       } finally { busy = false }
     }
     const t0 = window.setTimeout(load, 600)
@@ -318,9 +319,9 @@ export function ChartPanel(p: ChartPanelProps) {
     for (const ind of conf.indicators) {
       if (ind.name.startsWith(MAON)) {
         const base = ind.name.slice(MAON.length), b = conf.indicators.find(x => x.name === base)
-        if (!b || !chart.getIndicators({ name: base }).length) continue
+        if (!b || !chart.getIndicators({ id: base }).length) continue
         const bdef = indicatorDef(base)
-        const bMain = !!bdef?.overlay && (b.pane !== 'own' || PRICE_ONLY.has(base))
+        const bMain = !!bdef?.overlay && (b.pane !== 'own' || PRICE_ONLY.has(baseIndicator(base)))
         chart.createIndicator({ name: registerMaOn(base), ...(ind.params?.length ? { calcParams: ind.params } : {}), visible: !ind.hidden,
           ...(ind.color ? { styles: { lines: [{ color: ind.color, size: 1, style: 'solid', smooth: false, dashedValue: [2, 2] }] } } : {}),
           paneId: bMain ? 'candle_pane' : `pane_${base}` } as any, true)
@@ -333,11 +334,14 @@ export function ChartPanel(p: ChartPanelProps) {
         if (!sc) continue
         try { def = { overlay: !registerScript(sc).pane } as typeof def } catch { continue }
       }
-      const value = { name: ind.name, ...(ind.params?.length ? { calcParams: ind.params } : {}), visible: !ind.hidden,
+      // a second EMA is "EMA#2": the same indicator, its own id
+      const cmpSeries = (chart.getIndicators({ name: COMPARE })[0]?.extendData as { series?: { ticker: string; close: Record<number, number> }[] } | undefined)?.series ?? []
+      const value = { name: baseIndicator(ind.name), id: ind.name, ...(ind.params?.length ? { calcParams: ind.params } : {}), visible: !ind.hidden,
+        ...(baseIndicator(ind.name) === 'CORREL' ? { extendData: { other: cmpSeries[0]?.close ?? {}, ticker: cmpSeries[0]?.ticker } } : {}),
         // the colour is the first line's (EMA 6, MACD DIF ...); the others keep the chart's default colours
         ...(ind.color || ind.width ? { styles: { lines: LINE_DEFAULTS.map((c, k) => ({ color: k === 0 ? (ind.color ?? c) : c, size: ind.width ?? 1, style: 'solid', smooth: false, dashedValue: [2, 2] })) } } : {}) } as any
       // a price-based indicator may be moved into a pane of its own (oscillators never go on the price scale)
-      const onMain = !!def?.overlay && (ind.pane !== 'own' || PRICE_ONLY.has(ind.name))
+      const onMain = !!def?.overlay && (ind.pane !== 'own' || PRICE_ONLY.has(baseIndicator(ind.name)))
       if (onMain) chart.createIndicator({ ...value, paneId: 'candle_pane' }, true)
       else {
         chart.createIndicator({ ...value, paneId: `pane_${ind.name}` })

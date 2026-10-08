@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Overlay } from 'klinecharts'
 import { useTerminal } from '../Terminal'
 import { type SymbolInfoData, api, errorText, type AiSettings, type AskAnswer, type AlertSettings, type Quote, type SearchItem, type Signal } from '../api'
-import { ICT_LAYERS, toolDef, INDICATORS, modelTag, SESSION_ALERTS, ICT_ALERT_EVENTS, ICT_ALERT_TFS } from '../constants'
+import { indicatorDef, ICT_LAYERS, toolDef, modelTag, SESSION_ALERTS, ICT_ALERT_EVENTS, ICT_ALERT_TFS } from '../constants'
 import { WL_COLS, type IctEvent, type WlCol } from '../state'
 import { Icon } from '../ui/icons'
 import { Empty, Switch, fmtPrice, nyTime, toast, useIsPhone } from '../ui/common'
@@ -683,7 +683,7 @@ function ObjectTree() {
       })()}
       <div className="tree-group">Indicators ({t.active.indicators.length})</div>
       {t.active.indicators.map(i => (
-        <div key={i.name} className="tree-row"><Icon name="indicators" size={16} /><span className="grow-text">{i.name} <small>{INDICATORS.find(x => x.name === i.name)?.title}</small></span>
+        <div key={i.name} className="tree-row"><Icon name="indicators" size={16} /><span className="grow-text">{i.name.replace('#', ' ')} <small>{indicatorDef(i.name)?.title}</small></span>
           <button className="icon-btn" title="Remove" onClick={() => t.updateActive(c => ({ indicators: c.indicators.filter(x => x.name !== i.name) }))}><Icon name="trash" size={15} /></button></div>
       ))}
       <div className="tree-group">ICT layers ({t.active.ict.length})</div>

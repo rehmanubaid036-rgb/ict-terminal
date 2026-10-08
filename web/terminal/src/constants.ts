@@ -87,7 +87,7 @@ export type ChartTypeId = (typeof CHART_TYPES)[number]['id']
 
 // ---- standard indicators --------------------------------------------------------------------
 /** Indicators drawn by price on the candles (volume profiles): they cannot move to a pane of their own. */
-export const PRICE_ONLY = new Set(['VPVR', 'SVP'])
+export const PRICE_ONLY = new Set(['VPVR', 'SVP', 'AUTOSR'])
 export interface IndicatorDef { name: string; title: string; overlay: boolean; group: string; params?: number[] }
 export const INDICATORS: IndicatorDef[] = [
   { name: 'MA', title: 'Moving Average', overlay: true, group: 'Trend' },
@@ -147,8 +147,16 @@ export const INDICATORS: IndicatorDef[] = [
   { name: 'VORTEX', title: 'Vortex Indicator (VI+ / VI-)', overlay: false, group: 'Trend' },
   { name: 'CHOP', title: 'Choppiness Index', overlay: false, group: 'Volatility' },
   { name: 'HV', title: 'Historical Volatility (annual %)', overlay: false, group: 'Volatility' },
+  { name: 'LINREG', title: 'Linear Regression curve (length)', overlay: true, group: 'Trend' },
+  { name: 'ENVELOPE', title: 'Envelope (SMA length, %)', overlay: true, group: 'Volatility' },
+  { name: 'AUTOSR', title: 'Auto support / resistance levels (swing bars, levels)', overlay: true, group: 'Trend' },
+  { name: 'STDDEV', title: 'Standard Deviation', overlay: false, group: 'Volatility' },
+  { name: 'PPO', title: 'Price Oscillator (fast, slow, signal) %', overlay: false, group: 'Momentum' },
+  { name: 'CORREL', title: 'Correlation with the compared symbol (length) — add one with Compare', overlay: false, group: 'Momentum' },
 ]
-export const indicatorDef = (name: string) => INDICATORS.find(i => i.name === name)
+/** "EMA#2" -> "EMA": a second (third ...) copy of an indicator on the same chart. */
+export const baseIndicator = (name: string) => name.replace(/#\d+$/, '')
+export const indicatorDef = (name: string) => INDICATORS.find(i => i.name === baseIndicator(name))
 
 // ---- ICT concept indicators (drawn from the engine's /api/v1/ict/overlays) ---------------------
 export const ICT_LAYERS = [
