@@ -50,7 +50,7 @@ FORWARD = {
     ("GET", "alerts/settings"), ("POST", "alerts/settings"), ("POST", "alerts/test"), ("POST", "alerts/telegram"),
     ("GET", "ai/settings"), ("POST", "ai/settings"),
     ("GET", "donations/info"), ("POST", "donations"),
-    ("GET", "copy/settings"), ("POST", "copy/settings"), ("POST", "copy/token"), ("POST", "donations/crypto"),
+    ("GET", "copy/settings"), ("POST", "copy/settings"), ("POST", "copy/token"), ("POST", "donations/crypto"), ("POST", "oauth/poll"),
 }
 # a customer's own crypto order: status, cancel, transaction hash (the panel checks ownership)
 FORWARD_PATTERNS = [("GET", re.compile(r"payments/crypto/order/\d+")),
@@ -1029,6 +1029,35 @@ img{{max-width:100%;height:auto;border-radius:10px;border:1px solid #232c45}}a{{
         events = [e for e in (data.get("events") or []) if isinstance(e, dict)][:100]
         n = store.add_ea_events(r.get("access", {}).get("email", "") or "unknown", str(data.get("mt5_login", "")), events)
         return {"stored": n}
+
+    # ---- Google / Facebook sign-in pages (the browser goes through this server to the panel) -------
+    OAUTH_PAGES = re.compile(r"(google|facebook)/(start|callback)|finish")
+
+    @app.api_route("/api/v1/oauth/{rest:path}", methods=["GET", "POST"])
+    async def oauth_pages(rest: str, request: Request):
+        """Start (redirect to Google / Facebook), callback (the "continue?" page) and finish (the form post) are
+        HTML pages of the admin panel: passed through as they are, redirects included. oauth/poll is JSON (forward)."""
+        from fastapi.responses import Response
+        if rest == "poll":
+            return await forward("oauth/poll", request)
+        if not OAUTH_PAGES.fullmatch(rest):
+            raise HTTPException(404, "Not found")
+        import requests as rq
+        ip = request.headers.get("cf-connecting-ip") or (request.client.host if request.client else "")
+        headers = auth._service_headers(ip)
+        if request.headers.get("content-type"):
+            headers["Content-Type"] = request.headers["content-type"]
+        body = await request.body()
+
+        def call():
+            return rq.request(request.method, f"{auth.panel_url}/api/v1/oauth/{rest}", params=dict(request.query_params),
+                              data=body or None, headers=headers, allow_redirects=False, timeout=20)
+        try:
+            r = await run_in_threadpool(call)
+        except rq.RequestException:
+            return JSONResponse(status_code=503, content={"detail": "Account server is unreachable. Try again shortly."})
+        out = {k: v for k, v in r.headers.items() if k.lower() in ("location", "content-type", "cache-control")}
+        return Response(r.content, status_code=r.status_code, headers=out)
 
     # ---- accounts & billing: forwarded to the admin panel ---------------------------------
     @app.api_route("/api/v1/{path:path}", methods=["GET", "POST"])

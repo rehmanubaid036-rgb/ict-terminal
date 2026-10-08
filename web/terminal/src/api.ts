@@ -189,7 +189,8 @@ export const api = {
   login: (email: string, password: string) =>
     post<{ token: string; access: Access; warning?: string }>('/api/v1/auth/login', { email, password, device_id: deviceId(), platform: 'web' }),
   guest: () => post<{ token: string; access: Access }>('/api/v1/auth/guest', { device_id: deviceId(), platform: 'web' }),
-  appConfig: () => get<{ login?: { guest?: boolean; email_signup?: boolean; email_login?: boolean } }>('/api/v1/app-config'),
+  appConfig: () => get<{ login?: { guest?: boolean; email_signup?: boolean; email_login?: boolean; google?: boolean; facebook?: boolean } }>('/api/v1/app-config'),
+  oauthPoll: (session: string) => post<{ status: 'pending' | 'done' | 'error'; token?: string; access?: Access; detail?: string }>('/api/v1/oauth/poll', { session }),
   register: (email: string, password: string, name: string) =>
     post<{ token: string; access: Access }>('/api/v1/auth/register', { email, password, name, device_id: deviceId(), platform: 'web' }),
   resetPassword: (email: string) => post<{ message: string }>('/api/v1/auth/password/reset', { email }),
