@@ -100,3 +100,35 @@ def test_missing_builds_are_refused(dirs, tmp_path):
         serve_web.create_app("http://api.test", tmp_path / "nodist", site, dl)
     with pytest.raises(SystemExit):
         serve_web.create_app("http://api.test", dist, tmp_path / "nosite", dl)
+
+
+def test_websocket_is_passed_to_the_api(dirs):
+    """/ws/stream goes through to the API's WebSocket, both ways."""
+    import socket
+    import threading
+    import time
+
+    import uvicorn
+    from starlette.applications import Starlette
+    from starlette.routing import WebSocketRoute
+
+    async def echo(ws):
+        await ws.accept()
+        while True:
+            msg = await ws.receive_text()
+            await ws.send_text("api:" + msg)
+
+    s = socket.socket(); s.bind(("127.0.0.1", 0)); port = s.getsockname()[1]; s.close()
+    server = uvicorn.Server(uvicorn.Config(Starlette(routes=[WebSocketRoute("/ws/stream", echo)]), host="127.0.0.1", port=port, log_level="error"))
+    threading.Thread(target=server.run, daemon=True).start()
+    for _ in range(50):
+        if server.started:
+            break
+        time.sleep(0.1)
+    try:
+        c = app(dirs, f"http://127.0.0.1:{port}")
+        with c.websocket_connect("/ws/stream") as ws:
+            ws.send_text('{"auth":"x"}')
+            assert ws.receive_text() == 'api:{"auth":"x"}'
+    finally:
+        server.should_exit = True

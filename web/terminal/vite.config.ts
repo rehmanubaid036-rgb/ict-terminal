@@ -54,5 +54,5 @@ export default defineConfig({
   plugins: [klinechartsQuickClickFix(), react()],
   optimizeDeps: { exclude: ['klinecharts'] },   // so the patch also applies in `npm run dev`
   build: { outDir: process.env.ICT_OUT_DIR || 'dist', emptyOutDir: true, chunkSizeWarningLimit: 1500 },
-  server: { proxy: { '/api': 'http://127.0.0.1:8100', '/udf': 'http://127.0.0.1:8100' } },
+  server: { proxy: { '/api': 'http://127.0.0.1:8100', '/udf': 'http://127.0.0.1:8100', '/ws': { target: 'ws://127.0.0.1:8100', ws: true } } },
 })

@@ -3,6 +3,7 @@
 import { pointFigure, kagi, rangeBars } from './charttypes'
 import type { DataLoader, KLineData } from 'klinecharts'
 import { api, isAbort, type Bars } from '../api'
+import { stream } from './stream'
 import type { Timeframe } from '../constants'
 
 const POLL_MS = 5000
@@ -161,10 +162,22 @@ export class Feed {
       subscribeBar: ({ callback }) => {
         this.onBar = callback
         this.startPolling()
+        this.unstream?.()
+        const tf = this.tf
+        // live bars over the WebSocket; grouped intervals (7m, monthly ...) keep polling
+        if (tf && tf.group === 1 && !tf.monthly && this.ticker) {
+          const ticker = this.ticker, res = tf.resolution
+          this.unstream = stream.subscribe(ticker, res, rows => {
+            if (this.mode !== 'live' || this.ticker !== ticker || this.tf?.resolution !== res) return
+            this.apply(rows.map(([t, o, h, l, c, v]) => ({ timestamp: t * 1000, open: o, high: h, low: l, close: c, volume: v })))
+          })
+        }
       },
       unsubscribeBar: () => {
         this.onBar = null
         window.clearInterval(this.timer)
+        this.unstream?.()
+        this.unstream = null
       },
     }
   }
@@ -175,26 +188,34 @@ export class Feed {
     this.timer = window.setInterval(() => void this.poll(), POLL_MS)
   }
 
+  private unstream: (() => void) | null = null
+
   private async poll() {
     if (this.mode !== 'live' || !this.onBar || !this.tf || document.hidden) return
+    if (this.tf.group === 1 && !this.tf.monthly && stream.live(this.ticker, this.tf.resolution)) return   // the socket brings them
     try {
       const to = Math.floor(Date.now() / 1000) + this.tf.seconds
-      const fresh = (await this.fetch(to, 3)).slice(-2)
-      for (const b of fresh) {
-        const last = this.raw[this.raw.length - 1]
-        if (!last || b.timestamp > last.timestamp) { this.raw.push(b); this.onNewBar() }
-        else if (b.timestamp === last.timestamp) this.raw[this.raw.length - 1] = b
-        else continue
-        if (this.priceBars) {
-          // only finished bricks / lines are drawn: add the new ones
-          for (const n of this.display(this.raw).filter(x => x.timestamp > this.lastShown)) { this.onBar?.(n); this.lastShown = n.timestamp }
-          continue
-        }
-        const shown = this.display(this.raw.slice(-200))
-        this.onBar?.(shown[shown.length - 1])
-      }
+      this.apply((await this.fetch(to, 3)).slice(-2))
     } catch (e) {
       this.onError(e)
+    }
+  }
+
+  /** Adds / updates the newest bars on the chart (from polling or the stream). */
+  private apply(fresh: KLineData[]) {
+    if (this.mode !== 'live' || !this.onBar) return
+    for (const b of fresh) {
+      const last = this.raw[this.raw.length - 1]
+      if (!last || b.timestamp > last.timestamp) { this.raw.push(b); this.onNewBar() }
+      else if (b.timestamp === last.timestamp) this.raw[this.raw.length - 1] = b
+      else continue
+      if (this.priceBars) {
+        // only finished bricks / lines are drawn: add the new ones
+        for (const n of this.display(this.raw).filter(x => x.timestamp > this.lastShown)) { this.onBar?.(n); this.lastShown = n.timestamp }
+        continue
+      }
+      const shown = this.display(this.raw.slice(-200))
+      this.onBar?.(shown[shown.length - 1])
     }
   }
 

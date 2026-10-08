@@ -21,7 +21,8 @@ import uvicorn
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import FileResponse, PlainTextResponse, RedirectResponse, Response
-from starlette.routing import Mount, Route
+from starlette.routing import Mount, Route, WebSocketRoute
+from starlette.websockets import WebSocket, WebSocketDisconnect
 from starlette.staticfiles import StaticFiles
 
 HERE = Path(__file__).resolve().parent
@@ -62,6 +63,31 @@ def create_app(api_url: str, dist: Path = DIST, site: Path = SITE, downloads: Pa
         out = {k: v for k, v in r.headers.items() if k.lower() not in HOP_HEADERS}
         return Response(r.content, r.status_code, headers=out)
 
+    async def ws_proxy(ws: WebSocket) -> None:
+        """Live bars: the browser's WebSocket is joined to the API's, both ways."""
+        import asyncio
+        import websockets
+        await ws.accept()
+        url = api_url.rstrip("/").replace("http", "ws", 1) + ws.url.path
+        try:
+            async with websockets.connect(url, max_size=2 ** 20, open_timeout=10) as up:
+                async def down() -> None:
+                    async for msg in up:
+                        await ws.send_text(msg if isinstance(msg, str) else msg.decode())
+                async def upward() -> None:
+                    while True:
+                        await up.send(await ws.receive_text())
+                done, pending = await asyncio.wait([asyncio.create_task(down()), asyncio.create_task(upward())],
+                                                   return_when=asyncio.FIRST_COMPLETED)
+                for t in pending:
+                    t.cancel()
+        except (OSError, WebSocketDisconnect, websockets.WebSocketException, asyncio.TimeoutError):
+            pass
+        try:
+            await ws.close()
+        except RuntimeError:
+            pass
+
     async def terminal_root(request: Request) -> Response:
         return RedirectResponse("/terminal/", 308)
 
@@ -83,6 +109,7 @@ def create_app(api_url: str, dist: Path = DIST, site: Path = SITE, downloads: Pa
     return Starlette(routes=[
         Route("/udf/{path:path}", proxy, methods=methods),
         Route("/api/{path:path}", proxy, methods=methods),
+        WebSocketRoute("/ws/stream", ws_proxy),
         Route("/terminal", terminal_root),
         Mount("/terminal/assets", StaticFiles(directory=dist / "assets"), name="terminal-assets"),
         Route("/terminal/{path:path}", terminal),

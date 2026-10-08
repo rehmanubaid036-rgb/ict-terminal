@@ -14,7 +14,7 @@ import time
 
 import numpy as np
 import pandas as pd
-from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 
@@ -374,6 +374,76 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
             return out
         finally:
             bt_lock.release()
+
+    # ---- live bars over a WebSocket (the terminal falls back to polling when it is down) -------------
+    stream_cache: dict[tuple, tuple[float, list]] = {}
+
+    def _stream_bars(symbol: str, resolution: str) -> list | None:
+        """The newest two bars [t, o, h, l, c, v] of a symbol / resolution, shared by every client for 1 s."""
+        try:
+            i, tf = _info(symbol), _tf(resolution)
+        except HTTPException:
+            return None
+        key = (i.ticker, tf)
+        hit = stream_cache.get(key)
+        if hit and time.time() - hit[0] < 1.0:
+            return hit[1]
+        step = pd.Timedelta(tf.replace("d", "D").replace("w", "W"))
+        now = pd.Timestamp.now(tz="UTC")
+        try:
+            df = _bars(i.ticker, tf, now - max(step * 3, pd.Timedelta(minutes=10)), now + step)
+        except Exception:     # noqa: BLE001 - a feed that is down: nothing this second
+            return None
+        rows = [[int(t.timestamp()), float(r.open), float(r.high), float(r.low), float(r.close), float(r.volume)]
+                for t, r in df.tail(2).iterrows()]
+        stream_cache[key] = (time.time(), rows)
+        if len(stream_cache) > 2000:
+            stream_cache.clear()
+        return rows
+
+    @app.websocket("/ws/stream")
+    async def ws_stream(ws: WebSocket):
+        """First message {"auth": token, "device": id}; then {"sub": [{"symbol", "resolution"}, ...]} any time.
+        Every second each subscription's newest bars are sent when they changed: {"symbol", "resolution", "bars"}."""
+        import asyncio
+        await ws.accept()
+        try:
+            hello = await asyncio.wait_for(ws.receive_json(), 10)
+        except Exception:     # noqa: BLE001 - no hello, bad JSON or gone
+            await ws.close(code=4400)
+            return
+        if require_auth:
+            a = await run_in_threadpool(auth.verify, str(hello.get("auth") or ""), str(hello.get("device") or ""), "", "web",
+                                        ws.client.host if ws.client else "")
+            if a.get("status") in ("guest", "session_mismatch", None):
+                await ws.close(code=4401)
+                return
+        subs: dict[str, tuple[str, str]] = {}
+        sent: dict[str, list] = {}
+        sent_at: dict[str, float] = {}
+
+        async def reader():
+            while True:
+                m = await ws.receive_json()
+                if isinstance(m, dict) and isinstance(m.get("sub"), list):
+                    subs.clear()
+                    for s in m["sub"][:16]:
+                        if isinstance(s, dict) and s.get("symbol") and s.get("resolution"):
+                            subs[f"{s['symbol']}|{s['resolution']}"] = (str(s["symbol"]).upper()[:40], str(s["resolution"])[:6])
+        task = asyncio.create_task(reader())
+        try:
+            while not task.done():
+                for key, (sym, res) in list(subs.items()):
+                    rows = await run_in_threadpool(_stream_bars, sym, res)
+                    # changed bars at once; the same bars again every 4 s so the terminal knows the stream is alive
+                    if rows and (rows != sent.get(key) or time.time() - sent_at.get(key, 0) >= 4):
+                        sent[key], sent_at[key] = rows, time.time()
+                        await ws.send_json({"symbol": sym, "resolution": res, "bars": rows})
+                await asyncio.sleep(1)
+        except (WebSocketDisconnect, RuntimeError):
+            pass
+        finally:
+            task.cancel()
 
     @app.get("/api/v1/engine/status")
     def engine_status():

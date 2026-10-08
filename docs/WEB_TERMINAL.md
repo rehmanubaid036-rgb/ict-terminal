@@ -90,6 +90,7 @@ It covers what was built, how to build and test it, and what is still open.
 | Seconds charts | 1s / 5s / 15s / 30s (any 1-59 s in the interval box, e.g. `10s`). Resolutions `<n>S`; MT5 feeds build them from ticks (`mt5.ticks` -> `ticks_to_bars`, asked in the server clock, last 6 h, up to 300k ticks, not cached); Binance uses its 1s klines. Spread symbols work on seconds too; ICT chart layers work (time layers do not) |
 | MT5 / Auto-trade tab | Auto-trading ON / OFF and lot multiplier (`copy/settings`), EA token (`copy/token`, shown once), EA files (`/api/v1/ea/download/ICT_Bridge.mq5`, `ICT_Json.mqh`) and install steps. EA 1.11 sends equity, open positions and pending orders with every poll; `/api/v1/mt5/state` returns them (table `ea_state`) with the EA trade log. Positions are listed with P/L and drawn as entry / SL / TP lines on charts of the same symbol (broker suffixes removed) |
 | Time and drawings sync | Layout menu > Sync: Time (the active chart leads; the others scroll so the same time is at their right edge, `ict:timesync`) and Drawings (same symbol: a drawing is copied to every chart of that symbol and stays linked by `extendData.syncId`; moving, restyling and deleting follow; `syncDrawing` in registry.ts) |
+| Live bars (WebSocket) | One socket `/ws/stream` for all charts (chart/stream.ts): hello `{auth, device}` then `{sub: [...]}`; every second the newest two bars of each subscription (changed, or again every 4 s). The web server (serve_web.py, port 3100) passes `/ws/stream` to the API. A chart whose stream is quiet for 6 s polls as before; grouped intervals (7m, monthly) always poll |
 | Volume profiles | Visible range (VPVR), Session Volume Profile `SVP` (Asia / London / New York or per day, POC + value area) and the Fixed range volume profile drawing (POC, VAH, VAL) - `src/chart/volprofile.ts` |
 | Price scale | Right-click the price scale: Auto (fit), Lock range, Lock price / bar, Regular / Log / Percent, Invert, scale left / right. The lock is saved with the chart (`scaleLock`, a KLineChart `createRange`) |
 | Layouts | 1-8 charts (1, 2 side / stacked, 3, 4, 5, 6, 7, 8); the plan's "Charts per layout" (admin, 1-8) limits them; tablets in portrait show 5-8 charts in two columns, phones 2 x 4; indicator panes size to the chart |
@@ -100,7 +101,7 @@ It covers what was built, how to build and test it, and what is still open.
 | Other | Dark / light theme, keyboard shortcuts (letters = symbol search, digits = interval, Alt+T/H/J/V/F/R tools, Alt+A alert, Alt+S screenshot, Ctrl+Z/Y, Del, Esc), screenshot, full screen, phone layout (tool sheets, bottom tab bar, bottom sheets, one chart at a time with chips) |
 
 Not built yet (plan items): Urdu UI language,
-WebSocket streaming (the API has no `/ws`; the terminal polls).
+
 
 ## Build
 
