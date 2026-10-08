@@ -1,3 +1,4 @@
+import type { KLineData } from 'klinecharts'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { scriptIndicatorName, type SavedScript } from './chart/script'
 import type { Crosshair, OverlayMode } from 'klinecharts'
@@ -15,6 +16,8 @@ import { registerCompare } from './chart/compare'
 import { registerMoreTools } from './chart/tools2'
 import { registerTools3, setPictureRedraw } from './chart/tools3'
 import { registerTools4 } from './chart/tools4'
+import { indHit } from './chart/indalert'
+import { toBars } from './chart/feed'
 import { registerVolumeProfiles } from './chart/volprofile'
 import { registerChartTypes } from './chart/charttypes'
 import type { ChartSettings } from './chart/settings'
@@ -462,6 +465,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
           if (!f) return a
           if (a.kind === 'session') return f.extra.day ? { ...a, lastFired: f.extra.day, triggeredAt: f.at_ms } : a
           if (a.kind === 'ict') return a.ict && f.extra.seen ? { ...a, ict: { ...a.ict, seen: Math.max(a.ict.seen ?? 0, f.extra.seen) }, triggeredAt: f.at_ms } : a
+          if (a.kind === 'indicator') return a.ind && f.extra.seen ? { ...a, ind: { ...a.ind, seen: Math.max(a.ind.seen ?? 0, f.extra.seen) }, active: a.ind.freq === 'every' ? a.active : false, triggeredAt: f.at_ms } : a
           return a.active && f.at_ms >= (a.armedAt ?? a.created) ? { ...a, active: false, triggeredAt: f.at_ms } : a
         }),
         alertLog: [...[...fired].reverse().map(x => ({ at: x.at_ms, text: x.text + ' (sent to ' + sentTo(x) + ')' })), ...s.alertLog].slice(0, 100),
@@ -477,8 +481,30 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
   useEffect(() => {
     if (!ready) return
     const check = async () => {
-      if (!f.ict_indicators || document.hidden) return
+      if (document.hidden) return
       const cap = (f.alerts_limit ?? 0) > 0 ? f.alerts_limit! : Infinity
+      // indicator conditions (RSI, MACD, price vs EMA ...) on the last closed bar of their interval
+      const inds = stateRef.current.alerts.filter(a => a.active).slice(0, cap).filter(a => a.kind === 'indicator' && a.ind)
+      if (inds.length) {
+        const nowS = Math.floor(Date.now() / 1000), fired: string[] = [], seenI: Record<string, number> = {}, logI: AlertLogEntry[] = []
+        const cache = new Map<string, KLineData[]>()
+        for (const a of inds) {
+          const tfo = timeframeByLabel(a.ind!.tf), k = `${a.ticker}|${tfo.resolution}`
+          if (!cache.has(k)) { try { cache.set(k, toBars(await api.history(a.ticker, tfo.resolution, nowS - 400 * tfo.seconds, nowS + tfo.seconds, 400))) } catch { cache.set(k, []) } }
+          const hit = indHit(cache.get(k)!, a.ind!)
+          if (!hit) continue
+          const [at, words] = hit
+          if (at <= Math.max(a.ind!.seen ?? 0, Math.floor((a.armedAt ?? a.created) / 1000) - tfo.seconds)) continue
+          seenI[a.id] = at
+          if (a.ind!.freq !== 'every') fired.push(a.id)
+          const text = `${a.ticker.split(':')[1]} ${a.ind!.tf}: ${words}${a.note ? ` — ${a.note}` : ''}`
+          logAlert(text); logI.push({ at: Date.now(), text })
+        }
+        if (Object.keys(seenI).length) setState(s => ({ ...s,
+          alerts: s.alerts.map(a => (seenI[a.id] && a.ind ? { ...a, ind: { ...a.ind, seen: seenI[a.id] }, active: fired.includes(a.id) ? false : a.active, triggeredAt: Date.now() } : a)),
+          alertLog: [...logI.reverse(), ...s.alertLog].slice(0, 100) }))
+      }
+      if (!f.ict_indicators) return
       const live = stateRef.current.alerts.filter(a => a.active).slice(0, cap).filter(a => a.kind === 'ict' && a.ict)
       if (!live.length) return
       const now = Math.floor(Date.now() / 1000)
@@ -675,7 +701,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
       if (limit > 0 && live >= limit) { toast(`Your plan allows ${limit} active alerts.`, 'info'); return }
       try { if (Notification.permission === 'default') void Notification.requestPermission() } catch { /* ignore */ }
       setState(s => ({ ...s, alerts: [{ ...a, id: Math.random().toString(36).slice(2), created: Date.now(), active: true }, ...s.alerts] }))
-      toast(a.kind === 'ict' ? 'ICT event alert set. It fires on every new event (on your phone too when delivery is on).' : a.kind === 'session' ? 'Session alert set (every day).' : a.kind === 'line' ? 'Trend line alert set.' : a.kind === 'box' ? 'Zone alert set.' : `Alert set: ${a.ticker.split(':')[1]} ${a.condition} ${a.price}`)
+      toast(a.kind === 'indicator' ? 'Indicator alert set (checked on each closed bar; on your phone too when delivery is on).' : a.kind === 'ict' ? 'ICT event alert set. It fires on every new event (on your phone too when delivery is on).' : a.kind === 'session' ? 'Session alert set (every day).' : a.kind === 'line' ? 'Trend line alert set.' : a.kind === 'box' ? 'Zone alert set.' : `Alert set: ${a.ticker.split(':')[1]} ${a.condition} ${a.price}`)
     },
     updateAlert: (id, patch) => setState(s => ({ ...s, alerts: s.alerts.map(a => (a.id === id ? { ...a, ...patch } : a)) })),
     removeAlert: id => setState(s => ({ ...s, alerts: s.alerts.filter(a => a.id !== id) })),

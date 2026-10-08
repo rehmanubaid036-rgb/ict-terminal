@@ -38,16 +38,18 @@ export interface PriceAlert {
   active: boolean
   triggeredAt?: number
   created: number
-  kind?: 'price' | 'line' | 'box' | 'session' | 'ict'   // price (default), a trend line, a box (FVG / OB / rectangle), a session start,
+  kind?: 'price' | 'line' | 'box' | 'session' | 'ict' | 'indicator'   // price (default), a trend line, a box (FVG / OB / rectangle), a session start,
                                                         // an ICT event (MSS / BOS / new FVG / liquidity sweep)
   line?: { a: AlertPoint; b: AlertPoint; ray: boolean }
   box?: { top: number; bottom: number }
   session?: string                                 // key of SESSION_ALERTS; fires every day
   lastFired?: string                               // NY date of the last session alert
   armedAt?: number                                 // when it was restarted (the server watches it again from then)
-  ict?: { event: IctEvent; tf: string; dir: 0 | 1 | -1; seen?: number }   // seen: unix seconds of the newest event already told
+  ict?: { event: IctEvent; tf: string; dir: 0 | 1 | -1; seen?: number }
+  ind?: IndAlert                                 // an indicator condition (RSI, MACD, price vs EMA ...)   // seen: unix seconds of the newest event already told
 }
 export type IctEvent = 'mss' | 'bos' | 'fvg' | 'sweep'
+export interface IndAlert { type: 'rsi' | 'stochrsi' | 'ema' | 'sma' | 'macd'; n: number; tf: string; cond: 'crossing' | 'above' | 'below'; value: number; freq: 'once' | 'every'; seen?: number }
 export interface AlertLogEntry { at: number; text: string }
 
 export interface Sync { symbol: boolean; interval: boolean; crosshair: boolean; drawings: boolean; time?: boolean }

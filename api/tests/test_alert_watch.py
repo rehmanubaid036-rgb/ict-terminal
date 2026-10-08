@@ -118,3 +118,29 @@ def test_ict_event_alerts(gold, tmp_path):
         assert w.run_once(now, ict=True) == 0
     # far in the future nothing new is told and nothing old floods
     assert w.run_once(now + pd.Timedelta(days=2), ict=True) == 0
+
+
+def test_indicator_conditions():
+    from ictapi.alert_watch import ind_hit
+    up = frame(list(range(100, 160)) + [160])                       # steady rise: RSI high, price above its EMA
+    assert ind_hit(up, {"type": "rsi", "n": 14, "cond": "above", "value": 70})[1].startswith("RSI is above 70")
+    assert ind_hit(up, {"type": "rsi", "n": 14, "cond": "below", "value": 30}) is None
+    assert "vs EMA(20)" in ind_hit(up, {"type": "ema", "n": 20, "cond": "above"})[1]
+    turn = frame(list(range(100, 140)) + list(range(140, 120, -1)) + [119])   # rise then fall: MACD under its signal
+    assert ind_hit(turn, {"type": "macd", "cond": "below"})[1].startswith("MACD vs signal is below the signal line")
+    cross = frame([100] * 30 + [101, 99, 102, 98, 103, 97, 120, 121])        # the price jumps over its SMA on the last closed bar
+    assert ind_hit(cross, {"type": "sma", "n": 20, "cond": "crossing"}) is not None
+
+
+def test_watcher_indicator_once_and_every(tmp_path):
+    store = Store(tmp_path / "ind.db")
+    bars = frame(list(range(4000, 4300, 5)), end=NOW)
+    auth = Auth()
+    w = AlertWatcher(FrameProvider({"AXI:XAUUSD": bars}), store, auth)
+    once = alert(id="r1", kind="indicator", ind={"type": "rsi", "n": 14, "tf": "1m", "cond": "above", "value": 60, "freq": "once"})
+    every = alert(id="r2", kind="indicator", ind={"type": "rsi", "n": 14, "tf": "1m", "cond": "above", "value": 60, "freq": "every"})
+    store.save_layout("u@x.com", AUTOSAVE, {"alerts": [once, every]})
+    assert w.run_once(NOW, ict=True) == 2
+    assert "RSI is above 60" in auth.sent[0][2]
+    assert w.run_once(NOW, ict=True) == 0                        # same bar: nothing new
+    assert w.run_once(NOW + pd.Timedelta(minutes=1), ict=False) == 0   # indicators are checked with the ICT pass

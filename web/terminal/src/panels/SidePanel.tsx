@@ -1,10 +1,11 @@
+import { IND_TYPES } from '../chart/indalert'
 import { Mt5Panel } from './Mt5Panel'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Overlay } from 'klinecharts'
 import { useTerminal } from '../Terminal'
 import { type SymbolInfoData, api, errorText, type AiSettings, type AskAnswer, type AlertSettings, type Quote, type SearchItem, type Signal } from '../api'
 import { indicatorDef, ICT_LAYERS, toolDef, modelTag, SESSION_ALERTS, ICT_ALERT_EVENTS, ICT_ALERT_TFS } from '../constants'
-import { WL_COLS, type IctEvent, type WlCol } from '../state'
+import { type IndAlert, WL_COLS, type IctEvent, type WlCol } from '../state'
 import { Icon } from '../ui/icons'
 import { Empty, Switch, fmtPrice, nyTime, toast, useIsPhone } from '../ui/common'
 import { cloneDrawing, DRAWINGS, drawingHooks, getChart, getEntry, notify, onRegistryChange, snapshot } from '../chart/registry'
@@ -570,6 +571,11 @@ function Alerts() {
   const [ev, setEv] = useState<IctEvent>('mss')
   const [evTf, setEvTf] = useState(() => (ICT_ALERT_TFS.includes(t.active.tf) ? t.active.tf : '5m'))
   const [evDir, setEvDir] = useState<0 | 1 | -1>(0)
+  const [indT, setIndT] = useState<IndAlert['type']>('rsi')
+  const [indN, setIndN] = useState(14)
+  const [indC, setIndC] = useState<IndAlert['cond']>('crossing')
+  const [indV, setIndV] = useState(70)
+  const [indF, setIndF] = useState<IndAlert['freq']>('once')
   const [tab, setTab] = useState<'list' | 'log'>('list')
   const [perm, setPerm] = useState(() => { try { return Notification.permission } catch { return 'denied' } })
   const create = () => {
@@ -608,6 +614,19 @@ function Alerts() {
             <button className="btn ghost sm" onClick={() => t.addAlert({ ticker: t.active.ticker, condition: 'crossing', price: 0, note: note.trim(), kind: 'ict', ict: { event: ev, tf: evTf, dir: evDir } })}>Add</button>
           </div>
         </> : <div className="note">ICT event alerts need a plan with ICT indicators.</div>}
+        <div className="af-sep">Indicator condition on {t.active.ticker.split(':')[1]}</div>
+        <div className="af-row">
+          <select value={indT} onChange={e => { const v = e.target.value as IndAlert['type']; setIndT(v); setIndN(IND_TYPES.find(x => x.id === v)!.n) }}>{IND_TYPES.map(x => <option key={x.id} value={x.id}>{x.label}</option>)}</select>
+          {indT !== 'macd' && <input className="af-n" type="number" min={2} max={500} value={indN} onChange={e => setIndN(Number(e.target.value))} title="Length" />}
+          <select value={evTf} onChange={e => setEvTf(e.target.value)} title="Interval">{ICT_ALERT_TFS.map(x => <option key={x} value={x}>{x}</option>)}</select>
+        </div>
+        <div className="af-row">
+          <select value={indC} onChange={e => setIndC(e.target.value as IndAlert['cond'])}><option value="crossing">Crossing</option><option value="above">Above</option><option value="below">Below</option></select>
+          {IND_TYPES.find(x => x.id === indT)!.level && <input className="af-n" type="number" value={indV} onChange={e => setIndV(Number(e.target.value))} title="Level" />}
+          <select value={indF} onChange={e => setIndF(e.target.value as IndAlert['freq'])} title="How often"><option value="once">Once</option><option value="every">Every bar it happens</option></select>
+          <button className="btn ghost sm" onClick={() => t.addAlert({ ticker: t.active.ticker, condition: 'crossing', price: 0, note: note.trim(), kind: 'indicator',
+            ind: { type: indT, n: indN, tf: evTf, cond: indC, value: indV, freq: indF } })}>Add</button>
+        </div>
         {perm !== 'granted' && <button className="btn ghost sm" onClick={async () => { try { setPerm(await Notification.requestPermission()) } catch { /* ignore */ } }}>Turn on desktop notifications</button>}
       </div>
       <AlertDelivery />
@@ -626,6 +645,7 @@ function Alerts() {
             <div>{a.kind === 'session' ? <><b>Session</b> {SESSION_ALERTS.find(w => w.key === a.session)?.label ?? a.session} <small>every day</small></>
               : a.kind === 'line' ? <><b>{a.ticker.split(':')[1]}</b> crosses trend line</>
               : a.kind === 'box' ? <><b>{a.ticker.split(':')[1]}</b> enters <b>{a.box?.bottom}–{a.box?.top}</b></>
+              : a.kind === 'indicator' && a.ind ? <><b>{a.ticker.split(':')[1]} {a.ind.tf}</b> {IND_TYPES.find(x => x.id === a.ind!.type)?.label}{a.ind.type !== 'macd' ? `(${a.ind.n})` : ''} {a.ind.cond} {IND_TYPES.find(x => x.id === a.ind!.type)?.level ? a.ind.value : a.ind.type === 'macd' ? 'signal' : a.ind.type.toUpperCase()} <small>{a.ind.freq === 'every' ? 'every time' : 'once'}</small></>
               : a.kind === 'ict' && a.ict ? <><b>{a.ticker.split(':')[1]} {a.ict.tf}</b> {ICT_ALERT_EVENTS.find(x => x.key === a.ict!.event)?.label}{a.ict.dir ? (a.ict.dir > 0 ? ' · bullish' : ' · bearish') : ''} <small>every time</small></>
               : <><b>{a.ticker.split(':')[1]}</b> {a.condition} <b>{a.price}</b></>}{a.note && <small>{a.note}</small>}
               <small>{a.active ? ((a.kind === 'session' || a.kind === 'ict') && a.triggeredAt ? `Active · last ${new Date(a.triggeredAt).toLocaleString()}` : 'Active') : a.triggeredAt ? `Triggered ${new Date(a.triggeredAt).toLocaleString()}` : 'Paused'}</small></div>

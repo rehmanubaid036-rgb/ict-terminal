@@ -37,6 +37,59 @@ ICT_TF = {"1m": ("1m", 60), "5m": ("5m", 300), "15m": ("15m", 900), "1H": ("1h",
 ICT_LAYER = {"mss": "structure", "bos": "structure", "fvg": "fvg", "sweep": "liquidity"}
 
 
+IND_NAMES = {"rsi": "RSI", "ema": "Price vs EMA", "sma": "Price vs SMA", "macd": "MACD vs signal", "stochrsi": "Stoch RSI %K"}
+
+
+def ind_series(df: pd.DataFrame, typ: str, n: int) -> tuple[pd.Series, pd.Series] | None:
+    """(line, level) of an indicator condition; the level is a constant series for RSI / Stoch RSI."""
+    c = df["close"]
+    n = max(2, int(n or 14))
+    if typ in ("rsi", "stochrsi"):
+        d = c.diff()
+        up = d.clip(lower=0).ewm(alpha=1 / n, adjust=False, min_periods=n).mean()
+        dn = (-d.clip(upper=0)).ewm(alpha=1 / n, adjust=False, min_periods=n).mean()
+        rsi = 100 - 100 / (1 + up / dn.replace(0, float("nan")))
+        rsi = rsi.where(dn != 0, 100.0)
+        if typ == "rsi":
+            return rsi, None
+        lo, hi = rsi.rolling(n).min(), rsi.rolling(n).max()
+        k = ((rsi - lo) / (hi - lo).replace(0, float("nan")) * 100).rolling(3).mean()
+        return k, None
+    if typ == "ema":
+        return c, c.ewm(span=n, adjust=False, min_periods=n).mean()
+    if typ == "sma":
+        return c, c.rolling(n).mean()
+    if typ == "macd":
+        m = c.ewm(span=12, adjust=False).mean() - c.ewm(span=26, adjust=False).mean()
+        return m, m.ewm(span=9, adjust=False).mean()
+    return None
+
+
+def ind_hit(df: pd.DataFrame, spec: dict) -> tuple[int, str] | None:
+    """(bar time, words) when the condition holds on the last CLOSED bar (crossing: it crossed on that bar)."""
+    if len(df) < 3:
+        return None
+    s = ind_series(df.iloc[:-1], spec.get("type", ""), int(spec.get("n") or 14))      # the forming bar is left out
+    if s is None:
+        return None
+    a, b = s
+    lvl = float(spec.get("value") or 0)
+    b = b if b is not None else pd.Series(lvl, index=a.index)
+    x0, x1, y0, y1 = a.iloc[-2], a.iloc[-1], b.iloc[-2], b.iloc[-1]
+    if any(pd.isna(v) for v in (x0, x1, y0, y1)):
+        return None
+    cond = spec.get("cond", "crossing")
+    hit = (x1 > y1) if cond == "above" else (x1 < y1) if cond == "below" else ((x0 - y0) * (x1 - y1) < 0 or (x0 != y0 and x1 == y1))
+    if not hit:
+        return None
+    typ = spec.get("type")
+    what = {"rsi": f"RSI({spec.get('n')}) {x1:.1f}", "stochrsi": f"Stoch RSI %K {x1:.1f}", "macd": f"MACD {x1:.4f} / signal {y1:.4f}",
+            "ema": f"price {_px(float(x1))} vs EMA({spec.get('n')}) {_px(float(y1))}", "sma": f"price {_px(float(x1))} vs SMA({spec.get('n')}) {_px(float(y1))}"}.get(typ, "")
+    word = {"above": "is above", "below": "is below"}.get(cond, "crossed")
+    target = "the signal line" if typ == "macd" else (f"the {typ.upper()}" if typ in ("ema", "sma") else _px(lvl))
+    return int(df.index[-2].timestamp()), f"{IND_NAMES.get(typ, typ)} {word} {target} ({what})"
+
+
 def _sym(ticker: str) -> str:
     return ticker.split(":")[-1]
 
@@ -256,6 +309,31 @@ class AlertWatcher:
             if self._send(email, a, last, kind, text, {"seen": last}) is None:
                 return 0
             self.store.set_alert_state(email, a["id"], seen=last)
+            return 1
+        if kind == "indicator" and ict and isinstance(a.get("ind"), dict):
+            spec = a["ind"]
+            tfl = spec.get("tf")
+            if tfl not in ICT_TF:
+                return 0
+            tf, secs = ICT_TF[tfl]
+            key = ("ind", a["ticker"], tf)
+            if key not in objs_cache:
+                try:
+                    objs_cache[key] = self.provider.bars(a["ticker"], tf, now - pd.Timedelta(seconds=300 * secs), now + pd.Timedelta(minutes=1))
+                except Exception:                    # noqa: BLE001
+                    objs_cache[key] = pd.DataFrame()
+            df = objs_cache[key]
+            hit = ind_hit(df, spec) if len(df) else None
+            if hit is None:
+                return 0
+            at, words = hit
+            seen = max(int(st.get("seen") or 0), int(spec.get("seen") or 0), armed_ms(a) // 1000 - secs)
+            if at <= seen or (spec.get("freq") != "every" and st.get("fired_ms") and st["fired_ms"] >= armed_ms(a)):
+                return 0
+            text = f"{_sym(a['ticker'])} {tfl}: {words}" + (f" - {a['note']}" if a.get("note") else "")
+            if self._send(email, a, at, kind, text, {"seen": at, "once": spec.get("freq") != "every"}) is None:
+                return 0
+            self.store.set_alert_state(email, a["id"], seen=at, fired_ms=int(time.time() * 1000))
             return 1
         return 0
 

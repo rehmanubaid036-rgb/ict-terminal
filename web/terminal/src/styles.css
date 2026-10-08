@@ -1040,3 +1040,5 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 /* object tree groups */
 .tree-sub { border-left: 2px solid var(--line2); margin: 4px 0 4px 4px; padding-left: 4px; }
 .tree-gh { background: var(--panel2); border-radius: 6px; }
+
+.af-n { width: 64px; }
