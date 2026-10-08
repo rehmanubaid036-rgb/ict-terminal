@@ -1014,3 +1014,17 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 .hk-key { border: 1px solid var(--line2); border-radius: 6px; padding: 3px 8px; background: var(--panel2); color: var(--text); text-align: center; }
 .hk-key.wait { border-color: #2962ff; color: #2962ff; }
 .hk-key em { color: var(--muted); font-style: normal; }
+
+/* MT5 / auto-trade panel */
+.mt5 { display: flex; flex-direction: column; gap: 8px; }
+.mt5-head { display: flex; align-items: center; gap: 8px; }
+.ok-pill.off { background: #787b86; }
+.mt5-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.mt5-token { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.mt5-token code { word-break: break-all; font-size: 12px; background: var(--panel2); padding: 4px 6px; border-radius: 6px; }
+.mt5-acc { border: 1px solid var(--line2); border-radius: 10px; padding: 8px; display: flex; flex-direction: column; gap: 2px; }
+.mt5-sub { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-top: 6px; }
+.mt5-row { display: grid; grid-template-columns: 38px 1fr 40px 1fr 1.6fr 60px; gap: 4px; align-items: center; font-size: 12px; padding: 3px 0;
+  border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--text); text-align: left; width: 100%; }
+.mt5 .up { color: #26a69a; } .mt5 .down { color: #ef5350; }
+.mt5-ev { font-size: 12px; border-bottom: 1px solid var(--line); padding: 2px 0; }

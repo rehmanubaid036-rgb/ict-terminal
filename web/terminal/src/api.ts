@@ -105,6 +105,15 @@ export interface SymbolInfoData {
     week: { high: number; low: number } | null; month: { high: number; low: number } | null; year: { high: number; low: number } | null; days: number
     atr14: number; adr20: number; today_vs_adr: number | null; avg_volume20: number | null; first_day: string }
 }
+export interface CopyStatus {
+  active: boolean; reason: string; models: string[]; max_mt_accounts: number; copy_enabled: boolean; multiplier: number; lot_per_1000: number
+  has_token: boolean; token_prefix: string; ea_online: boolean; last_seen: string | null; mt5_login: string; mt5_server: string
+  balance: number | null; currency: string; open_copies: number; ea_version: string
+}
+export interface Mt5Position { ticket: string; symbol: string; side: 1 | -1; volume: number; open: number; sl: number | null; tp: number | null; price: number; profit: number; swap: number; magic: string; time: number; comment: string }
+export interface Mt5Order { ticket: string; symbol: string; type: number; volume: number; price: number; sl: number | null; tp: number | null; magic: string }
+export interface Mt5Account { mt5_login: string; server: string; currency: string; balance: number | null; equity: number | null; ea_version: string; magic: string; positions: Mt5Position[]; orders: Mt5Order[]; updated_at: string }
+export interface EaEvent { id: number; mt_login: string; signal_id: number; event: string; price: number; volume: number; profit: number; detail: string; at: string }
 export interface DonationInfo { enabled: boolean; title: string; text: string; amounts: number[]; currency: string; methods: PaymentMethod[] }
 export interface AskAnswer { text: string; intent: string; data: Record<string, any>; llm: boolean; llm_by?: string }
 export interface AiSettings { enabled: boolean; provider: string; model: string; has_key: boolean; providers: { id: string; name: string }[] }
@@ -250,6 +259,12 @@ export const api = {
 
   shareSnapshot: (image: string, title: string) => post<{ id: string; url: string; image: string }>('/api/v1/snapshots', { image, title }),
   symbolInfo: (symbol: string) => get<SymbolInfoData>('/api/v1/symbol-info', { symbol }),
+  copy: {
+    get: () => get<{ copy: CopyStatus }>('/api/v1/copy/settings'),
+    save: (p: { copy_enabled?: boolean; multiplier?: number }) => post<{ copy: CopyStatus }>('/api/v1/copy/settings', p),
+    token: () => post<{ ea_token: string; copy: CopyStatus; message: string }>('/api/v1/copy/token', {}),
+  },
+  mt5State: () => get<{ accounts: Mt5Account[]; events: EaEvent[] }>('/api/v1/mt5/state'),
   donationInfo: () => get<DonationInfo>('/api/v1/donations/info'),
   donate: (d: { amount: string; method: number | null; reference: string; name: string; message: string; public: boolean; source: string }) =>
     post<{ id: number; message: string }>('/api/v1/donations', d),

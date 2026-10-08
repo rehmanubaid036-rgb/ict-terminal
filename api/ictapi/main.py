@@ -50,6 +50,7 @@ FORWARD = {
     ("GET", "alerts/settings"), ("POST", "alerts/settings"), ("POST", "alerts/test"), ("POST", "alerts/telegram"),
     ("GET", "ai/settings"), ("POST", "ai/settings"),
     ("GET", "donations/info"), ("POST", "donations"),
+    ("GET", "copy/settings"), ("POST", "copy/settings"), ("POST", "copy/token"),
 }
 # a customer's own crypto order: status, cancel, transaction hash (the panel checks ownership)
 FORWARD_PATTERNS = [("GET", re.compile(r"payments/crypto/order/\d+")),
@@ -876,6 +877,48 @@ img{{max-width:100%;height:auto;border-radius:10px;border:1px solid #232c45}}a{{
                 out.append((mid, flag.upper() == "BIAS"))
         return out
 
+    def _num(v):
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return None
+
+    def _save_ea_state(r: dict, data: dict) -> None:
+        """Keeps the account snapshot the EA sent (EA 1.11+), shown in the terminal's MT5 tab."""
+        email = (r.get("access") or {}).get("email") or ""
+        login = str(data.get("mt5_login") or "")[:20]
+        if not email or not login or "positions" not in data:
+            return
+        pos = [{"ticket": str(p.get("ticket", ""))[:24], "symbol": str(p.get("symbol", ""))[:24], "side": 1 if p.get("side") == 1 else -1,
+                **{k: _num(p.get(k)) for k in ("volume", "open", "sl", "tp", "price", "profit", "swap", "time")},
+                "magic": str(p.get("magic", ""))[:20], "comment": str(p.get("comment", ""))[:40]}
+               for p in (data.get("positions") or [])[:50] if isinstance(p, dict)]
+        orders = [{"ticket": str(o.get("ticket", ""))[:24], "symbol": str(o.get("symbol", ""))[:24], "type": int(_num(o.get("type")) or 0),
+                   **{k: _num(o.get(k)) for k in ("volume", "price", "sl", "tp")}, "magic": str(o.get("magic", ""))[:20]}
+                  for o in (data.get("orders") or [])[:50] if isinstance(o, dict)]
+        store.set_ea_state(email, login, {"server": str(data.get("mt5_server") or "")[:80], "currency": str(data.get("currency") or "")[:8],
+                                          "balance": _num(data.get("balance")), "equity": _num(data.get("equity")),
+                                          "ea_version": str(data.get("ea_version") or "")[:20], "magic": str(data.get("magic") or "")[:20],
+                                          "positions": pos, "orders": orders})
+
+    EA_FILES = {"ICT_Bridge.mq5", "ICT_Json.mqh"}
+
+    @app.get("/api/v1/ea/download/{name}")
+    def ea_download(name: str):
+        """The ICT Bridge EA source (open it in MetaEditor and press Compile)."""
+        from pathlib import Path as _P
+        from fastapi.responses import FileResponse
+        f = _P(__file__).resolve().parents[2] / "ea" / "mt5" / name
+        if name not in EA_FILES or not f.exists():
+            raise HTTPException(404, "No such file.")
+        return FileResponse(f, media_type="text/plain", filename=name)
+
+    @app.get("/api/v1/mt5/state")
+    def mt5_state(a: dict = Depends(logged_in)):
+        """The user's MT5 accounts as their ICT Bridge EA last reported them, and the EA's recent trade events."""
+        user = _owner(a)
+        return {"accounts": store.ea_states(user), "events": store.ea_events(user, limit=50)}
+
     @app.post("/api/v1/ea/feed")
     async def ea_feed(request: Request):
         """The EA's poll: check-in (login, balance, ...) and the signals it may trade right now."""
@@ -891,6 +934,7 @@ img{{max-width:100%;height:auto;border-radius:10px;border:1px solid #232c45}}a{{
         if not r.get("copy"):
             return JSONResponse(status_code=401, content=base)
         copy = r["copy"]
+        _save_ea_state(r, data)
         if not r.get("valid") or not copy.get("active"):
             return {**base, "reason": copy.get("reason") or r.get("reason", "")}
         models = _ea_models(copy.get("models") or [])

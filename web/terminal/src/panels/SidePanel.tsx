@@ -1,3 +1,4 @@
+import { Mt5Panel } from './Mt5Panel'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Overlay } from 'klinecharts'
 import { useTerminal } from '../Terminal'
@@ -11,12 +12,13 @@ import { JournalView, StatsView, EngineView } from './BottomPanel'
 import { CalendarPanel, NewsPanel } from './MarketPanels'
 import { TradePanel } from './Paper'
 
-export type SideTab = 'trade' | 'calendar' | 'news' | 'watchlist' | 'signals' | 'assistant' | 'alerts' | 'objects' | 'data' | 'info' | 'journal'
+export type SideTab = 'trade' | 'calendar' | 'news' | 'watchlist' | 'signals' | 'assistant' | 'alerts' | 'objects' | 'data' | 'info' | 'mt5' | 'journal'
 
 const TABS: { id: SideTab; icon: string; label: string; phoneOnly?: boolean }[] = [
   { id: 'watchlist', icon: 'list', label: 'Watchlist' },
   { id: 'signals', icon: 'target', label: 'Signals' },
   { id: 'trade', icon: 'long', label: 'Trade (paper)' },
+  { id: 'mt5', icon: 'sync', label: 'MT5 / Auto-trade' },
   { id: 'assistant', icon: 'spark', label: 'AI assistant' },
   { id: 'alerts', icon: 'bell', label: 'Alerts' },
   { id: 'calendar', icon: 'calendar', label: 'Calendar' },
@@ -51,6 +53,7 @@ export function SidePanel() {
             {tab === 'objects' && <ObjectTree />}
             {tab === 'data' && <DataWindow />}
             {tab === 'info' && <SymbolInfo />}
+            {tab === 'mt5' && <Mt5Panel />}
             {tab === 'journal' && <PhoneJournal />}
           </div>
         </div>

@@ -88,6 +88,7 @@ It covers what was built, how to build and test it, and what is still open.
 | Share a chart picture | Camera button > Copy a share link (also in the right-click menu and as a hotkey). POST `/api/v1/snapshots` (PNG / JPEG data URL, 3 MB, 40 a day per user) saves `data/snapshots/<id>.png`; `/api/v1/snapshots/<id>` is a public page with og:image for chat previews, `<id>.png` the picture; the owner can list and delete them |
 | Symbol info | Right rail > Symbol info (`?tab=info`): description, type, feed symbol, tick size, trading hours, whether the engine watches it live, SMT partner (click to open), today's change / range vs ADR, ATR 14, ADR 20, average volume, week / month / 52-week ranges with the position in them (`/api/v1/symbol-info`, from daily bars) |
 | Seconds charts | 1s / 5s / 15s / 30s (any 1-59 s in the interval box, e.g. `10s`). Resolutions `<n>S`; MT5 feeds build them from ticks (`mt5.ticks` -> `ticks_to_bars`, asked in the server clock, last 6 h, up to 300k ticks, not cached); Binance uses its 1s klines. Spread symbols work on seconds too; ICT chart layers work (time layers do not) |
+| MT5 / Auto-trade tab | Auto-trading ON / OFF and lot multiplier (`copy/settings`), EA token (`copy/token`, shown once), EA files (`/api/v1/ea/download/ICT_Bridge.mq5`, `ICT_Json.mqh`) and install steps. EA 1.11 sends equity, open positions and pending orders with every poll; `/api/v1/mt5/state` returns them (table `ea_state`) with the EA trade log. Positions are listed with P/L and drawn as entry / SL / TP lines on charts of the same symbol (broker suffixes removed) |
 | Volume profiles | Visible range (VPVR), Session Volume Profile `SVP` (Asia / London / New York or per day, POC + value area) and the Fixed range volume profile drawing (POC, VAH, VAL) - `src/chart/volprofile.ts` |
 | Price scale | Right-click the price scale: Auto (fit), Lock range, Lock price / bar, Regular / Log / Percent, Invert, scale left / right. The lock is saved with the chart (`scaleLock`, a KLineChart `createRange`) |
 | Layouts | 1-8 charts (1, 2 side / stacked, 3, 4, 5, 6, 7, 8); the plan's "Charts per layout" (admin, 1-8) limits them; tablets in portrait show 5-8 charts in two columns, phones 2 x 4; indicator panes size to the chart |
@@ -97,8 +98,7 @@ It covers what was built, how to build and test it, and what is still open.
 | Templates | Top bar Templates: shared chart setups; the default one greets new users; admins save / set default (`/api/v1/templates`, `maketemplate.bat`) |
 | Other | Dark / light theme, keyboard shortcuts (letters = symbol search, digits = interval, Alt+T/H/J/V/F/R tools, Alt+A alert, Alt+S screenshot, Ctrl+Z/Y, Del, Esc), screenshot, full screen, phone layout (tool sheets, bottom tab bar, bottom sheets, one chart at a time with chips) |
 
-Not built yet (plan items): MT5 positions/orders panel and trade panel (no read API for EA data),
-Urdu UI language,
+Not built yet (plan items): Urdu UI language,
 WebSocket streaming (the API has no `/ws`; the terminal polls).
 
 ## Build

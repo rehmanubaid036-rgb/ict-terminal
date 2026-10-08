@@ -85,6 +85,13 @@ CREATE TABLE IF NOT EXISTS screener (      -- one row per symbol, written by the
     data       TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS ea_state (      -- the latest account snapshot each EA sends (positions, orders)
+    user       TEXT NOT NULL,
+    mt5_login  TEXT NOT NULL,
+    data       TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (user, mt5_login)
+);
 CREATE TABLE IF NOT EXISTS snapshots (     -- chart pictures shared by link (files in data/snapshots)
     id         TEXT PRIMARY KEY,
     user       TEXT NOT NULL,
@@ -354,6 +361,18 @@ class Store:
     def delete_layout(self, user: str, name: str) -> bool:
         with self._conn() as c:
             return c.execute("DELETE FROM layouts WHERE user = ? AND name = ?", (user, name)).rowcount > 0
+
+    # ---- MT5 accounts seen through the EA ---------------------------------------------------------
+    def set_ea_state(self, user: str, login: str, data: dict) -> None:
+        with self._conn() as c:
+            c.execute("INSERT INTO ea_state (user, mt5_login, data, updated_at) VALUES (?, ?, ?, ?) "
+                      "ON CONFLICT (user, mt5_login) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at",
+                      (user, login, json.dumps(data), pd.Timestamp.now(tz="UTC").isoformat()))
+
+    def ea_states(self, user: str) -> list[dict]:
+        with self._conn() as c:
+            rows = c.execute("SELECT mt5_login, data, updated_at FROM ea_state WHERE user = ? ORDER BY updated_at DESC", (user,)).fetchall()
+        return [{"mt5_login": r["mt5_login"], **json.loads(r["data"]), "updated_at": r["updated_at"]} for r in rows]
 
     # ---- shared chart pictures ------------------------------------------------------------------
     @property

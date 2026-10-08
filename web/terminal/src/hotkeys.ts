@@ -21,6 +21,7 @@ export const HOTKEY_ACTIONS: HotkeyAction[] = [
   { id: 'side:alerts', label: 'Alerts panel', group: 'Windows', def: '' },
   { id: 'side:objects', label: 'Object tree', group: 'Windows', def: '' },
   { id: 'side:info', label: 'Symbol info', group: 'Windows', def: '' },
+  { id: 'side:mt5', label: 'MT5 / Auto-trade panel', group: 'Windows', def: '' },
   ...TF_KEYS.map(tf => ({ id: 'tf:' + tf, label: 'Interval ' + tf, group: 'Intervals', def: '' })),
   ...ALL_TOOLS.map(x => ({ id: 'tool:' + x.id, label: x.label, group: 'Drawing tools', def: x.hotkey ?? '' })),
 ]

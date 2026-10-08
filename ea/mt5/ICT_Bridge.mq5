@@ -22,13 +22,13 @@
 //|  is closed at its exit time. Risk per signal = InpRiskPercent.    |
 //+------------------------------------------------------------------+
 #property copyright "ICT Terminal"
-#property version   "1.10"
+#property version   "1.11"
 #property strict
 
 #include <Trade/Trade.mqh>
 #include "ICT_Json.mqh"
 
-#define EA_VERSION "1.10"
+#define EA_VERSION "1.11"
 #define TAG        "ICT#"
 #define MAX_LEGS   3
 #define MAX_TARGETS 6
@@ -135,15 +135,67 @@ void OnTimer()
 }
 
 //+------------------------------------------------------------------+
+//| The account's open positions / pending orders as JSON (max 50)    |
+//+------------------------------------------------------------------+
+long ServerMinusUtc() { return (long)(TimeTradeServer() - TimeGMT()); }
+
+string PositionsJson()
+{
+   string out = "";
+   int n = 0;
+   long off = ServerMinusUtc();
+   for(int p = PositionsTotal() - 1; p >= 0 && n < 50; p--)
+   {
+      ulong ticket = PositionGetTicket(p);
+      if(ticket == 0 || !PositionSelectByTicket(ticket)) continue;
+      string sym = PositionGetString(POSITION_SYMBOL);
+      int dg = (int)SymbolInfoInteger(sym, SYMBOL_DIGITS);
+      out += (n > 0 ? "," : "") + StringFormat(
+         "{\"ticket\":%I64u,\"symbol\":\"%s\",\"side\":%d,\"volume\":%.2f,\"open\":%s,\"sl\":%s,\"tp\":%s,\"price\":%s,"
+         "\"profit\":%.2f,\"swap\":%.2f,\"magic\":%I64d,\"time\":%I64d,\"comment\":\"%s\"}",
+         ticket, JsonEscape(sym), PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY ? 1 : -1, PositionGetDouble(POSITION_VOLUME),
+         DoubleToString(PositionGetDouble(POSITION_PRICE_OPEN), dg), DoubleToString(PositionGetDouble(POSITION_SL), dg),
+         DoubleToString(PositionGetDouble(POSITION_TP), dg), DoubleToString(PositionGetDouble(POSITION_PRICE_CURRENT), dg),
+         PositionGetDouble(POSITION_PROFIT), PositionGetDouble(POSITION_SWAP), PositionGetInteger(POSITION_MAGIC),
+         (long)PositionGetInteger(POSITION_TIME) - off, JsonEscape(PositionGetString(POSITION_COMMENT)));
+      n++;
+   }
+   return out;
+}
+
+string OrdersJson()
+{
+   string out = "";
+   int n = 0;
+   for(int i = OrdersTotal() - 1; i >= 0 && n < 50; i--)
+   {
+      ulong ticket = OrderGetTicket(i);
+      if(ticket == 0) continue;
+      string sym = OrderGetString(ORDER_SYMBOL);
+      int dg = (int)SymbolInfoInteger(sym, SYMBOL_DIGITS);
+      out += (n > 0 ? "," : "") + StringFormat(
+         "{\"ticket\":%I64u,\"symbol\":\"%s\",\"type\":%d,\"volume\":%.2f,\"price\":%s,\"sl\":%s,\"tp\":%s,\"magic\":%I64d}",
+         ticket, JsonEscape(sym), (int)OrderGetInteger(ORDER_TYPE), OrderGetDouble(ORDER_VOLUME_CURRENT),
+         DoubleToString(OrderGetDouble(ORDER_PRICE_OPEN), dg), DoubleToString(OrderGetDouble(ORDER_SL), dg),
+         DoubleToString(OrderGetDouble(ORDER_TP), dg), OrderGetInteger(ORDER_MAGIC));
+      n++;
+   }
+   return out;
+}
+
+//+------------------------------------------------------------------+
 //| Server: check in and receive the signals we may trade             |
 //+------------------------------------------------------------------+
 void Poll()
 {
+   // the account, its positions and pending orders go along, so the terminal can show them (MT5 tab)
    string body = StringFormat("{\"ea_token\":\"%s\",\"mt5_login\":\"%I64d\",\"mt5_server\":\"%s\",\"balance\":%.2f,"
-                              "\"currency\":\"%s\",\"ea_version\":\"%s\",\"open_copies\":%d}",
+                              "\"currency\":\"%s\",\"ea_version\":\"%s\",\"open_copies\":%d,\"equity\":%.2f,"
+                              "\"magic\":%I64d,\"positions\":[%s],\"orders\":[%s]}",
                               JsonEscape(InpEaToken), AccountInfoInteger(ACCOUNT_LOGIN),
                               JsonEscape(AccountInfoString(ACCOUNT_SERVER)), AccountInfoDouble(ACCOUNT_BALANCE),
-                              AccountInfoString(ACCOUNT_CURRENCY), EA_VERSION, OpenSignalCount());
+                              AccountInfoString(ACCOUNT_CURRENCY), EA_VERSION, OpenSignalCount(),
+                              AccountInfoDouble(ACCOUNT_EQUITY), InpMagic, PositionsJson(), OrdersJson());
    string resp; int code;
    if(!HttpPost(InpServerURL + "/api/v1/ea/feed", body, resp, code))
       return;                                    // offline: existing trades keep their SL / TP at the broker

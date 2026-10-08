@@ -83,3 +83,19 @@ def test_reports_are_stored(ea):
     rows = store.ea_events("pro@x.com")
     assert [x["event"] for x in rows] == ["tp", "filled"] and rows[0]["mt_login"] == "123"
     assert client.post("/api/v1/ea/report", json={"ea_token": "nope", "events": events}).status_code == 401
+
+
+def test_account_snapshot_for_the_terminal(ea):
+    client, store, _ = ea
+    body = {"ea_token": "waiting", "mt5_login": "555", "balance": 1000, "equity": 1012.5, "currency": "USD", "ea_version": "1.11",
+            "positions": [{"ticket": 9, "symbol": "XAUUSD.pro", "side": 1, "volume": 0.1, "open": "4000.10", "sl": "3990", "tp": "4020",
+                           "price": "4001.3", "profit": 12.5, "magic": 7740001, "time": 1791381000},
+                          "junk"],
+            "orders": [{"ticket": 10, "symbol": "NAS100", "type": 2, "volume": 1, "price": "25000", "sl": "0", "tp": "0"}]}
+    client.post("/api/v1/ea/feed", json=body)      # not trading still stores the account view
+    s = store.ea_states("p@x.com")
+    assert s[0]["mt5_login"] == "555" and s[0]["equity"] == 1012.5
+    assert s[0]["positions"][0]["open"] == 4000.1 and s[0]["positions"][0]["side"] == 1 and len(s[0]["positions"]) == 1
+    assert s[0]["orders"][0]["type"] == 2
+    client.post("/api/v1/ea/feed", json={"ea_token": "waiting", "mt5_login": "555", "balance": 1000})   # an old EA: kept as it was
+    assert store.ea_states("p@x.com")[0]["equity"] == 1012.5
