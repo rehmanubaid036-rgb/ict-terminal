@@ -71,3 +71,23 @@ history list), so it trades at most two or three events a month.
 
 The audit scripts are short Python scripts run against `data/mt5/axi/<SYMBOL>/*.pkl`; see
 `engine/scripts/backtest.py` for the full backtest (per model, with and without the bias filter).
+
+
+## M17 rebuilt from the PDF (2026-10-08)
+
+The user asked to delete M17 and build it again exactly as the PDF, with nothing added. Removed: the 22:30
+time exit, the 1R minimum (and the leg rule tied to it), the daily bias, the minimum FVG size, the 10-bar FVG
+delay, the 90-bar look-back, spread on the stop, and "20 handles = 10 x min FVG" (now 20 points / pips as the
+PDF says). The last opposite leg now runs from the highest high since the previous lower low to the low, which
+gives the PDF's own example exactly (0 = 18,565.75, 1 = 18,534, -1 SD = 18,597.50 as on page 2).
+
+Axi 1m, last 14 months, spread charged:
+
+| | Signals | Win rate | Total R | Profit factor |
+|---|---|---|---|---|
+| NAS100 old | 604 | 32.2% | -68.9 | 0.78 |
+| NAS100 PDF | 605 | 29.1% | -46.1 | 0.87 |
+| US500 old | 600 | 34.4% | -103.4 | 0.66 |
+| US500 PDF | 603 | 30.8% | -139.7 | 0.64 |
+
+Neither version has an edge on this data; most PDF signals grade B (the NDOG is rarely over 20 handles).

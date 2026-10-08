@@ -72,7 +72,7 @@ def test_entry_stop_and_sd_targets_follow_the_pdf(sig):
     n = sig.notes
     assert n["mss_level"] == 18540.5 and "19:00" in pd.Timestamp(n["mss_time"]).tz_convert(NY).strftime("%H:%M")
     assert sig.entry == pytest.approx((18539.5 + 18546) / 2)     # CE of the BISI (18:59 high - 19:01 low)
-    assert sig.stop == pytest.approx((18534 + 18536) / 2 - 1.5)  # wick C.E of the low candle - spread
+    assert sig.stop == pytest.approx((18534 + 18536) / 2)        # "Wick C.E" of the low candle (no spread: not in the PDF)
     # PDF: the last opposite leg 18565.75 -> 18534, targets at -1 / -1.25 / -1.5 SD, half at -1
     assert n["fib"]["0"] == 18565.75 and n["fib"]["1"] == 18534
     assert [round(p, 4) for p, _ in sig.targets] == [18597.5, 18605.4375, 18613.375]
@@ -102,3 +102,26 @@ def test_no_trade_outside_the_window():
 
 def test_only_the_pdf_markets():
     assert wa.scan(Context("XAUUSD", ict_example())) == []
+
+
+def test_nothing_the_pdf_does_not_have(sig):
+    """Rebuilt from the PDF only: no time exit, no daily bias, the stop is the Wick C.E itself."""
+    assert sig.exit_by is None
+    assert "with_daily_bias" not in sig.checklist and "bias_score" not in sig.notes
+    assert set(wa.WolfConfig().__dataclass_fields__) == {"window_start", "window_end", "ndog_handles", "sd_targets", "sd_split", "symbols"}
+
+
+def test_20_handles_and_breakaway_stop():
+    """p.1 over 20 handles marks the NDOG CE; p.2 a breakaway move through it puts the stop at that CE."""
+    df = ict_example()
+    t18 = pd.Timestamp("2024-08-08 18:00", tz=NY).tz_convert("UTC")
+    before = df.index[df.index < t18 - pd.Timedelta(hours=1)][-1]
+    df.loc[before, "close"] = 18520.0                       # 16:59 close 18520, 18:00 open 18550: a 30-handle NDOG
+    df.loc[before, "low"] = min(df.loc[before, "low"], 18520.0)
+    s = [x for x in wa.scan(Context("NAS100", df)) if x.direction == 1 and x.created_time >= EVENING]
+    assert len(s) == 1
+    n = s[0].notes
+    assert n["ndog"]["significant"] is True and n["ndog"]["ce"] == 18535.0
+    # the low (18534) is under the NDOG high (18550) but the MSS candle closes at 18547: not through the gap
+    assert n["stop_mode"] == "wick_ce"
+    assert s[0].checklist["ndog_over_20_handles"] is True

@@ -16,45 +16,16 @@ It covers what was built, how to build and test it, and what is still open.
 3. **API** (`api/ictapi/main.py`): the customer's crypto order status / cancel / txid calls are now
    forwarded to the admin panel (`FORWARD_PATTERNS`). Needs an API restart to take effect.
 
-4. **New model M17 · Wolf Asia Session (NDOG)** (`engine/ictengine/models/wolf_asia.py`, registered in
-   `models/registry.py`), from the user's PDF "Asia Session Model for Indices NQ/ES" (TheWolfTrades notes).
-   NAS100, US500, EURUSD, GBPUSD only. NDOG (17:00 close → 18:00 open) and its CE, initial BSL/SSL of
-   18:00–19:00, trades 19:00–21:00 NY: raid → MSS/displacement → FVG CE entry, stop beyond the raid (or the
-   NDOG CE), targets 1 / 1.25 / 1.5 standard deviations of the opposite leg (50/25/25). Plans with
-   `allowed_models = all` get it automatically; the terminal labels it "M17 Wolf" and draws it on 1m charts
-   only (NDOG + CE, initial BSL/SSL, SD levels, wick CE). The engine runner and API pick it up after an ICT
-   restart. As in the PDF only the initial BSL/SSL and session levels count as raided liquidity
-   (`raid_timeframes=()`). Back to the user's earlier setting (commit 381b7fa: stop at the wick CE, NDOG CE
-   when significant) with the PDF targets: the opposite leg's -1 SD (TP1, 50%), -1.25 SD (TP2, 25%) and -1.5 SD
-   (TP3, 25%); the previous session's 15:30-16:00 high / low is drawn for reference only. The chart draws the
-   SD tool (0, 1, -1, -1.25, -1.5) as in the PDF. Checked on Dukascopy NAS100 1m, 15 Jul - 29 Aug 2024: 13 filled trades,
-   53.8% wins, +3.1R, PF 1.53, max drawdown 2.3R (small sample). Against the PDF journal (18-26 Aug) it takes
-   the 18-08 short, no trade on 19-08, the 20-08 long and a late 25-08 long; the journal is partly
-   discretionary.
-5. **ICT Bridge EA 1.10** (`ea/mt5/ICT_Bridge.mq5`): `InpExitMode` = Partial (default: one position, the EA
-   closes each target's share - the signal's split or `InpPartials`, e.g. `50,20,15,15` - and the final target
-   is the TP at the broker; any number of targets) or Legs (the 1.00 behaviour, max 3). `InpBreakevenAtTP1`.
-   Trailing: after `InpTrailStartR` (1R) the stop keeps `InpTrailLockPct` (50%) of the best open profit and
-   only moves forward, in steps of at least 0.1R. Trades are managed every second. The state file stays
-   readable: signals opened by 1.00 keep their legs and breakeven. Not compiled here (no MetaEditor):
-   compile it in MetaEditor on the VPS and check the Journal / Experts tab.
-6. **Guest login** (admin panel migration 0003): see the commit "Login as guest".
-7. **Models brought to the rulebook (plan PDF section 4)** - engine only, the API / terminal pick them up after
-   an ICT restart:
-   - M1 Silver Bullet: MSS with displacement only; stop 1 tick beyond the sweep wick (+ spread for a short);
-     TP1 nearest internal liquidity (>= 1R and the symbol's `min_target`: indices ~10 pts, FX ~15 pips),
-     TP2 next liquidity or an opposing 5m/15m FVG CE, TP3 the draw on liquidity; M8 Power of 3 adds +1.
-   - All `build_signal` models: section 7 confluence grade (A+ >= 8, A 6-7, B < 6), premium / discount
-     required, `cancel_if_close_beyond` (body close through the FVG before the fill) and `be_offset` notes,
-     applied by the backtest simulator and the terminal journal.
-   - Bias: Midnight Open filter as a fifth component (threshold stays 2; the rulebook's [DEFAULT] 3 set a
-     bias on 4 of 60 NAS100 days).
-   - M3 NY window 08:30-10:00 + Power of 3 boost; M4 targets -0.5 / -1 / -2 fib extensions; M5 rebuilt
-     (`models/asian_q2.py`: Q1 raid into a 15m/1H/4H FVG, Q2 True Open / Q1 / 1H array targets 50/30/20);
-     M6 NAS100/US500 window 20:45-22:15; M14 only after the morning's draw on liquidity was hit, trading
-     against it; M15 targets CBDR / Asian range SD -2 / -3 / -4; M10 FOMC days: exit and expiry moved to
-     13:55 (`news.fomc_flat`, applied by the runner).
-   - Not changed: M9 stays the simplified Market Maker model (the rulebook marks the staged model Phase 2).
+4. **Model M17 · Wolf Asia Session (NDOG)** (`engine/ictengine/models/wolf_asia.py`), rebuilt on 2026-10-08
+   strictly from the PDF "ASIA SESSION MODEL FOR INDICIES NQ/ES" (TheWolfTrades): NAS100, US500, EURUSD,
+   GBPUSD. NDOG 17:00 close → 18:00 open, over 20 handles (points / pips) its CE is marked; initial BSL / SSL of
+   18:00-19:00; trades 19:00-21:00 NY only ("time first"); low → MSS → BISI of the displacement, entry at the
+   BISI's middle, stop at the Wick C.E of the low candle (NDOG CE on a breakaway through a marked NDOG);
+   targets -1 SD (half), -1.25 SD, -1.5 SD of the last opposite leg (from the highest high since the previous
+   lower low to the low). Removed because the PDF does not have them: the 22:30 time exit, the 1R minimum,
+   the daily bias, a minimum FVG size, spread on the stop. Grade: A+ = NDOG over 20 + initial liquidity taken +
+   breakaway, A = two of them, B = fewer. The terminal draws it on 1m charts (NDOG + CE, initial BSL/SSL,
+   SD levels, wick CE).
 
 ## Features (plan section 5)
 
