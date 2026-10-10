@@ -179,8 +179,10 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
     window.addEventListener('ict:riskcalc', risk)
     const tb = (e: Event) => setState(s => ({ ...s, chart: { ...s.chart, tradeButtons: !!(e as CustomEvent).detail } }))
     window.addEventListener('ict:tradebuttons', tb)
+    const ot = (e: Event) => setSideTab((e as CustomEvent).detail as SideTab)
+    window.addEventListener('ict:open-tab', ot)
     window.addEventListener('keydown', key)
-    return () => { window.removeEventListener('ict:goto-ask', ask); window.removeEventListener('ict:riskcalc', risk); window.removeEventListener('ict:tradebuttons', tb); window.removeEventListener('keydown', key) }
+    return () => { window.removeEventListener('ict:goto-ask', ask); window.removeEventListener('ict:riskcalc', risk); window.removeEventListener('ict:tradebuttons', tb); window.removeEventListener('ict:open-tab', ot); window.removeEventListener('keydown', key) }
   }, [])
   // phones: all the layout's charts on screen (stacked / 2x2), or one at a time with chips
   const [phoneAll, setPhoneAllState] = useState(() => localStorage.getItem('ict.phoneAll') !== '0')

@@ -22,13 +22,13 @@
 //|  is closed at its exit time. Risk per signal = InpRiskPercent.    |
 //+------------------------------------------------------------------+
 #property copyright "ICT Terminal"
-#property version   "1.12"
+#property version   "1.13"
 #property strict
 
 #include <Trade/Trade.mqh>
 #include "ICT_Json.mqh"
 
-#define EA_VERSION "1.12"
+#define EA_VERSION "1.13"
 #define TAG        "ICT#"
 #define MAX_LEGS   3
 #define MAX_TARGETS 6
@@ -48,7 +48,7 @@ input double InpMaxLot          = 5.0;     // Never more than this lot in total 
 input bool   InpAllowMinLot     = false;   // If the risk lot is below the broker minimum, trade the minimum anyway
 input string InpSymbolSuffix    = "";      // Your broker's symbol suffix, e.g. ".pro" (empty = auto)
 input string InpSymbolMap       = "";      // Different names, e.g. NAS100=USTEC;US500=SPX500 (empty = auto)
-input int    InpPollSeconds     = 5;       // How often to ask the server (seconds)
+input int    InpPollSeconds     = 2;       // How often to ask the server (seconds; manual orders from the terminal arrive this fast)
 input int    InpSlippagePoints  = 30;      // Max slippage for market entries (points)
 input long   InpMagic           = 7740001; // Magic number of this EA's trades
 input ENUM_ICT_EXIT InpExitMode = EXIT_PARTIAL; // How targets are taken
@@ -130,7 +130,7 @@ void OnTimer()
 {
    // trades are managed every second; the server is asked every InpPollSeconds
    static datetime lastPoll = 0;
-   if(TimeLocal() - lastPoll >= MathMax(2, InpPollSeconds))
+   if(TimeLocal() - lastPoll >= MathMax(1, InpPollSeconds))
    {
       lastPoll = TimeLocal();
       Poll();
@@ -195,13 +195,16 @@ string OrdersJson()
 void Poll()
 {
    // the account, its positions and pending orders go along, so the terminal can show them (MT5 tab)
+   long mode = AccountInfoInteger(ACCOUNT_TRADE_MODE);
    string body = StringFormat("{\"ea_token\":\"%s\",\"mt5_login\":\"%I64d\",\"mt5_server\":\"%s\",\"balance\":%.2f,"
                               "\"currency\":\"%s\",\"ea_version\":\"%s\",\"open_copies\":%d,\"equity\":%.2f,"
-                              "\"magic\":%I64d,\"positions\":[%s],\"orders\":[%s]}",
+                              "\"magic\":%I64d,\"trade_mode\":\"%s\",\"leverage\":%I64d,\"positions\":[%s],\"orders\":[%s]}",
                               JsonEscape(InpEaToken), AccountInfoInteger(ACCOUNT_LOGIN),
                               JsonEscape(AccountInfoString(ACCOUNT_SERVER)), AccountInfoDouble(ACCOUNT_BALANCE),
                               AccountInfoString(ACCOUNT_CURRENCY), EA_VERSION, OpenSignalCount(),
-                              AccountInfoDouble(ACCOUNT_EQUITY), InpMagic, PositionsJson(), OrdersJson());
+                              AccountInfoDouble(ACCOUNT_EQUITY), InpMagic,
+                              mode == ACCOUNT_TRADE_MODE_REAL ? "real" : mode == ACCOUNT_TRADE_MODE_CONTEST ? "contest" : "demo",
+                              AccountInfoInteger(ACCOUNT_LEVERAGE), PositionsJson(), OrdersJson());
    string resp; int code;
    if(!HttpPost(InpServerURL + "/api/v1/ea/feed", body, resp, code))
       return;                                    // offline: existing trades keep their SL / TP at the broker
@@ -228,6 +231,7 @@ void Poll()
    double userLoss = JsonNumber(resp, "user_max_daily_loss", 0);
    g_maxLossPct = (userLoss > 0 && userLoss <= 50) ? userLoss : InpMaxDailyLossPct;
    g_status = g_active ? "Auto-trading" : "Connected (not trading)";
+   RunCommands(resp);                           // manual orders from the terminal (1.13), whatever the switch says
    if(!g_active)
       return;
 
@@ -746,6 +750,154 @@ void LoadStates()
       g_states[n] = s;
    }
    FileClose(h);
+}
+
+//+------------------------------------------------------------------+
+//| Manual trading from the terminal (EA 1.13): one command at a time |
+//+------------------------------------------------------------------+
+void CmdEvent(long id, bool ok, ulong ticket, double price, double volume, string detail)
+{
+   PrintFormat("ICT Bridge: command %I64d %s %s", id, ok ? "done" : "error", detail);
+   int n = ArraySize(g_events);
+   ArrayResize(g_events, n + 1);
+   g_events[n] = StringFormat("{\"command_id\":%I64d,\"event\":\"%s\",\"ticket\":%I64u,\"price\":%.8f,\"volume\":%.2f,"
+                              "\"profit\":0,\"detail\":\"%s\",\"at\":\"%s\"}", id, ok ? "done" : "error", ticket, price, volume,
+                              JsonEscape(detail), TimeToString(TimeGMT(), TIME_DATE | TIME_SECONDS));
+}
+
+void RunCommands(const string resp)
+{
+   string objs[];
+   int n = JsonObjects(JsonArrayText(resp, "commands"), objs);
+   for(int i = 0; i < n; i++)
+   {
+      long id = (long)JsonNumber(objs[i], "id", 0);
+      if(id <= 0) continue;
+      string kind = JsonString(objs[i], "kind");
+      if(kind == "order")          CmdOrder(id, objs[i]);
+      else if(kind == "modify")    CmdModify(id, objs[i]);
+      else if(kind == "close")     CmdClose(id, objs[i]);
+      else if(kind == "cancel")    CmdCancel(id, objs[i]);
+      else if(kind == "close_all") CmdCloseAll(id);
+      else CmdEvent(id, false, 0, 0, 0, "unknown command " + kind);
+   }
+   if(n > 0) FlushReports();
+}
+
+void CmdOrder(long id, const string obj)
+{
+   string engine = JsonString(obj, "symbol");
+   string sym = ResolveSymbol(engine);
+   int side = (int)JsonNumber(obj, "side", 0);
+   string type = JsonString(obj, "type");
+   double lot = NormalizeDouble(JsonNumber(obj, "volume", 0), 2);
+   double price = JsonNumber(obj, "price", 0), sl = JsonNumber(obj, "sl", 0), tp = JsonNumber(obj, "tp", 0);
+   string comment = JsonString(obj, "comment");
+   if(sym == "" || (side != 1 && side != -1) || lot <= 0)
+   {
+      CmdEvent(id, false, 0, 0, 0, "symbol " + engine + " not found on this broker, or a bad side / volume");
+      return;
+   }
+   int dg = (int)SymbolInfoInteger(sym, SYMBOL_DIGITS);
+   double minLot = SymbolInfoDouble(sym, SYMBOL_VOLUME_MIN), maxLot = SymbolInfoDouble(sym, SYMBOL_VOLUME_MAX);
+   double step = SymbolInfoDouble(sym, SYMBOL_VOLUME_STEP);
+   if(step > 0) lot = MathFloor(lot / step + 1e-9) * step;
+   if(lot < minLot || lot > maxLot)
+   {
+      CmdEvent(id, false, 0, 0, lot, StringFormat("volume must be between %.2f and %.2f lots", minLot, maxLot));
+      return;
+   }
+   sl = sl > 0 ? NormalizeDouble(sl, dg) : 0;
+   tp = tp > 0 ? NormalizeDouble(tp, dg) : 0;
+   price = NormalizeDouble(price, dg);
+   trade.SetTypeFillingBySymbol(sym);
+   bool ok;
+   if(type == "market")
+      ok = side == 1 ? trade.Buy(lot, sym, 0, sl, tp, comment) : trade.Sell(lot, sym, 0, sl, tp, comment);
+   else if(type == "limit")
+      ok = side == 1 ? trade.BuyLimit(lot, price, sym, sl, tp, ORDER_TIME_GTC, 0, comment) : trade.SellLimit(lot, price, sym, sl, tp, ORDER_TIME_GTC, 0, comment);
+   else if(type == "stop")
+      ok = side == 1 ? trade.BuyStop(lot, price, sym, sl, tp, ORDER_TIME_GTC, 0, comment) : trade.SellStop(lot, price, sym, sl, tp, ORDER_TIME_GTC, 0, comment);
+   else { CmdEvent(id, false, 0, 0, 0, "unknown order type " + type); return; }
+   if(ok)
+      CmdEvent(id, true, trade.ResultOrder(), trade.ResultPrice() > 0 ? trade.ResultPrice() : price, trade.ResultVolume() > 0 ? trade.ResultVolume() : lot,
+               StringFormat("%s %s %.2f %s", side == 1 ? "buy" : "sell", type, lot, sym));
+   else
+      CmdEvent(id, false, 0, price, lot, trade.ResultRetcodeDescription());
+}
+
+void CmdModify(long id, const string obj)
+{
+   ulong ticket = (ulong)JsonNumber(obj, "ticket", 0);
+   double sl = JsonNumber(obj, "sl", -1), tp = JsonNumber(obj, "tp", -1), price = JsonNumber(obj, "price", 0);
+   if(PositionSelectByTicket(ticket))
+   {
+      string sym = PositionGetString(POSITION_SYMBOL);
+      int dg = (int)SymbolInfoInteger(sym, SYMBOL_DIGITS);
+      double nsl = sl >= 0 ? NormalizeDouble(sl, dg) : PositionGetDouble(POSITION_SL);
+      double ntp = tp >= 0 ? NormalizeDouble(tp, dg) : PositionGetDouble(POSITION_TP);
+      if(trade.PositionModify(ticket, nsl, ntp))
+         CmdEvent(id, true, ticket, PositionGetDouble(POSITION_PRICE_OPEN), PositionGetDouble(POSITION_VOLUME), StringFormat("SL %s TP %s", DoubleToString(nsl, dg), DoubleToString(ntp, dg)));
+      else
+         CmdEvent(id, false, ticket, 0, 0, trade.ResultRetcodeDescription());
+      return;
+   }
+   if(OrderSelect(ticket))
+   {
+      string sym = OrderGetString(ORDER_SYMBOL);
+      int dg = (int)SymbolInfoInteger(sym, SYMBOL_DIGITS);
+      double nsl = sl >= 0 ? NormalizeDouble(sl, dg) : OrderGetDouble(ORDER_SL);
+      double ntp = tp >= 0 ? NormalizeDouble(tp, dg) : OrderGetDouble(ORDER_TP);
+      double np = price > 0 ? NormalizeDouble(price, dg) : OrderGetDouble(ORDER_PRICE_OPEN);
+      if(trade.OrderModify(ticket, np, nsl, ntp, ORDER_TIME_GTC, 0))
+         CmdEvent(id, true, ticket, np, OrderGetDouble(ORDER_VOLUME_CURRENT), "pending order changed");
+      else
+         CmdEvent(id, false, ticket, 0, 0, trade.ResultRetcodeDescription());
+      return;
+   }
+   CmdEvent(id, false, ticket, 0, 0, "ticket not found (already closed?)");
+}
+
+void CmdClose(long id, const string obj)
+{
+   ulong ticket = (ulong)JsonNumber(obj, "ticket", 0);
+   double part = JsonNumber(obj, "volume", 0);
+   if(!PositionSelectByTicket(ticket))
+   {
+      if(OrderSelect(ticket)) { CmdCancel(id, obj); return; }
+      CmdEvent(id, false, ticket, 0, 0, "position not found (already closed?)");
+      return;
+   }
+   double vol = PositionGetDouble(POSITION_VOLUME);
+   string sym = PositionGetString(POSITION_SYMBOL);
+   trade.SetTypeFillingBySymbol(sym);
+   bool ok = part > 0 && part < vol ? trade.PositionClosePartial(ticket, NormalizeDouble(part, 2)) : trade.PositionClose(ticket);
+   if(ok)
+      CmdEvent(id, true, ticket, trade.ResultPrice(), part > 0 && part < vol ? part : vol, "closed " + sym);
+   else
+      CmdEvent(id, false, ticket, 0, 0, trade.ResultRetcodeDescription());
+}
+
+void CmdCancel(long id, const string obj)
+{
+   ulong ticket = (ulong)JsonNumber(obj, "ticket", 0);
+   if(trade.OrderDelete(ticket))
+      CmdEvent(id, true, ticket, 0, 0, "pending order cancelled");
+   else
+      CmdEvent(id, false, ticket, 0, 0, trade.ResultRetcodeDescription());
+}
+
+void CmdCloseAll(long id)
+{
+   int closed = 0, failed = 0;
+   for(int p = PositionsTotal() - 1; p >= 0; p--)
+   {
+      ulong t = PositionGetTicket(p);
+      if(t == 0) continue;
+      trade.SetTypeFillingBySymbol(PositionGetString(POSITION_SYMBOL));
+      if(trade.PositionClose(t)) closed++; else failed++;
+   }
+   CmdEvent(id, failed == 0, 0, 0, 0, StringFormat("%d positions closed%s", closed, failed ? StringFormat(", %d failed", failed) : ""));
 }
 
 //+------------------------------------------------------------------+

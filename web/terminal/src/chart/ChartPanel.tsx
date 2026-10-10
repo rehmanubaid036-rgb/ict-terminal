@@ -19,6 +19,7 @@ import { syncDrawing, drawDefault, DRAWINGS, register, unregister, getEntry, sna
 import { DrawingDialog } from '../ui/DrawingDialog'
 import { toast } from '../ui/common'
 import { paperModify, paperOrder, usePaper } from '../panels/Paper'
+import { mt5Send, plainSymbol, useMt5, useTradeMode } from '../panels/mt5'
 import { isPine } from '../pine/runtime'
 import { registerScript, type SavedScript } from './script'
 import { CHART_STYLE, type FpBar } from './charttypes'
@@ -302,6 +303,37 @@ export function ChartPanel(p: ChartPanelProps) {
     return () => { gone = true; window.clearTimeout(t0); window.clearInterval(every); chart.unsubscribeAction('onVisibleRangeChange', onRange) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cmpKey, conf.ticker, tf.label])
+
+  // ---- live MT5 (EA 1.13): positions of the chart's symbol as lines; SL / TP drag sends a modify command ----
+  const tradeMode = useTradeMode()
+  const mt5 = useMt5(tradeMode !== 'paper')
+  const mt5Key = JSON.stringify((mt5 ?? []).flatMap(a => a.positions.filter(p => plainSymbol(p.symbol) === (conf.ticker.split(':')[1] ?? '').toUpperCase()).map(p => [a.mt5_login, p.ticket, p.open, p.sl, p.tp, Math.round(p.profit * 100)])))
+  useEffect(() => {
+    const chart = chartRef.current
+    if (!chart) return
+    chart.removeOverlay({ groupId: 'mt5pos' })
+    if (!st.tradeLines || !mt5 || tradeMode === 'paper') return
+    const sym = (conf.ticker.split(':')[1] ?? '').toUpperCase()
+    const ts = chart.getDataList().at(-1)?.timestamp ?? Date.now()
+    for (const a of mt5) for (const p of a.positions) {
+      if (plainSymbol(p.symbol) !== sym) continue
+      const side = p.side > 0 ? 'BUY' : 'SELL'
+      const lines: [string, number | null, string, string][] = [['entry', p.open, p.side > 0 ? '#2962ff' : '#e91e63', `MT5 ${side} ${p.volume}  ${p.profit >= 0 ? '+' : ''}${p.profit.toFixed(2)} ${a.currency}`],
+        ['sl', p.sl || null, '#ef5350', `SL ${side} ${p.volume}`], ['tp', p.tp || null, '#26a69a', `TP ${side} ${p.volume}`]]
+      for (const [kind, v, color, label] of lines) {
+        if (!v) continue
+        chart.createOverlay({ name: 'tradeLine', groupId: 'mt5pos', lock: kind === 'entry', points: [{ timestamp: ts, value: v }],
+          extendData: { color, label: `${label}  ${v.toFixed(digits)}` },
+          onPressedMoveEnd: e => {
+            const nv = e.overlay.points[0]?.value
+            if (nv === undefined || kind === 'entry') return
+            const rounded = Number(nv.toFixed(digits))
+            void mt5Send({ kind: 'modify', login: a.mt5_login, ticket: p.ticket, ...(kind === 'sl' ? { sl: rounded } : { tp: rounded }) }, `${kind.toUpperCase()} #${p.ticket} → ${rounded}`)
+          } })
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mt5Key, st.tradeLines, tradeMode, conf.ticker, digits])
 
   // ---- paper trading: positions / orders as lines; stop loss, take profit and order prices drag ----------
   const paper = usePaper()
@@ -740,10 +772,10 @@ export function ChartPanel(p: ChartPanelProps) {
       </>}
       {st.tradeButtons && p.active && !p.compact && !/[/*+-]/.test(conf.ticker.split(':')[1] ?? '') && (
         <div className="pp-quick" style={ppTop !== null ? { top: ppTop } : undefined} onMouseDown={e => e.stopPropagation()}>
-          <button className="sell" title="Sell at market (paper)" onClick={() => void paperOrder({ ticker: conf.ticker, side: -1, type: 'market', qty: Number(ppQty) || 1 })}>
+          <button className="sell" title={tradeMode === 'paper' ? 'Sell at market (paper)' : `Sell at market on MT5 ${tradeMode}`} onClick={() => tradeMode === 'paper' ? void paperOrder({ ticker: conf.ticker, side: -1, type: 'market', qty: Number(ppQty) || 1 }) : void mt5Send({ kind: 'order', login: tradeMode, symbol: conf.ticker.split(':')[1], side: -1, type: 'market', volume: Number(ppQty) || 0.01 }, `SELL ${ppQty} lots ${conf.ticker.split(':')[1]} market`)}>
             SELL<small>{feed?.lastClose()?.toFixed(digits) ?? ''}</small></button>
-          <input value={ppQty} inputMode="decimal" title="Quantity" onChange={e => { setPpQty(e.target.value); try { localStorage.setItem('ict.paperQty', e.target.value) } catch { /* ignore */ } }} />
-          <button className="buy" title="Buy at market (paper)" onClick={() => void paperOrder({ ticker: conf.ticker, side: 1, type: 'market', qty: Number(ppQty) || 1 })}>
+          <input value={ppQty} inputMode="decimal" title={tradeMode === 'paper' ? 'Quantity (paper)' : 'Lots (MT5)'} onChange={e => { setPpQty(e.target.value); try { localStorage.setItem('ict.paperQty', e.target.value) } catch { /* ignore */ } }} />
+          <button className="buy" title={tradeMode === 'paper' ? 'Buy at market (paper)' : `Buy at market on MT5 ${tradeMode}`} onClick={() => tradeMode === 'paper' ? void paperOrder({ ticker: conf.ticker, side: 1, type: 'market', qty: Number(ppQty) || 1 }) : void mt5Send({ kind: 'order', login: tradeMode, symbol: conf.ticker.split(':')[1], side: 1, type: 'market', volume: Number(ppQty) || 0.01 }, `BUY ${ppQty} lots ${conf.ticker.split(':')[1]} market`)}>
             BUY<small>{feed?.lastClose()?.toFixed(digits) ?? ''}</small></button>
           <button className="pp-x" title="Hide the buy / sell buttons (Settings › Trading turns them back on)" aria-label="Hide"
             onClick={() => { window.dispatchEvent(new CustomEvent('ict:tradebuttons', { detail: false })); toast('Buy / sell buttons hidden. Settings › Trading, or the right-click menu, shows them again.') }}>✕</button>

@@ -1,15 +1,14 @@
 // MT5 / auto-trading: the ICT Bridge EA (token, ON / OFF, lot multiplier), the MT5 account it reports
 // (balance, equity, open positions, pending orders, P/L), position lines on the chart and the EA's trade log.
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTerminal } from '../Terminal'
 import { api, errorText, type CopyStatus, type EaEvent, type Mt5Account } from '../api'
-import { allIds, getChart, getEntry } from '../chart/registry'
+import { mt5Send, useMt5Commands } from './mt5'
 import { Switch, toast } from '../ui/common'
 import { Tour, type TourStep } from '../ui/Tour'
 import { Mt5Settings } from './Mt5Settings'
 
 const ORDER_TYPES = ['Buy', 'Sell', 'Buy limit', 'Sell limit', 'Buy stop', 'Sell stop', 'Buy stop limit', 'Sell stop limit']
-const GROUP = 'mt5pos'
 const TOUR: TourStep[] = [
   { target: 'mt5-status', title: 'Auto-trading status', text: 'ON means your EA is allowed to trade now. If it says "not trading", the line below tells you why (no plan with auto-trading, switched off, or no model approved yet).' },
   { target: 'mt5-switch', title: 'Your ON / OFF switch', text: 'Turn auto-trading on or off at any time. When it is off the EA keeps running but opens no new trades.' },
@@ -33,11 +32,10 @@ export function Mt5Panel() {
   const [accounts, setAccounts] = useState<Mt5Account[] | null>(null)
   const [events, setEvents] = useState<EaEvent[]>([])
   const [token, setToken] = useState('')
-  const [lines, setLines] = useState(true)
   const [err, setErr] = useState('')
   const [tour, setTour] = useState(false)
-  const linesRef = useRef(lines)
-  linesRef.current = lines
+  const [modify, setModify] = useState<{ ticket: string; sl: string; tp: string } | null>(null)
+  const cmds = useMt5Commands(true)
 
   const load = async () => {
     try { setCopy((await api.copy.get()).copy) } catch (e) { setErr(errorText(e)) }
@@ -45,28 +43,7 @@ export function Mt5Panel() {
   }
   useEffect(() => { void load(); const id = window.setInterval(load, 10_000); return () => window.clearInterval(id) }, [])
 
-  // position lines (entry / SL / TP) on every chart showing that symbol
-  useEffect(() => {
-    const draw = () => {
-      for (const id of allIds()) {
-        const c = getChart(id), sym = getEntry(id) && t.state.charts.find(x => x.id === id)?.ticker.split(':')[1]
-        if (!c) continue
-        c.removeOverlay({ groupId: GROUP })
-        if (!linesRef.current || !sym || !accounts) continue
-        const ts = c.getDataList().at(-1)?.timestamp ?? Date.now()
-        for (const a of accounts) for (const p of a.positions) {
-          if (plain(p.symbol) !== sym.toUpperCase()) continue
-          const side = p.side > 0 ? 'BUY' : 'SELL'
-          const mk = (v: number | null, color: string, label: string) => { if (v) c.createOverlay({ name: 'tradeLine', groupId: GROUP, lock: true, points: [{ timestamp: ts, value: v }], extendData: { color, label } as any }) }
-          mk(p.open, p.side > 0 ? '#2962ff' : '#e91e63', `MT5 ${side} ${p.volume}  ${p.profit >= 0 ? '+' : ''}${p.profit.toFixed(2)} ${a.currency}`)
-          mk(p.sl, '#ef5350', `SL ${side} ${p.volume}`)
-          mk(p.tp, '#26a69a', `TP ${side} ${p.volume}`)
-        }
-      }
-    }
-    draw()
-    return () => { for (const id of allIds()) getChart(id)?.removeOverlay({ groupId: GROUP }) }
-  }, [accounts, lines, t.state.charts])
+  // the position lines are drawn by the charts (ChartPanel) in MT5 trade mode: SL / TP drag there changes them
 
   const save = async (p: { copy_enabled?: boolean; multiplier?: number }) => {
     try { setCopy((await api.copy.save(p)).copy) } catch (e) { toast(errorText(e), 'error') }
@@ -115,26 +92,43 @@ export function Mt5Panel() {
       </div>
       {copy && <Mt5Settings copy={copy} onSaved={setCopy} />}
 
-      <div className="mt5-head" data-tour="mt5-account"><b>MT5 account</b><span className="grow" />
-        <label className="mini-check"><input type="checkbox" checked={lines} onChange={e => setLines(e.target.checked)} /> Lines on chart</label></div>
+      <div className="mt5-head" data-tour="mt5-account"><b>MT5 account</b><span className="grow" /><span className="note">Trade from the Trade tab (Paper | MT5) or the chart's buy / sell buttons</span></div>
       {accounts === null ? <div className="note">Loading…</div> : !accounts.length ? <div className="note">No account yet. Run the ICT Bridge EA (1.11 or newer) and its positions show here.</div> :
         accounts.map(a => (
           <div key={a.mt5_login} className="mt5-acc">
-            <div className="dw-row"><span>{a.mt5_login} · {a.server}</span><b>EA {a.ea_version}</b></div>
+            <div className="dw-row"><span>{a.mt5_login} · {a.server}{a.trade_mode === 'real' ? ' · REAL' : a.trade_mode ? ` · ${a.trade_mode}` : ''}</span><b>EA {a.ea_version}{(a.ea_version || '0') < '1.13' ? ' (update to 1.13 for live orders)' : ''}</b></div>
             <div className="dw-row"><span>Balance / equity</span><b>{a.balance?.toFixed(2)} / {a.equity?.toFixed(2)} {a.currency}</b></div>
             <div className="dw-row"><span>Updated</span><b>{new Date(a.updated_at).toLocaleTimeString()}</b></div>
             <div className="mt5-sub">Positions ({a.positions.length})</div>
             {a.positions.map(p => (
-              <button key={p.ticket} className="mt5-row" onClick={() => openSym(p.symbol)} title="Open this symbol">
-                <span className={p.side > 0 ? 'up' : 'down'}>{p.side > 0 ? 'BUY' : 'SELL'}</span><b>{p.symbol}</b><span>{p.volume}</span>
-                <span>{p.open}</span><span className="muted">SL {p.sl || '–'} TP {p.tp || '–'}</span>
-                <b className={p.profit >= 0 ? 'up' : 'down'}>{p.profit >= 0 ? '+' : ''}{p.profit.toFixed(2)}</b>
-              </button>))}
+              <div key={p.ticket} className="mt5-pos">
+                <button className="mt5-row" onClick={() => openSym(p.symbol)} title="Open this symbol">
+                  <span className={p.side > 0 ? 'up' : 'down'}>{p.side > 0 ? 'BUY' : 'SELL'}</span><b>{p.symbol}</b><span>{p.volume}</span>
+                  <span>{p.open}</span><span className="muted">SL {p.sl || '–'} TP {p.tp || '–'}</span>
+                  <b className={p.profit >= 0 ? 'up' : 'down'}>{p.profit >= 0 ? '+' : ''}{p.profit.toFixed(2)}</b>
+                </button>
+                <span className="mt5-btns">
+                  <button className="icon-btn" title="Change stop loss / take profit" onClick={() => setModify(m => (m?.ticket === p.ticket ? null : { ticket: p.ticket, sl: p.sl ? String(p.sl) : '', tp: p.tp ? String(p.tp) : '' }))}>✎</button>
+                  <button className="icon-btn" title="Close at market" onClick={() => void mt5Send({ kind: 'close', login: a.mt5_login, ticket: p.ticket }, `CLOSE #${p.ticket} ${p.symbol} ${p.volume}`)}>✕</button>
+                </span>
+                {modify?.ticket === p.ticket && <div className="mt5-modify">
+                  <input placeholder="SL" value={modify.sl} inputMode="decimal" onChange={e => setModify({ ...modify, sl: e.target.value })} />
+                  <input placeholder="TP" value={modify.tp} inputMode="decimal" onChange={e => setModify({ ...modify, tp: e.target.value })} />
+                  <button className="btn sm" onClick={() => { void mt5Send({ kind: 'modify', login: a.mt5_login, ticket: p.ticket, sl: modify.sl === '' ? 0 : Number(modify.sl), tp: modify.tp === '' ? 0 : Number(modify.tp) }, `SL ${modify.sl || '–'} TP ${modify.tp || '–'} on #${p.ticket}`); setModify(null) }}>Send</button>
+                </div>}
+              </div>))}
+            {a.positions.length > 1 && <button className="btn ghost sm" onClick={() => { if (window.confirm(`Close all ${a.positions.length} positions on ${a.mt5_login}?`)) void mt5Send({ kind: 'close_all', login: a.mt5_login }, `CLOSE ALL on ${a.mt5_login}`) }}>Close all positions</button>}
             {a.orders.length > 0 && <div className="mt5-sub">Pending orders ({a.orders.length})</div>}
             {a.orders.map(o => (
               <div key={o.ticket} className="mt5-row"><span>{ORDER_TYPES[o.type] ?? o.type}</span><b>{o.symbol}</b><span>{o.volume}</span><span>{o.price}</span>
-                <span className="muted">SL {o.sl || '–'} TP {o.tp || '–'}</span><span /></div>))}
+                <span className="muted">SL {o.sl || '–'} TP {o.tp || '–'}</span>
+                <button className="icon-btn" title="Cancel this order" onClick={() => void mt5Send({ kind: 'cancel', login: a.mt5_login, ticket: o.ticket }, `CANCEL #${o.ticket} ${o.symbol}`)}>✕</button></div>))}
           </div>))}
+      {cmds.length > 0 && <>
+        <div className="mt5-sub">Terminal orders (last {Math.min(cmds.length, 10)})</div>
+        {cmds.slice(0, 10).map(c => <div key={c.id} className={`mt5-ev${c.status === 'error' || c.status === 'expired' ? ' down' : ''}`}><small>{c.created_at.slice(11, 19)}</small> <b>{c.kind}</b> {c.payload.symbol ?? ''}{c.payload.ticket ? ` #${c.payload.ticket}` : ''}{c.payload.volume ? ` ${c.payload.volume}` : ''} · {c.status}{c.result?.detail ? ` · ${c.result.detail}` : ''}
+          {c.status === 'pending' && <button className="link" onClick={() => api.mt5CancelCommand(c.id).then(() => toast('Cancelled.')).catch(e => toast(errorText(e), 'error'))}>cancel</button>}</div>)}
+      </>}
       {!!accounts?.length && <div className="dw-row"><span>Open P/L (all)</span><b className={pl >= 0 ? 'up' : 'down'}>{pl >= 0 ? '+' : ''}{pl.toFixed(2)}</b></div>}
 
       <div className="mt5-sub" data-tour="mt5-log">EA trade log</div>

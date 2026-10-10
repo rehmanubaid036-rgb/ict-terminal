@@ -119,7 +119,8 @@ export interface Mt5Preview { days: number; steps: { step: string; n: number }[]
   signals: { id: number; time: string; symbol: string; model_id: string; direction: number; grade: string; entry: number; stop: number }[] }
 export interface Mt5Position { ticket: string; symbol: string; side: 1 | -1; volume: number; open: number; sl: number | null; tp: number | null; price: number; profit: number; swap: number; magic: string; time: number; comment: string }
 export interface Mt5Order { ticket: string; symbol: string; type: number; volume: number; price: number; sl: number | null; tp: number | null; magic: string }
-export interface Mt5Account { mt5_login: string; server: string; currency: string; balance: number | null; equity: number | null; ea_version: string; magic: string; positions: Mt5Position[]; orders: Mt5Order[]; updated_at: string }
+export interface Mt5Account { mt5_login: string; server: string; currency: string; balance: number | null; equity: number | null; ea_version: string; magic: string; positions: Mt5Position[]; orders: Mt5Order[]; updated_at: string; trade_mode?: string; leverage?: number | null }
+export interface Mt5Command { id: number; mt5_login: string; kind: string; payload: Record<string, any>; status: 'pending' | 'sent' | 'done' | 'error' | 'expired' | 'cancelled'; result: { ticket?: number; price?: number; volume?: number; detail?: string } | null; created_at: string; updated_at: string }
 export interface EaEvent { id: number; mt_login: string; signal_id: number; event: string; price: number; volume: number; profit: number; detail: string; at: string }
 export interface DonationInfo { enabled: boolean; title: string; text: string; amounts: number[]; currency: string; methods: PaymentMethod[]; crypto?: { network: string; label: string; token: string }[] }
 export interface AskAnswer { text: string; intent: string; data: Record<string, any>; llm: boolean; llm_by?: string }
@@ -278,6 +279,9 @@ export const api = {
     token: () => post<{ ea_token: string; copy: CopyStatus; message: string }>('/api/v1/copy/token', {}),
   },
   mt5State: () => get<{ accounts: Mt5Account[]; events: EaEvent[] }>('/api/v1/mt5/state'),
+  mt5Trade: (body: Record<string, unknown>) => post<{ command: Mt5Command; note: string }>('/api/v1/mt5/trade', body),
+  mt5Commands: () => get<{ commands: Mt5Command[] }>('/api/v1/mt5/commands'),
+  mt5CancelCommand: (id: number) => post<{ cancelled: boolean }>(`/api/v1/mt5/commands/${id}/cancel`, {}),
   donateCrypto: (d: { amount: string; network: string; name: string; message: string; public: boolean }) =>
     post<{ order: CryptoOrder & { key: string } }>('/api/v1/donations/crypto', { ...d, source: 'web' }),
   donateCryptoStatus: (id: number, key: string) => get<{ order: CryptoOrder }>(`/api/v1/donations/crypto/${id}`, { key }),

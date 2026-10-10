@@ -98,6 +98,19 @@ CREATE TABLE IF NOT EXISTS usage_unique (  -- who was seen on a day (hashed: no 
     who     TEXT NOT NULL,
     PRIMARY KEY (day, metric, who)
 );
+CREATE TABLE IF NOT EXISTS ea_commands (   -- manual trading from the terminal: what the EA has to do (EA 1.13+)
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    user       TEXT NOT NULL,
+    mt5_login  TEXT NOT NULL,
+    kind       TEXT NOT NULL,             -- order | modify | close | cancel | close_all
+    payload    TEXT NOT NULL,             -- JSON: symbol, side, type, volume, price, sl, tp, ticket, comment
+    status     TEXT NOT NULL,             -- pending | sent | done | error | expired | cancelled
+    result     TEXT,                      -- JSON from the EA: ticket, price, volume, detail
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ea_commands_user ON ea_commands (user, id);
 CREATE TABLE IF NOT EXISTS ea_state (      -- the latest account snapshot each EA sends (positions, orders)
     user       TEXT NOT NULL,
     mt5_login  TEXT NOT NULL,
@@ -411,6 +424,63 @@ class Store:
             counts = [dict(r) for r in c.execute("SELECT day, metric, key, n FROM usage_counts WHERE day >= ?", (since_day,))]
             uniq = [dict(r) for r in c.execute("SELECT day, metric, COUNT(*) AS n FROM usage_unique WHERE day >= ? GROUP BY day, metric", (since_day,))]
         return {"counts": counts, "unique": uniq}
+
+    # ---- manual trading through the EA ------------------------------------------------------------
+    def add_ea_command(self, user: str, login: str, kind: str, payload: dict, ttl_seconds: int = 30) -> dict:
+        now = pd.Timestamp.now(tz="UTC")
+        with self._conn() as c:
+            cur = c.execute("INSERT INTO ea_commands (user, mt5_login, kind, payload, status, created_at, updated_at, expires_at) "
+                            "VALUES (?, ?, ?, ?, 'pending', ?, ?, ?)",
+                            (user, login, kind, json.dumps(payload), now.isoformat(), now.isoformat(),
+                             (now + pd.Timedelta(seconds=ttl_seconds)).isoformat()))
+            cid = int(cur.lastrowid)
+        return self.ea_command(user, cid)
+
+    def ea_command(self, user: str, cid: int) -> dict | None:
+        with self._conn() as c:
+            r = c.execute("SELECT * FROM ea_commands WHERE user = ? AND id = ?", (user, cid)).fetchone()
+        return self._cmd(r) if r else None
+
+    @staticmethod
+    def _cmd(r) -> dict:
+        d = dict(r)
+        d["payload"] = json.loads(d["payload"] or "{}")
+        d["result"] = json.loads(d["result"]) if d.get("result") else None
+        return d
+
+    def ea_commands(self, user: str, limit: int = 50) -> list[dict]:
+        self._expire_commands()
+        with self._conn() as c:
+            return [self._cmd(r) for r in c.execute("SELECT * FROM ea_commands WHERE user = ? ORDER BY id DESC LIMIT ?", (user, limit))]
+
+    def _expire_commands(self) -> None:
+        now = pd.Timestamp.now(tz="UTC").isoformat()
+        with self._conn() as c:
+            c.execute("UPDATE ea_commands SET status = 'expired', updated_at = ? WHERE status IN ('pending', 'sent') AND expires_at < ?", (now, now))
+
+    def take_ea_commands(self, user: str, login: str) -> list[dict]:
+        """The pending commands of one EA, marked sent (each is handed out once)."""
+        self._expire_commands()
+        now = pd.Timestamp.now(tz="UTC").isoformat()
+        with self._conn() as c:
+            rows = c.execute("SELECT * FROM ea_commands WHERE user = ? AND mt5_login = ? AND status = 'pending' ORDER BY id", (user, login)).fetchall()
+            ids = [r["id"] for r in rows]
+            if ids:
+                c.execute(f"UPDATE ea_commands SET status = 'sent', updated_at = ? WHERE id IN ({','.join('?' * len(ids))})", [now, *ids])
+        return [self._cmd(r) for r in rows]
+
+    def finish_ea_command(self, user: str, cid: int, ok: bool, result: dict) -> bool:
+        now = pd.Timestamp.now(tz="UTC").isoformat()
+        with self._conn() as c:
+            n = c.execute("UPDATE ea_commands SET status = ?, result = ?, updated_at = ? WHERE user = ? AND id = ? AND status IN ('pending', 'sent')",
+                          ("done" if ok else "error", json.dumps(result), now, user, cid)).rowcount
+        return n > 0
+
+    def cancel_ea_command(self, user: str, cid: int) -> bool:
+        now = pd.Timestamp.now(tz="UTC").isoformat()
+        with self._conn() as c:
+            return c.execute("UPDATE ea_commands SET status = 'cancelled', updated_at = ? WHERE user = ? AND id = ? AND status = 'pending'",
+                             (now, user, cid)).rowcount > 0
 
     # ---- MT5 accounts seen through the EA ---------------------------------------------------------
     def set_ea_state(self, user: str, login: str, data: dict) -> None:

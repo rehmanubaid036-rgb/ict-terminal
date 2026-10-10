@@ -1124,6 +1124,7 @@ img{{max-width:100%;height:auto;border-radius:10px;border:1px solid #232c45}}a{{
                    **{k: _num(o.get(k)) for k in ("volume", "price", "sl", "tp")}, "magic": str(o.get("magic", ""))[:20]}
                   for o in (data.get("orders") or [])[:50] if isinstance(o, dict)]
         store.set_ea_state(email, login, {"server": str(data.get("mt5_server") or "")[:80], "currency": str(data.get("currency") or "")[:8],
+                                          "trade_mode": str(data.get("trade_mode") or "")[:8], "leverage": _num(data.get("leverage")),
                                           "balance": _num(data.get("balance")), "equity": _num(data.get("equity")),
                                           "ea_version": str(data.get("ea_version") or "")[:20], "magic": str(data.get("magic") or "")[:20],
                                           "positions": pos, "orders": orders})
@@ -1162,6 +1163,11 @@ img{{max-width:100%;height:auto;border-radius:10px;border:1px solid #232c45}}a{{
             return JSONResponse(status_code=401, content=base)
         copy = r["copy"]
         _save_ea_state(r, data)
+        # manual orders from the terminal (EA 1.13+): handed out once, whatever the auto-trading switch says
+        email = (r.get("access") or {}).get("email") or ""
+        login = str(data.get("mt5_login") or "")[:20]
+        if email and login:
+            base["commands"] = [{"id": c["id"], "kind": c["kind"], **c["payload"]} for c in store.take_ea_commands(email, login)]
         if not r.get("valid") or not copy.get("active"):
             return {**base, "reason": copy.get("reason") or r.get("reason", "")}
         f = copy.get("filters") or {}
@@ -1179,6 +1185,65 @@ img{{max-width:100%;height:auto;border-radius:10px;border:1px solid #232c45}}a{{
             if v and v > 0:
                 out[name] = v
         return out
+
+    MT5_KINDS = {"order", "modify", "close", "cancel", "close_all"}
+
+    @app.post("/api/v1/mt5/trade")
+    async def mt5_trade(request: Request, a: dict = Depends(logged_in)):
+        """Manual trading through the ICT Bridge EA (1.13+): queues one command the EA runs on its next poll.
+        Body: {login, kind: order|modify|close|cancel|close_all, symbol, side (1/-1), type (market|limit|stop),
+        volume (lots), price, sl, tp, ticket, comment, confirm_real}. A command the EA does not pick up in
+        30 s expires. Needs the plan's auto_trade feature and a connected EA."""
+        feature(a, "auto_trade", "MT5 trading is not part of your plan.")
+        try:
+            data = await request.json()
+        except ValueError:
+            data = {}
+        user = _owner(a)
+        kind = str(data.get("kind") or "order")
+        if kind not in MT5_KINDS:
+            raise HTTPException(400, "Unknown command.")
+        accounts = store.ea_states(user)
+        login = str(data.get("login") or (accounts[0]["mt5_login"] if accounts else ""))[:20]
+        acc = next((x for x in accounts if x["mt5_login"] == login), None)
+        if acc is None:
+            raise HTTPException(400, "No MT5 account is connected. Run the ICT Bridge EA 1.13 or newer first.")
+        if str(acc.get("ea_version") or "0") < "1.13":
+            raise HTTPException(400, f"Your EA is {acc.get('ea_version')}; manual trading needs ICT Bridge 1.13 or newer. Download it from the MT5 tab and compile it again.")
+        if pd.Timestamp.now(tz="UTC") - pd.Timestamp(acc["updated_at"]) > pd.Timedelta(seconds=90):
+            raise HTTPException(409, "The EA has not reported for over a minute: is MT5 running with the EA on a chart?")
+        payload: dict = {}
+        if kind == "order":
+            symbol = str(data.get("symbol") or "").upper().split(":")[-1][:24]
+            side = 1 if _num(data.get("side")) == 1 else -1 if _num(data.get("side")) == -1 else 0
+            otype = str(data.get("type") or "market")
+            volume = _num(data.get("volume"))
+            if not symbol or not side or otype not in ("market", "limit", "stop") or not volume or volume <= 0 or volume > 100:
+                raise HTTPException(400, "Give a symbol, a side, a type and a volume in lots (0.01 - 100).")
+            price = _num(data.get("price"))
+            if otype != "market" and not price:
+                raise HTTPException(400, "A limit / stop order needs a price.")
+            payload = {"symbol": symbol, "side": side, "type": otype, "volume": round(volume, 2), "price": price or 0,
+                       "sl": _num(data.get("sl")) or 0, "tp": _num(data.get("tp")) or 0, "comment": str(data.get("comment") or "ICT manual")[:30]}
+        elif kind in ("modify", "close", "cancel"):
+            ticket = str(data.get("ticket") or "")[:24]
+            if not ticket:
+                raise HTTPException(400, "Which ticket?")
+            payload = {"ticket": ticket, "sl": _num(data.get("sl")), "tp": _num(data.get("tp")), "price": _num(data.get("price")),
+                       "volume": _num(data.get("volume")) or 0}
+        if acc.get("trade_mode") == "real" and not data.get("confirm_real"):
+            raise HTTPException(428, "This is a REAL account. Confirm the order to send it.")
+        cmd = store.add_ea_command(user, login, kind, payload)
+        return {"command": cmd, "note": "The EA runs it on its next poll (every few seconds)."}
+
+    @app.get("/api/v1/mt5/commands")
+    def mt5_commands(a: dict = Depends(logged_in)):
+        """The user's recent manual commands and what became of them."""
+        return {"commands": store.ea_commands(_owner(a))}
+
+    @app.post("/api/v1/mt5/commands/{cid}/cancel")
+    def mt5_cancel_command(cid: int, a: dict = Depends(logged_in)):
+        return {"cancelled": store.cancel_ea_command(_owner(a), cid)}
 
     @app.post("/api/v1/mt5/preview")
     async def mt5_preview(request: Request, a: dict = Depends(logged_in)):
@@ -1238,7 +1303,14 @@ img{{max-width:100%;height:auto;border-radius:10px;border:1px solid #232c45}}a{{
         if not r.get("copy"):
             raise HTTPException(401, r.get("reason") or "Invalid EA token.")
         events = [e for e in (data.get("events") or []) if isinstance(e, dict)][:100]
-        n = store.add_ea_events(r.get("access", {}).get("email", "") or "unknown", str(data.get("mt5_login", "")), events)
+        email = r.get("access", {}).get("email", "") or "unknown"
+        # results of manual commands
+        for e in events:
+            cid = e.get("command_id")
+            if cid:
+                store.finish_ea_command(email, int(_num(cid) or 0), str(e.get("event")) == "done",
+                                        {k: e.get(k) for k in ("ticket", "price", "volume", "detail")})
+        n = store.add_ea_events(email, str(data.get("mt5_login", "")), [e for e in events if not e.get("command_id")] + [e for e in events if e.get("command_id")])
         return {"stored": n}
 
     # ---- Google / Facebook sign-in pages (the browser goes through this server to the panel) -------

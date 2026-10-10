@@ -1148,3 +1148,13 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 .dom-row span { position: relative; text-align: right; }
 .dom-row .dom-price { text-align: left; }
 .dom-spread { text-align: center; padding: 4px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); color: var(--muted); }
+
+/* live MT5 trading */
+.pp-mode { margin-bottom: 6px; }
+.pp-mode button.muted { color: var(--muted); }
+.mt5-pos { display: flex; flex-wrap: wrap; align-items: center; }
+.mt5-pos .mt5-row { flex: 1; }
+.mt5-btns { display: flex; gap: 2px; }
+.mt5-modify { display: flex; gap: 6px; width: 100%; padding: 4px 0 6px; }
+.mt5-modify input { width: 90px; }
+.mt5-ev.down { color: #ef5350; }

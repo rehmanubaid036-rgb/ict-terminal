@@ -5,6 +5,7 @@ import { useTerminal } from '../Terminal'
 import { api, errorText, type PaperOrder, type PaperState } from '../api'
 import { getEntry } from '../chart/registry'
 import { Empty, fmtPrice, toast } from '../ui/common'
+import { mt5Ready, mt5Send, setTradeMode, useMt5, useTradeMode, useMt5Commands } from './mt5'
 
 // ---- shared state ----------------------------------------------------------------------------------
 let current: PaperState | null = null
@@ -75,7 +76,19 @@ export function TradePanel() {
   const ref = type === 'market' ? last : num(price)
   const risk = ref && num(sl) ? Math.abs(ref - num(sl)!) * Number(qty || 0) : null
   const reward = ref && num(tp) ? Math.abs(num(tp)! - ref) * Number(qty || 0) : null
+  const mode = useTradeMode()
+  const mt5 = useMt5(true)
+  useEffect(() => { if (mode !== 'paper' && qty === '1') setQty('0.1'); if (mode === 'paper' && qty === '0.1') setQty('1') }, [mode]) // eslint-disable-line react-hooks/exhaustive-deps
+  const mt5Acc = mt5?.find(x => x.mt5_login === mode) ?? null
+  const cmds = useMt5Commands(mode !== 'paper')
   const place = async () => {
+    if (mode !== 'paper') {
+      const vol = Number(qty)
+      const ok = await mt5Send({ kind: 'order', login: mode, symbol: sym, side, type, volume: vol, price: type === 'market' ? undefined : num(price), sl: num(sl), tp: num(tp) },
+        `${side > 0 ? 'BUY' : 'SELL'} ${vol} lots ${sym} ${type}${type !== 'market' ? ' @ ' + price : ''}${num(sl) ? ' SL ' + sl : ''}${num(tp) ? ' TP ' + tp : ''}`)
+      if (ok) { setSl(''); setTp('') }
+      return
+    }
     const ok = await paperOrder({ ticker: a.ticker, side, type, qty: Number(qty), price: type === 'market' ? undefined : num(price), sl: num(sl), tp: num(tp) })
     if (ok) { setSl(''); setTp(''); setTab(type === 'market' ? 'positions' : 'orders') }
   }
@@ -97,14 +110,32 @@ export function TradePanel() {
   }
   if (!s) return <Empty>Loading the paper account…</Empty>
   const pnlTotal = s.equity - s.start_balance
+  const live = mode !== 'paper'
+  const mt5Pl = mt5Acc ? mt5Acc.positions.reduce((x, p) => x + p.profit + (p.swap || 0), 0) : 0
   return (
     <div className="pp">
-      <div className="pp-acc">
-        <div><small>Balance</small><b>{money(s.balance)}</b></div>
-        <div><small>Equity</small><b>{money(s.equity)}</b></div>
-        <div><small>Open P&L</small><b className={s.unrealized >= 0 ? 'up' : 'down'}>{money(s.unrealized)}</b></div>
-        <div><small>Total</small><b className={pnlTotal >= 0 ? 'up' : 'down'}>{money(pnlTotal)}</b></div>
+      <div className="seg pp-mode" title="Where the orders go">
+        <button className={mode === 'paper' ? 'on' : ''} onClick={() => setTradeMode('paper')}>Paper</button>
+        {(mt5 ?? []).map(x => <button key={x.mt5_login} className={mode === x.mt5_login ? 'on' : ''} onClick={() => setTradeMode(x.mt5_login)} title={`${x.server} · EA ${x.ea_version}`}>MT5 {x.mt5_login}{x.trade_mode === 'real' ? ' (REAL)' : ''}</button>)}
+        {!mt5?.length && <button className="muted" onClick={() => window.dispatchEvent(new CustomEvent('ict:open-tab', { detail: 'mt5' }))} title="Connect the ICT Bridge EA 1.13 in the MT5 tab">MT5…</button>}
       </div>
+      {live && mt5Acc && !mt5Ready(mt5Acc) && <div className="note down">{(mt5Acc.ea_version || '0') < '1.13' ? `EA ${mt5Acc.ea_version}: live orders need ICT Bridge 1.13 or newer (MT5 tab → EA file, compile again).` : 'The EA has not reported for over a minute: is MT5 running with the EA on a chart?'}</div>}
+      {live && mt5Acc?.trade_mode === 'real' && <div className="note down">REAL account: every order asks for a confirmation.</div>}
+      {live && mt5Acc ? (
+        <div className="pp-acc">
+          <div><small>Balance</small><b>{mt5Acc.balance?.toFixed(2)} {mt5Acc.currency}</b></div>
+          <div><small>Equity</small><b>{mt5Acc.equity?.toFixed(2)}</b></div>
+          <div><small>Open P&L</small><b className={mt5Pl >= 0 ? 'up' : 'down'}>{mt5Pl >= 0 ? '+' : ''}{mt5Pl.toFixed(2)}</b></div>
+          <div><small>Positions</small><b>{mt5Acc.positions.length}</b></div>
+        </div>
+      ) : (
+        <div className="pp-acc">
+          <div><small>Balance</small><b>{money(s.balance)}</b></div>
+          <div><small>Equity</small><b>{money(s.equity)}</b></div>
+          <div><small>Open P&L</small><b className={s.unrealized >= 0 ? 'up' : 'down'}>{money(s.unrealized)}</b></div>
+          <div><small>Total</small><b className={pnlTotal >= 0 ? 'up' : 'down'}>{money(pnlTotal)}</b></div>
+        </div>
+      )}
       <div className="pp-ticket">
         <div className="pp-sides">
           <button className={`sell${side < 0 ? ' on' : ''}`} onClick={() => setSide(-1)}>SELL</button>
@@ -112,19 +143,33 @@ export function TradePanel() {
         </div>
         <div className="seg">{(['market', 'limit', 'stop'] as const).map(x => <button key={x} className={type === x ? 'on' : ''} onClick={() => setType(x)}>{x[0].toUpperCase() + x.slice(1)}</button>)}</div>
         <div className="pp-grid">
-          <label>Quantity<input value={qty} inputMode="decimal" onChange={e => setQty(e.target.value)} /></label>
+          <label>{live ? 'Lots' : 'Quantity'}<input value={qty} inputMode="decimal" onChange={e => setQty(e.target.value)} /></label>
           {type !== 'market' && <label>Price<input value={price} inputMode="decimal" onChange={e => setPrice(e.target.value)} /></label>}
           <label>Stop loss<input value={sl} inputMode="decimal" placeholder="optional" onChange={e => setSl(e.target.value)} /></label>
           <label>Take profit<input value={tp} inputMode="decimal" placeholder="optional" onChange={e => setTp(e.target.value)} /></label>
         </div>
-        {(risk || reward) ? <div className="note">Risk {money(risk)} · Reward {money(reward)}{risk && reward ? ` · ${(reward / risk).toFixed(2)}R` : ''}</div> : null}
-        <button className={`btn block ${side > 0 ? 'pp-buy' : 'pp-sell'}`} onClick={() => void place()}>
-          {side > 0 ? 'Buy' : 'Sell'} {qty} {sym} {type === 'market' ? `at market${last ? ` (${fmtPrice(last)})` : ''}` : `${type} ${price}`}
+        {!live && (risk || reward) ? <div className="note">Risk {money(risk)} · Reward {money(reward)}{risk && reward ? ` · ${(reward / risk).toFixed(2)}R` : ''}</div> : null}
+        <button className={`btn block ${side > 0 ? 'pp-buy' : 'pp-sell'}`} disabled={live && (!mt5Acc || !mt5Ready(mt5Acc))} onClick={() => void place()}>
+          {side > 0 ? 'Buy' : 'Sell'} {qty} {live ? 'lots ' : ''}{sym} {type === 'market' ? `at market${last ? ` (${fmtPrice(last)})` : ''}` : `${type} ${price}`}{live ? ' · MT5' : ''}
         </button>
         <button className="btn ghost block" onClick={() => window.dispatchEvent(new CustomEvent('ict:riskcalc'))}>Risk calculator (lot size)…</button>
-        <div className="note">Paper trading: no real money. Quantity is in units of the price (1 = 1 point / 1 USD per point on indices and gold; EURUSD 100000 = 1 lot).</div>
+        {live ? <div className="note">Live MT5 through your ICT Bridge EA: the order reaches MT5 on the EA's next poll (a few seconds). Volume is in lots.</div>
+          : <div className="note">Paper trading: no real money. Quantity is in units of the price (1 = 1 point / 1 USD per point on indices and gold; EURUSD 100000 = 1 lot).</div>}
       </div>
-      <div className="seg">
+      {live && mt5Acc && <>
+        <div className="seg"><button className="on">MT5 positions ({mt5Acc.positions.length})</button><button onClick={() => window.dispatchEvent(new CustomEvent('ict:open-tab', { detail: 'mt5' }))}>Orders, log…</button></div>
+        <div className="pp-list">
+          {mt5Acc.positions.length ? mt5Acc.positions.map(p => (
+            <div key={p.ticket} className="pp-row">
+              <div className="pp-main"><b className={p.side > 0 ? 'up' : 'down'}>{p.side > 0 ? 'BUY' : 'SELL'}</b> {p.volume} <b>{p.symbol}</b><small>@ {p.open}{p.sl ? ` · SL ${p.sl}` : ''}{p.tp ? ` · TP ${p.tp}` : ''} · #{p.ticket}</small></div>
+              <span className={`pp-pnl ${p.profit >= 0 ? 'up' : 'down'}`}>{p.profit >= 0 ? '+' : ''}{p.profit.toFixed(2)}</span>
+              <button className="icon-btn" title="Close at market" onClick={() => void mt5Send({ kind: 'close', login: mode, ticket: p.ticket }, `CLOSE #${p.ticket} ${p.symbol} ${p.volume}`)}>✕</button>
+            </div>)) : <Empty>No open MT5 positions.</Empty>}
+          {cmds.filter(c => c.status === 'pending' || c.status === 'sent' || Date.now() - new Date(c.updated_at).getTime() < 60_000).slice(0, 5).map(c => (
+            <div key={c.id} className={`note ${c.status === 'error' || c.status === 'expired' ? 'down' : ''}`}>#{c.id} {c.kind} {c.payload.symbol ?? ''} {c.payload.ticket ? '#' + c.payload.ticket : ''} · <b>{c.status}</b>{c.result?.detail ? ` · ${c.result.detail}` : ''}</div>))}
+        </div>
+      </>}
+      {!live && <><div className="seg">
         <button className={tab === 'positions' ? 'on' : ''} onClick={() => setTab('positions')}>Positions ({s.positions.length})</button>
         <button className={tab === 'orders' ? 'on' : ''} onClick={() => setTab('orders')}>Orders ({s.orders.length})</button>
         <button className={tab === 'history' ? 'on' : ''} onClick={() => setTab('history')}>History</button>
@@ -148,6 +193,7 @@ export function TradePanel() {
         if (!v) return
         try { publish(await api.paper.reset(Number(v))); toast('Paper account reset.') } catch (e) { toast(errorText(e), 'error') }
       }}>Reset account</button>
+      </>}
     </div>
   )
 }
