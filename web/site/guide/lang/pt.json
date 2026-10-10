@@ -6,7 +6,7 @@
     "title_a": "ICT Terminal",
     "title_b": "Guia do usuário",
     "lead": "Tudo o que você precisa para usar o ICT Terminal: as camadas ICT no gráfico, o scanner de modelos, as ferramentas de desenho, os alertas (também no WhatsApp), o paper trading, o testador de estratégias, layouts com até 8 gráficos e o app do celular — passo a passo, com imagens.",
-    "chips": ["Conceitos ICT desenhados para você", "17 modelos baseados em regras", "Web, Android e Windows", "14 idiomas"],
+    "chips": ["Conceitos ICT desenhados para você", "18 modelos baseados em regras", "Web, Android e Windows", "14 idiomas"],
     "uinote": "Botões, abas e menus estão em inglês dentro do terminal. Este guia os mostra exatamente como você os vê, em **negrito**.",
     "toc": "Conteúdo",
     "home": "Site",
@@ -39,8 +39,8 @@
       "O ICT Terminal é um terminal de gráficos feito para traders que usam os conceitos **ICT (Inner Circle Trader)**. Ele desenha os conceitos no gráfico para você e varre os mercados em busca de setups ICT baseados em regras.",
       {"ul": [
         "**Camadas ICT:** fair value gaps (FVG / IFVG), order e breaker blocks, liquidez buy-side e sell-side, estrutura de mercado (MSS / BOS), sessões e killzones, aberturas-chave, premium / discount e OTE, gaps de abertura, faixas IPDA, SMT e o viés diário.",
-        "**Scanner de modelos:** 17 modelos ICT (Silver Bullet, modelo 2022, Judas swing, OTE, Unicorn, Power of 3, pós-notícia e mais), cada um escrito como regras fixas com entrada, stop e alvos.",
-        "**Um terminal completo:** 1–8 gráficos por layout, mais de 40 ferramentas de desenho, indicadores, alertas, paper trading, testador de estratégias, screener, calendário econômico e comunidade."
+        "**Scanner de modelos:** 18 modelos ICT (Silver Bullet, modelo 2022, Judas swing, OTE, Unicorn, Power of 3, pós-notícia e mais), cada um escrito como regras fixas com entrada, stop e alvos.",
+        "**Um terminal completo:** 1–8 gráficos por layout, 100 ferramentas de desenho, indicadores, alertas, paper trading, testador de estratégias, screener, calendário econômico e comunidade."
       ]},
       {"info": "O ICT Terminal não opera por você, a menos que você mesmo instale a ponte MT5. Os setups seguem regras; muitos perdem. Teste sempre primeiro em uma conta demo."}
     ]},
@@ -81,7 +81,8 @@
         "**Ir para data:** botão direito → **Go to date…** ou Alt+G. **Replay de barras:** o botão de replay na barra superior."
       ]},
       {"h": "Escala de preço"},
-      "Clique com o botão direito na escala de preço: **Auto (fit)**, **Lock range** (a escala fica parada ao rolar), **Lock price / bar** (o mesmo preço por barra ao dar zoom), **Regular**, **Log**, **Percent**, **Invert** e o lado da escala."
+      "Clique com o botão direito na escala de preço: **Auto (fit)**, **Lock range** (a escala fica parada ao rolar), **Lock price / bar** (o mesmo preço por barra ao dar zoom), **Regular**, **Log**, **Percent**, **Invert** e o lado da escala.",
+      "**Histórico:** os gráficos diários e semanais vão muitos anos para trás, e cada vela segue o horário de Nova York (o dia começa às 18:00). Há 18 tipos de gráfico, incluindo High-Low e Kagi."
     ]},
     {"id": "ict", "t": "Camadas ICT", "b": [
       "Abra o menu **ICT** na barra superior e ligue as camadas que quiser. O motor as calcula para o símbolo e o intervalo de cada gráfico.",
@@ -111,7 +112,8 @@
         ["A", "Falta um ponto."],
         ["B", "Um setup válido com mais pontos faltando: para estudar, não para operar."]
       ]}},
-      {"warn": "Nenhum modelo tem vantagem comprovada ainda. O M11 (IFVG reversal) vem desligado por padrão porque foi o mais fraco nos testes; você ainda pode escolhê-lo. Resultados passados não garantem resultados futuros."}
+      {"warn": "Nenhum modelo tem vantagem comprovada ainda. O M11 (IFVG reversal) vem desligado por padrão porque foi o mais fraco nos testes; você ainda pode escolhê-lo. Resultados passados não garantem resultados futuros."},
+      "**Wolf Models** (barra superior) reúne modelos próprios criados a partir das regras de um trader: **M17 Wolf Asia Session (NDOG)** para NAS100 / US500, só entre 19:00 e 22:00 de Nova York, e **M18 The Alpha Model Gold** para XAUUSD em Londres (02:00–05:00) e Nova York (07:00–10:00), com o viés vindo do índice do dólar, da prata e do ouro. Eles aparecem em gráficos de 1 minuto."
     ]},
     {"id": "drawing", "t": "Ferramentas de desenho", "b": [
       {"ul": [
@@ -121,7 +123,9 @@
       ]},
       {"h": "Ajustes de um desenho"},
       "Dê duplo clique em um desenho (ou toque na engrenagem da barrinha dele) para **Style**, **Text**, **Coordinates** e **Visibility**. Em **Visibility** você mostra um desenho só em intervalos escolhidos — por exemplo um FVG de 1H só nos gráficos de 1m–15m.",
-      {"tip": "Selecione uma linha ou caixa e toque em ⏰ na barra dela para criar um alerta a partir dela."}
+      {"tip": "Selecione uma linha ou caixa e toque em ⏰ na barra dela para criar um alerta a partir dela."},
+      {"h": "Configurações de desenho como no TradingView"},
+      {"ul": ["**Ferramentas Fib:** uma tabela de 24 níveis (ligado / valor / cor), linha de tendência, fundo, estender à esquerda / direita, inverter, preços, níveis em valores ou percentagens, posição dos rótulos e tamanho da fonte.", "**Linhas e caixas:** sólida, tracejada ou pontilhada, estender, pontas de seta, rótulos de preço, estatísticas (variação, %, barras, tempo) e texto; retângulos com fundo ligado / desligado, linha do meio e extensão.", "**Posição Long / Short:** tamanho da conta, risco em % ou em dinheiro, tamanho do lote e quantidade, cores de lucro e de stop.", "**Copiar e colar:** selecione um desenho e pressione `Ctrl+C` e depois `Ctrl+V` (ou ⎘ na barra dele). A barra de ferramentas também tem **Measure**, **Zoom in**, um menu **Hide** e um menu **Remove**."]}
     ]},
     {"id": "indicators", "t": "Indicadores, perfis de volume e ICT Script", "b": [
       {"ul": [
@@ -163,7 +167,8 @@
         "Posições e ordens são desenhadas no gráfico. Arraste a linha de SL, TP ou da ordem para movê-la.",
         "Feche com ✕ em **Positions**; trades encerrados ficam em **History** com o P&L e a taxa de acerto."
       ]},
-      {"info": "O servidor executa as ordens em barras de 1 minuto: limit e stop no próprio preço, gap na abertura, e quando uma barra toca stop e alvo ao mesmo tempo, o stop conta primeiro."}
+      {"info": "O servidor executa as ordens em barras de 1 minuto: limit e stop no próprio preço, gap na abertura, e quando uma barra toca stop e alvo ao mesmo tempo, o stop conta primeiro."},
+      "**Negociação automática MT5:** na aba **MT5**, escolha os modelos, símbolos, grau, viés diário, sessões, dias, operações por dia e risco do seu EA, e veja como os sinais dos últimos 7 dias passam por eles. Toque em **Take a tour** ou leia o [guia de negociação automática](/auto-trading.html)."
     ]},
     {"id": "tester", "t": "Testador de estratégias e screener", "b": [
       {"h": "Testador de estratégias"},
@@ -196,7 +201,8 @@
         "Com 2–8 gráficos, **▦ All** mostra todos na tela e **▢ One** um por vez, com chips para trocar.",
         "Tablets em retrato mostram até 8 gráficos em duas colunas.",
         "Pinça para zoom, arraste para rolar, toque longo para a mira; o desenho funciona com o dedo."
-      ]}
+      ]},
+      "**App Android 0.4:** o app agora é o terminal web completo, com bloqueio por digital (Account → This phone), o botão voltar do telefone, login com Google no seu navegador e compartilhamento de imagens do gráfico. Os painéis laterais abrem como uma folha sobre o gráfico."
     ]},
     {"id": "account", "t": "Planos e sua conta", "b": [
       {"ul": [

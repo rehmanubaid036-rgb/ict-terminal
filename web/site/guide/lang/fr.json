@@ -6,7 +6,7 @@
     "title_a": "ICT Terminal",
     "title_b": "Guide d'utilisation",
     "lead": "Tout ce qu'il faut pour utiliser ICT Terminal : les couches ICT sur le graphique, le scanner de modèles, les outils de dessin, les alertes (aussi sur WhatsApp), le paper trading, le testeur de stratégies, des dispositions jusqu'à 8 graphiques et l'application mobile — pas à pas, avec des images.",
-    "chips": ["Concepts ICT dessinés pour vous", "17 modèles fondés sur des règles", "Web, Android et Windows", "14 langues"],
+    "chips": ["Concepts ICT dessinés pour vous", "18 modèles fondés sur des règles", "Web, Android et Windows", "14 langues"],
     "uinote": "Les boutons, onglets et menus sont en anglais dans le terminal. Ce guide les affiche exactement comme vous les voyez, en **gras**.",
     "toc": "Sommaire",
     "home": "Site web",
@@ -39,8 +39,8 @@
       "ICT Terminal est un terminal graphique conçu pour les traders qui utilisent les concepts **ICT (Inner Circle Trader)**. Il dessine les concepts sur le graphique à votre place et scanne les marchés à la recherche de setups ICT fondés sur des règles.",
       {"ul": [
         "**Couches ICT :** fair value gaps (FVG / IFVG), order et breaker blocks, liquidité buy-side et sell-side, structure de marché (MSS / BOS), sessions et killzones, ouvertures clés, premium / discount et OTE, gaps d'ouverture, plages IPDA, SMT et le biais journalier.",
-        "**Scanner de modèles :** 17 modèles ICT (Silver Bullet, modèle 2022, Judas swing, OTE, Unicorn, Power of 3, après-news et plus), chacun écrit en règles fixes avec entrée, stop et objectifs.",
-        "**Un terminal complet :** 1 à 8 graphiques par disposition, plus de 40 outils de dessin, indicateurs, alertes, paper trading, testeur de stratégies, screener, calendrier économique et communauté."
+        "**Scanner de modèles :** 18 modèles ICT (Silver Bullet, modèle 2022, Judas swing, OTE, Unicorn, Power of 3, après-news et plus), chacun écrit en règles fixes avec entrée, stop et objectifs.",
+        "**Un terminal complet :** 1 à 8 graphiques par disposition, 100 outils de dessin, indicateurs, alertes, paper trading, testeur de stratégies, screener, calendrier économique et communauté."
       ]},
       {"info": "ICT Terminal ne trade pas pour vous, sauf si vous installez vous-même le pont MT5. Les setups suivent des règles ; beaucoup perdent. Testez toujours d'abord sur un compte démo."}
     ]},
@@ -81,7 +81,8 @@
         "**Aller à une date :** clic droit → **Go to date…** ou Alt+G. **Replay des barres :** le bouton replay de la barre du haut."
       ]},
       {"h": "Échelle de prix"},
-      "Clic droit sur l'échelle de prix : **Auto (fit)**, **Lock range** (l'échelle reste fixe pendant le défilement), **Lock price / bar** (le même prix par barre au zoom), **Regular**, **Log**, **Percent**, **Invert** et le côté de l'échelle."
+      "Clic droit sur l'échelle de prix : **Auto (fit)**, **Lock range** (l'échelle reste fixe pendant le défilement), **Lock price / bar** (le même prix par barre au zoom), **Regular**, **Log**, **Percent**, **Invert** et le côté de l'échelle.",
+      "**Historique :** les graphiques journaliers et hebdomadaires remontent de nombreuses années, et chaque bougie suit l'heure de New York (la journée commence à 18:00). Il y a 18 types de graphique, dont High-Low et Kagi."
     ]},
     {"id": "ict", "t": "Couches ICT", "b": [
       "Ouvrez le menu **ICT** dans la barre du haut et activez les couches voulues. Le moteur les calcule pour le symbole et l'intervalle de chaque graphique.",
@@ -111,7 +112,8 @@
         ["A", "Il manque un point."],
         ["B", "Un setup valide auquel il manque plus de points : pour étudier plutôt que trader."]
       ]}},
-      {"warn": "Aucun modèle n'a encore d'avantage prouvé. M11 (IFVG reversal) est désactivé par défaut car il a été le plus faible aux tests ; vous pouvez quand même le choisir. Les résultats passés ne préjugent pas des résultats futurs."}
+      {"warn": "Aucun modèle n'a encore d'avantage prouvé. M11 (IFVG reversal) est désactivé par défaut car il a été le plus faible aux tests ; vous pouvez quand même le choisir. Les résultats passés ne préjugent pas des résultats futurs."},
+      "**Wolf Models** (barre du haut) regroupe des modèles personnalisés construits à partir des règles d'un trader : **M17 Wolf Asia Session (NDOG)** pour NAS100 / US500, uniquement entre 19:00 et 22:00 heure de New York, et **M18 The Alpha Model Gold** pour XAUUSD à Londres (02:00–05:00) et New York (07:00–10:00), dont le biais vient de l'indice du dollar, de l'argent et de l'or. Ils s'affichent sur les graphiques 1 minute."
     ]},
     {"id": "drawing", "t": "Outils de dessin", "b": [
       {"ul": [
@@ -121,7 +123,9 @@
       ]},
       {"h": "Réglages d'un dessin"},
       "Double-cliquez sur un dessin (ou sur l'engrenage de sa petite barre) pour **Style**, **Text**, **Coordinates** et **Visibility**. Dans **Visibility**, vous pouvez n'afficher un dessin que sur certains intervalles — par exemple un FVG 1H seulement sur les graphiques 1m–15m.",
-      {"tip": "Sélectionnez une ligne ou une boîte et appuyez sur ⏰ dans sa barre pour en faire une alerte."}
+      {"tip": "Sélectionnez une ligne ou une boîte et appuyez sur ⏰ dans sa barre pour en faire une alerte."},
+      {"h": "Réglages des dessins comme sur TradingView"},
+      {"ul": ["**Outils Fib :** un tableau de 24 niveaux (actif / valeur / couleur), ligne de tendance, fond, prolonger à gauche / à droite, inverser, prix, niveaux en valeurs ou en pourcentages, position des étiquettes et taille du texte.", "**Lignes et boîtes :** pleine, tirets ou pointillés, prolongement, pointes de flèche, étiquettes de prix, statistiques (variation, %, barres, temps) et texte ; rectangles avec fond activé / désactivé, ligne médiane et prolongement.", "**Position Long / Short :** taille du compte, risque en % ou en montant, taille du lot et quantité, couleurs du gain et du stop.", "**Copier-coller :** sélectionnez un dessin et appuyez sur `Ctrl+C` puis `Ctrl+V` (ou ⎘ sur sa barre). La barre d'outils a aussi **Measure**, **Zoom in**, un menu **Hide** et un menu **Remove**."]}
     ]},
     {"id": "indicators", "t": "Indicateurs, profils de volume et ICT Script", "b": [
       {"ul": [
@@ -163,7 +167,8 @@
         "Positions et ordres sont dessinés sur le graphique. Faites glisser la ligne de SL, de TP ou d'ordre pour la déplacer.",
         "Fermez avec ✕ dans **Positions** ; les trades terminés sont dans **History** avec le P&L et le taux de réussite."
       ]},
-      {"info": "Le serveur exécute les ordres sur des barres de 1 minute : limites et stops à leur prix, un gap à l'ouverture, et quand une barre touche à la fois le stop et l'objectif, le stop compte en premier."}
+      {"info": "Le serveur exécute les ordres sur des barres de 1 minute : limites et stops à leur prix, un gap à l'ouverture, et quand une barre touche à la fois le stop et l'objectif, le stop compte en premier."},
+      "**Trading automatique MT5 :** dans l'onglet **MT5**, choisissez les modèles, symboles, grade, biais journalier, sessions, jours, trades par jour et risque de votre EA, et voyez comment les signaux des 7 derniers jours les franchissent. Appuyez sur **Take a tour** ou lisez le [guide du trading automatique](/auto-trading.html)."
     ]},
     {"id": "tester", "t": "Testeur de stratégies et screener", "b": [
       {"h": "Testeur de stratégies"},
@@ -196,7 +201,8 @@
         "Avec 2 à 8 graphiques, **▦ All** les affiche tous à l'écran, **▢ One** un seul à la fois avec des puces pour changer.",
         "Les tablettes en portrait affichent jusqu'à 8 graphiques sur deux colonnes.",
         "Pincez pour zoomer, glissez pour défiler, appui long pour le réticule ; le dessin fonctionne au doigt."
-      ]}
+      ]},
+      "**Application Android 0.4 :** l'application est désormais le terminal web complet, avec un verrou par empreinte (Account → This phone), le bouton retour du téléphone, la connexion Google dans votre navigateur et le partage d'images du graphique. Les panneaux latéraux s'ouvrent en feuille par-dessus le graphique."
     ]},
     {"id": "account", "t": "Forfaits et votre compte", "b": [
       {"ul": [

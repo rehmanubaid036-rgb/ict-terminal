@@ -6,7 +6,7 @@
     "title_a": "ICT Terminal",
     "title_b": "Panduan Pengguna",
     "lead": "Semua yang Anda perlukan untuk memakai ICT Terminal: lapisan ICT di grafik, pemindai model, alat gambar, peringatan (juga di WhatsApp), paper trading, penguji strategi, tata letak hingga 8 grafik, dan aplikasi ponsel — langkah demi langkah, dengan gambar.",
-    "chips": ["Konsep ICT digambar untuk Anda", "17 model berbasis aturan", "Web, Android & Windows", "14 bahasa"],
+    "chips": ["Konsep ICT digambar untuk Anda", "18 model berbasis aturan", "Web, Android & Windows", "14 bahasa"],
     "uinote": "Tombol, tab, dan menu di dalam terminal berbahasa Inggris. Panduan ini menampilkannya persis seperti yang Anda lihat, dengan **huruf tebal**.",
     "toc": "Daftar isi",
     "home": "Situs web",
@@ -39,8 +39,8 @@
       "ICT Terminal adalah terminal grafik untuk trader yang memakai konsep **ICT (Inner Circle Trader)**. Ia menggambar konsep-konsep itu di grafik untuk Anda dan memindai pasar untuk setup ICT berbasis aturan.",
       {"ul": [
         "**Lapisan ICT:** fair value gap (FVG / IFVG), order block dan breaker block, likuiditas buy-side dan sell-side, struktur pasar (MSS / BOS), sesi dan killzone, pembukaan penting, premium / discount dan OTE, gap pembukaan, rentang IPDA, SMT, dan bias harian.",
-        "**Pemindai model:** 17 model ICT (Silver Bullet, model 2022, Judas swing, OTE, Unicorn, Power of 3, pasca-berita, dan lainnya), masing-masing ditulis sebagai aturan tetap dengan entri, stop, dan target.",
-        "**Terminal lengkap:** 1–8 grafik per tata letak, lebih dari 40 alat gambar, indikator, peringatan, paper trading, penguji strategi, screener, kalender ekonomi, dan komunitas."
+        "**Pemindai model:** 18 model ICT (Silver Bullet, model 2022, Judas swing, OTE, Unicorn, Power of 3, pasca-berita, dan lainnya), masing-masing ditulis sebagai aturan tetap dengan entri, stop, dan target.",
+        "**Terminal lengkap:** 1–8 grafik per tata letak, 100 alat gambar, indikator, peringatan, paper trading, penguji strategi, screener, kalender ekonomi, dan komunitas."
       ]},
       {"info": "ICT Terminal tidak bertrading untuk Anda kecuali Anda sendiri memasang jembatan MT5. Setup mengikuti aturan; banyak yang rugi. Selalu uji dulu di akun demo."}
     ]},
@@ -81,7 +81,8 @@
         "**Ke tanggal:** klik kanan → **Go to date…** atau Alt+G. **Replay bar:** tombol replay di bilah atas."
       ]},
       {"h": "Skala harga"},
-      "Klik kanan skala harga: **Auto (fit)**, **Lock range** (skala tetap saat menggulir), **Lock price / bar** (harga per bar sama saat zoom), **Regular**, **Log**, **Percent**, **Invert**, dan sisi skala."
+      "Klik kanan skala harga: **Auto (fit)**, **Lock range** (skala tetap saat menggulir), **Lock price / bar** (harga per bar sama saat zoom), **Regular**, **Log**, **Percent**, **Invert**, dan sisi skala.",
+      "**Riwayat:** grafik harian dan mingguan mundur bertahun-tahun, dan setiap candle mengikuti waktu New York (hari dimulai pukul 18:00). Ada 18 jenis grafik, termasuk High-Low dan Kagi."
     ]},
     {"id": "ict", "t": "Lapisan ICT", "b": [
       "Buka menu **ICT** di bilah atas dan nyalakan lapisan yang Anda mau. Mesin menghitungnya untuk simbol dan interval setiap grafik.",
@@ -111,7 +112,8 @@
         ["A", "Kurang satu poin."],
         ["B", "Setup valid yang kurang lebih banyak poin: untuk belajar, bukan untuk trading."]
       ]}},
-      {"warn": "Belum ada model yang terbukti unggul. M11 (IFVG reversal) mati secara bawaan karena paling lemah dalam pengujian; Anda tetap bisa memilihnya. Hasil masa lalu tidak menjamin hasil masa depan."}
+      {"warn": "Belum ada model yang terbukti unggul. M11 (IFVG reversal) mati secara bawaan karena paling lemah dalam pengujian; Anda tetap bisa memilihnya. Hasil masa lalu tidak menjamin hasil masa depan."},
+      "**Wolf Models** (bar atas) berisi model kustom yang dibuat dari aturan trader sendiri: **M17 Wolf Asia Session (NDOG)** untuk NAS100 / US500, hanya antara 19:00 dan 22:00 New York, dan **M18 The Alpha Model Gold** untuk XAUUSD di London (02:00–05:00) dan New York (07:00–10:00), dengan bias dari indeks dolar, perak dan emas. Model ini tampil di grafik 1 menit."
     ]},
     {"id": "drawing", "t": "Alat gambar", "b": [
       {"ul": [
@@ -121,7 +123,9 @@
       ]},
       {"h": "Pengaturan gambar"},
       "Klik dua kali sebuah gambar (atau tekan roda gigi di bilah kecilnya) untuk **Style**, **Text**, **Coordinates**, dan **Visibility**. Di **Visibility** Anda bisa menampilkan gambar hanya pada interval pilihan — misalnya FVG 1H hanya di grafik 1m–15m.",
-      {"tip": "Pilih garis atau kotak lalu tekan ⏰ di bilahnya untuk membuat peringatan darinya."}
+      {"tip": "Pilih garis atau kotak lalu tekan ⏰ di bilahnya untuk membuat peringatan darinya."},
+      {"h": "Pengaturan gambar seperti TradingView"},
+      {"ul": ["**Alat Fib:** tabel 24 level (aktif / nilai / warna), garis tren, latar, perpanjang ke kiri / kanan, balik, harga, level dalam nilai atau persen, posisi label dan ukuran huruf.", "**Garis dan kotak:** solid, putus-putus atau titik-titik, perpanjang, ujung panah, label harga, statistik (perubahan, %, bar, waktu) dan teks; persegi panjang dengan latar aktif / mati, garis tengah dan perpanjangan.", "**Posisi Long / Short:** ukuran akun, risiko dalam % atau uang, ukuran lot dan jumlah, warna profit dan stop.", "**Salin dan tempel:** pilih gambar lalu tekan `Ctrl+C` kemudian `Ctrl+V` (atau ⎘ di barnya). Toolbar juga punya **Measure**, **Zoom in**, menu **Hide** dan menu **Remove**."]}
     ]},
     {"id": "indicators", "t": "Indikator, profil volume, dan ICT Script", "b": [
       {"ul": [
@@ -163,7 +167,8 @@
         "Posisi dan order digambar di grafik. Seret garis SL, TP, atau order untuk memindahkannya.",
         "Tutup dengan ✕ di **Positions**; transaksi selesai ada di **History** dengan P&L dan rasio menang."
       ]},
-      {"info": "Server mengisi order pada bar 1 menit: order limit dan stop pada harganya, gap pada pembukaan, dan bila satu bar menyentuh stop dan target sekaligus, stop dihitung lebih dulu."}
+      {"info": "Server mengisi order pada bar 1 menit: order limit dan stop pada harganya, gap pada pembukaan, dan bila satu bar menyentuh stop dan target sekaligus, stop dihitung lebih dulu."},
+      "**Trading otomatis MT5:** di tab **MT5** pilih model, simbol, grade, bias harian, sesi, hari, jumlah trade per hari dan risiko untuk EA Anda, dan lihat bagaimana sinyal 7 hari terakhir melewatinya. Tekan **Take a tour** di sana, atau baca [panduan trading otomatis](/auto-trading.html)."
     ]},
     {"id": "tester", "t": "Penguji strategi dan screener", "b": [
       {"h": "Penguji strategi"},
@@ -196,7 +201,8 @@
         "Dengan 2–8 grafik, **▦ All** menampilkan semua grafik di layar, **▢ One** satu per satu dengan chip untuk berpindah.",
         "Tablet dalam posisi tegak menampilkan hingga 8 grafik dalam dua kolom.",
         "Cubit untuk zoom, seret untuk menggulir, tekan lama untuk crosshair; menggambar bisa dengan jari."
-      ]}
+      ]},
+      "**Aplikasi Android 0.4:** aplikasi kini adalah terminal web lengkap, dengan kunci sidik jari (Account → This phone), tombol kembali ponsel, login Google di browser dan berbagi gambar grafik. Panel samping terbuka sebagai lembar di atas grafik."
     ]},
     {"id": "account", "t": "Paket dan akun Anda", "b": [
       {"ul": [

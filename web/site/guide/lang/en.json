@@ -6,7 +6,7 @@
     "title_a": "ICT Terminal",
     "title_b": "User Guide",
     "lead": "Everything you need to use ICT Terminal: the ICT layers on the chart, the model scanner, drawing tools, alerts (also on WhatsApp), paper trading, the strategy tester, layouts with up to 8 charts and the phone app — step by step, with pictures.",
-    "chips": ["ICT concepts drawn for you", "17 rule-based models", "Web, Android & Windows", "14 languages"],
+    "chips": ["ICT concepts drawn for you", "18 rule-based models", "Web, Android & Windows", "14 languages"],
     "uinote": "Buttons, tabs and menus are written in English inside the terminal. This guide shows them exactly as you see them, in **bold**.",
     "toc": "Contents",
     "home": "Website",
@@ -39,8 +39,8 @@
       "ICT Terminal is a charting terminal built for traders who use the **ICT (Inner Circle Trader)** concepts. It draws the concepts on the chart for you and scans the markets for rule-based ICT setups.",
       {"ul": [
         "**ICT layers:** fair value gaps (FVG / IFVG), order and breaker blocks, buy-side and sell-side liquidity, market structure (MSS / BOS), sessions and killzones, key opens, premium / discount and OTE, opening gaps, IPDA ranges, SMT and the daily bias.",
-        "**Model scanner:** 17 ICT models (Silver Bullet, 2022 model, Judas swing, OTE, Unicorn, Power of 3, news aftermath and more), each written as fixed rules with entry, stop and targets.",
-        "**A full terminal:** 1–8 charts per layout, 40+ drawing tools, indicators, alerts, paper trading, a strategy tester, a screener, the economic calendar and a community."
+        "**Model scanner:** 18 ICT models (Silver Bullet, 2022 model, Judas swing, OTE, Unicorn, Power of 3, news aftermath and more), each written as fixed rules with entry, stop and targets.",
+        "**A full terminal:** 1–8 charts per layout, 100 drawing tools, indicators, alerts, paper trading, a strategy tester, a screener, the economic calendar and a community."
       ]},
       {"info": "ICT Terminal does not trade for you unless you install the MT5 bridge yourself. Setups follow rules; many of them lose. Always test on a demo account first."}
     ]},
@@ -81,7 +81,8 @@
         "**Go to date:** right-click → **Go to date…** or Alt+G. **Bar replay:** the replay button in the top bar."
       ]},
       {"h": "Price scale"},
-      "Right-click the price scale: **Auto (fit)**, **Lock range** (the scale stays while you scroll), **Lock price / bar** (the same price per bar when you zoom), **Regular**, **Log**, **Percent**, **Invert** and the side of the scale."
+      "Right-click the price scale: **Auto (fit)**, **Lock range** (the scale stays while you scroll), **Lock price / bar** (the same price per bar when you zoom), **Regular**, **Log**, **Percent**, **Invert** and the side of the scale.",
+      "**History:** daily and weekly charts go back many years, and every candle follows New York time (the day starts at 18:00). There are 18 chart types, High-Low and Kagi included."
     ]},
     {"id": "ict", "t": "ICT layers", "b": [
       "Open the **ICT** menu in the top bar and switch on the layers you want. They are calculated by the engine for the symbol and interval of each chart.",
@@ -111,7 +112,8 @@
         ["A", "One point is missing."],
         ["B", "A valid setup with more points missing: for study rather than for trading."]
       ]}},
-      {"warn": "No model has a proven edge yet. M11 (IFVG reversal) is off by default because it tested weakest; you can still choose it. Results of the past do not promise future results."}
+      {"warn": "No model has a proven edge yet. M11 (IFVG reversal) is off by default because it tested weakest; you can still choose it. Results of the past do not promise future results."},
+      "**Wolf Models** (top bar) holds custom models built from a trader's own rules: **M17 Wolf Asia Session (NDOG)** for NAS100 / US500, only between 19:00 and 22:00 New York, and **M18 The Alpha Model Gold** for XAUUSD in London (02:00–05:00) and New York (07:00–10:00), with its bias from the dollar index, silver and gold. They draw on 1-minute charts."
     ]},
     {"id": "drawing", "t": "Drawing tools", "b": [
       {"ul": [
@@ -121,7 +123,9 @@
       ]},
       {"h": "Settings of a drawing"},
       "Double-click a drawing (or press the gear on its small bar) for **Style**, **Text**, **Coordinates** and **Visibility**. In **Visibility** you can show a drawing only on chosen intervals — for example a 1H FVG only on 1m–15m charts.",
-      {"tip": "Select a line or a box and press ⏰ on its bar to create an alert from it."}
+      {"tip": "Select a line or a box and press ⏰ on its bar to create an alert from it."},
+      {"h": "Drawing settings like TradingView"},
+      {"ul": ["**Fib tools:** a table of 24 levels (on / value / colour), trend line, background, extend left / right, reverse, prices, levels as values or percents, label position and font size.", "**Lines and boxes:** solid, dashed or dotted, extend, arrow ends, price labels, stats (change, %, bars, time) and text; rectangles with background on / off, a middle line and extend.", "**Long / Short position:** account size, risk in % or money, lot size and quantity, profit and stop colours.", "**Copy and paste:** select a drawing and press `Ctrl+C` then `Ctrl+V` (or ⎘ on its bar). The toolbar also has **Measure**, **Zoom in**, a **Hide** menu and a **Remove** menu."]}
     ]},
     {"id": "indicators", "t": "Indicators, volume profiles and ICT Script", "b": [
       {"ul": [
@@ -163,7 +167,8 @@
         "Positions and orders are drawn on the chart. Drag the SL, TP or order line to move it.",
         "Close with ✕ in **Positions**; finished trades are in **History** with the P&L and the win rate."
       ]},
-      {"info": "Orders are filled by the server on 1-minute bars: limit and stop orders fill at their price, a gap fills at the open, and when one bar touches both the stop and the target, the stop counts first."}
+      {"info": "Orders are filled by the server on 1-minute bars: limit and stop orders fill at their price, a gap fills at the open, and when one bar touches both the stop and the target, the stop counts first."},
+      "**MT5 auto-trading:** in the **MT5** tab choose the models, symbols, grade, daily bias, sessions, days, trades a day and risk for your EA, and see how the signals of the last 7 days pass them. Press **Take a tour** there, or read the [auto-trading guide](/auto-trading.html)."
     ]},
     {"id": "tester", "t": "Strategy tester and screener", "b": [
       {"h": "Strategy tester"},
@@ -196,7 +201,8 @@
         "With 2–8 charts, **▦ All** shows every chart on the screen, **▢ One** shows one at a time with chips to switch.",
         "Tablets in portrait show up to 8 charts in two columns.",
         "Pinch to zoom, drag to scroll, long-press for the crosshair; drawing works with the finger."
-      ]}
+      ]},
+      "**Android app 0.4:** the app is the whole web terminal, with a fingerprint lock (Account → This phone), the phone's back button, Google sign-in in your browser and sharing of chart pictures. Side panels open as a sheet over the chart."
     ]},
     {"id": "account", "t": "Plans and your account", "b": [
       {"ul": [
