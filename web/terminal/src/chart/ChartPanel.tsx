@@ -19,6 +19,7 @@ import { syncDrawing, drawDefault, DRAWINGS, register, unregister, getEntry, sna
 import { DrawingDialog } from '../ui/DrawingDialog'
 import { toast } from '../ui/common'
 import { paperModify, paperOrder, usePaper } from '../panels/Paper'
+import { isPine } from '../pine/runtime'
 import { registerScript, type SavedScript } from './script'
 import { CHART_STYLE } from './charttypes'
 
@@ -341,16 +342,19 @@ export function ChartPanel(p: ChartPanelProps) {
         continue
       }
       let def = indicatorDef(ind.name)
+      let pineExt: object | null = null
       if (ind.name.startsWith('SCRIPT_')) {
         // the user's own script: (re)registered from its saved source; a deleted or broken one is skipped
         const sc = usedScripts.find(s => `SCRIPT_${s.id}` === ind.name)
         if (!sc) continue
         try { def = { overlay: !registerScript(sc).pane } as typeof def } catch { continue }
+        if (isPine(sc.src)) pineExt = { ticker: conf.ticker, tfSeconds: tf.seconds, mintick: 1 / (conf.pricescale || 100), inputs: sc.inputs }
       }
       // a second EMA is "EMA#2": the same indicator, its own id
       const cmpSeries = (chart.getIndicators({ name: COMPARE })[0]?.extendData as { series?: { ticker: string; close: Record<number, number> }[] } | undefined)?.series ?? []
       const value = { name: baseIndicator(ind.name), id: ind.name, ...(ind.params?.length ? { calcParams: ind.params } : {}), visible: !ind.hidden,
         ...(baseIndicator(ind.name) === 'CORREL' ? { extendData: { other: cmpSeries[0]?.close ?? {}, ticker: cmpSeries[0]?.ticker } } : {}),
+        ...(pineExt ? { extendData: pineExt } : {}),
         // the colour is the first line's (EMA 6, MACD DIF ...); the others keep the chart's default colours
         ...(ind.color || ind.width ? { styles: { lines: LINE_DEFAULTS.map((c, k) => ({ color: k === 0 ? (ind.color ?? c) : c, size: ind.width ?? 1, style: 'solid', smooth: false, dashedValue: [2, 2] })) } } : {}) } as any
       // a price-based indicator may be moved into a pane of its own (oscillators never go on the price scale)

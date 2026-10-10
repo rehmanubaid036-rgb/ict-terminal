@@ -222,7 +222,7 @@ export function parse(data: any, maxCharts: number): { state: TerminalState; dra
     alertLog: Array.isArray(data?.alertLog) ? data.alertLog.filter((x: any) => Number.isFinite(x?.at) && typeof x?.text === 'string').slice(0, 100) : [],
     signals: parseSignals(data?.signals),
     wlCols: Array.isArray(data?.wlCols) ? data.wlCols.filter((x: any) => (WL_COLS as readonly string[]).includes(x)).slice(0, 6) : ['chg', 'chgp'],
-    scripts: Array.isArray(data?.scripts) ? data.scripts.filter((x: any) => typeof x?.id === 'string' && /^[a-z0-9]{1,12}$/.test(x.id) && typeof x?.name === 'string' && typeof x?.src === 'string' && x.src.length <= 8000)
+    scripts: Array.isArray(data?.scripts) ? data.scripts.filter((x: any) => typeof x?.id === 'string' && /^[a-z0-9]{1,12}$/.test(x.id) && typeof x?.name === 'string' && typeof x?.src === "string" && x.src.length <= 60000)
       .slice(0, 30).map((x: any) => ({ id: x.id, name: String(x.name).slice(0, 30), src: x.src })) : [],
     chart: parseSettings(data?.chart),
     indTemplates: Array.isArray(data?.indTemplates) ? data.indTemplates.filter((x: any) => typeof x?.name === 'string' && Array.isArray(x?.indicators)).slice(0, 40)

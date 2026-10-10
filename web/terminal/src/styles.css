@@ -1122,3 +1122,12 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 .rc-spec summary { cursor: pointer; color: var(--muted); }
 .rc-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
 @media (max-width: 760px) { .rc-grid { grid-template-columns: 1fr; } }
+
+/* Pine Script editor */
+.script-top .tag { font-size: 10px; padding: 2px 7px; border-radius: 10px; background: var(--panel2); color: var(--muted); }
+.script-top .tag.pine { background: rgba(41, 98, 255, .18); color: #7aa2ff; }
+.pine-inputs { border: 1px solid var(--line2); border-radius: 8px; padding: 8px 10px; margin: 6px 0; font-size: 12px; }
+.pine-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px 12px; margin: 6px 0; }
+.pine-grid label { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--muted); }
+.pine-grid input, .pine-grid select { width: 100px; }
+.pine-grid input[type="checkbox"], .pine-grid input[type="color"] { width: auto; }

@@ -15,6 +15,9 @@
 //   @stop 1.5      stop loss = 1.5 x ATR(14) from the entry      @target 2   take profit = 2 R
 //   @maxbars 50    close a trade after 50 bars
 import { registerIndicator, type KLineData } from 'klinecharts'
+import { isPine, type Value } from '../pine/runtime'
+import { registerPine } from '../pine/render'
+const pineInfo = new Map<string, ScriptInfo>()
 
 type Series = number[]
 export interface StrategyConf { long: boolean; short: boolean; exit: boolean; stop: number; target: number; maxbars: number }
@@ -265,15 +268,26 @@ export function testStrategy(src: string, bars: KLineData[]): TestResult {
 }
 
 // ---- saved scripts as chart indicators -------------------------------------------------------------
-export interface SavedScript { id: string; name: string; src: string }
+export interface SavedScript { id: string; name: string; src: string; inputs?: Record<string, unknown> }
 const registered = new Map<string, string>()     // indicator name -> source it was registered with
 
 export const scriptIndicatorName = (id: string) => `SCRIPT_${id}`
 
 /** Registers (or re-registers after an edit) a script as a chart indicator. Returns its info. */
 export function registerScript(sc: SavedScript): ScriptInfo {
-  const { run, info } = compile(sc.src)
   const name = scriptIndicatorName(sc.id)
+  if (isPine(sc.src)) {
+    // Pine Script: the whole TradingView-style language (src/pine)
+    const key = sc.src + JSON.stringify(sc.inputs ?? {})
+    const cached = pineInfo.get(name)
+    if (registered.get(name) === key && cached) return cached
+    registered.set(name, key)
+    const out = registerPine(name, sc.name, sc.src, sc.inputs as Record<string, Value> | undefined, () => {})
+    const info: ScriptInfo = { plots: out.plots.filter(p => p.kind === 'plot').map(p => p.title), pane: !out.overlay, strategy: null }
+    pineInfo.set(name, info)
+    return info
+  }
+  const { run, info } = compile(sc.src)
   if (registered.get(name) === sc.src) return info
   registered.set(name, sc.src)
   registerIndicator<Record<string, number>>({
