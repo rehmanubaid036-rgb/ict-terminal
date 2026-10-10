@@ -59,6 +59,22 @@ def footprint(t: pd.DataFrame, seconds: int, tick: float, max_levels: int = 400)
     return out
 
 
+def auto_step(t: pd.DataFrame, seconds: int, mintick: float, rows: int = 18) -> float:
+    """A ladder step that gives a typical bar about ``rows`` levels: the median bar range / rows, rounded
+    to 1 / 2 / 5 x 10^k multiples of the symbol's tick (so gold on 1m gets 0.05-0.10, BTC gets 5-10)."""
+    if t.empty or mintick <= 0:
+        return mintick or 0.01
+    idx = t.index.as_unit("ns") if hasattr(t.index, "as_unit") else t.index
+    bucket = (idx.asi8 // 1_000_000_000) // seconds
+    rng = t["price"].groupby(bucket).agg(lambda x: x.max() - x.min())
+    med = float(rng.median()) if len(rng) else 0.0
+    want = med / rows if med > 0 else mintick
+    k = max(1.0, want / mintick)
+    exp = 10 ** np.floor(np.log10(k))
+    nice = min((m for m in (1, 2, 5, 10) if m * exp >= k), default=10) * exp
+    return float(round(nice * mintick, 10))
+
+
 def book_from_tick(bid: float, ask: float, bid_vol: float = 0.0, ask_vol: float = 0.0) -> dict:
     """A one-level book (brokers without depth): what the terminal shows when nothing better exists."""
     return {"bids": [[bid, bid_vol]] if bid > 0 else [], "asks": [[ask, ask_vol]] if ask > 0 else [], "depth": 1}

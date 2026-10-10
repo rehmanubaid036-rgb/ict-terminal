@@ -61,7 +61,7 @@ def test_routes(tmp_path):
     r = c.get("/api/v1/footprint", params={"symbol": "AXI:XAUUSD", "resolution": "1", "from": int(T0.timestamp()), "to": int(T0.timestamp()) + 600})
     assert r.status_code == 200, r.text
     j = r.json()
-    assert j["source"] == "ticks" and j["tick"] == 0.01 and len(j["bars"]) >= 3
+    assert j["source"] == "ticks" and 0.01 <= j["tick"] <= 1 and len(j["bars"]) >= 3
     assert all(len(b["levels"]) > 0 for b in j["bars"])
     r = c.get("/api/v1/book", params={"symbol": "AXI:XAUUSD"})
     assert r.status_code == 200 and r.json()["asks"][0][0] == 4000.3

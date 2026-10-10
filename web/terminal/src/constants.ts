@@ -81,6 +81,7 @@ export const CHART_TYPES = [
   { id: 'step_line', label: 'Step line' },
   { id: 'line_markers', label: 'Line with markers' },
   { id: 'vol_candles', label: 'Volume candles' },
+  { id: 'footprint', label: 'Footprint (order flow)' },
   { id: 'pnf', label: 'Point & Figure (ATR box, 3 reversal)' },
   { id: 'kagi', label: 'Kagi (ATR reversal)' },
 ] as const

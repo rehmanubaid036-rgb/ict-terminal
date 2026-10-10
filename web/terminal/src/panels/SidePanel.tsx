@@ -1,5 +1,6 @@
 import { IND_TYPES } from '../chart/indalert'
 import { Mt5Panel } from './Mt5Panel'
+import { DomPanel } from './Dom'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Overlay } from 'klinecharts'
 import { useTerminal } from '../Terminal'
@@ -14,7 +15,7 @@ import { CalendarPanel, NewsPanel } from './MarketPanels'
 import { TradePanel } from './Paper'
 import { openExternal, saveFile } from '../appbridge'
 
-export type SideTab = 'trade' | 'calendar' | 'news' | 'watchlist' | 'signals' | 'assistant' | 'alerts' | 'objects' | 'data' | 'info' | 'mt5' | 'journal'
+export type SideTab = 'trade' | 'calendar' | 'news' | 'watchlist' | 'signals' | 'assistant' | 'alerts' | 'objects' | 'data' | 'info' | 'mt5' | 'journal' | 'dom'
 
 const TABS: { id: SideTab; icon: string; label: string; phoneOnly?: boolean }[] = [
   { id: 'watchlist', icon: 'list', label: 'Watchlist' },
@@ -26,6 +27,7 @@ const TABS: { id: SideTab; icon: string; label: string; phoneOnly?: boolean }[] 
   { id: 'calendar', icon: 'calendar', label: 'Calendar' },
   { id: 'news', icon: 'news', label: 'News' },
   { id: 'objects', icon: 'tree', label: 'Object tree' },
+  { id: 'dom', icon: 'book', label: 'Depth of market' },
   { id: 'data', icon: 'data', label: 'Data window' },
   { id: 'info', icon: 'tag', label: 'Symbol info' },
   { id: 'journal', icon: 'journal', label: 'Journal', phoneOnly: true },
@@ -54,6 +56,7 @@ export function SidePanel() {
             {tab === 'alerts' && <Alerts />}
             {tab === 'objects' && <ObjectTree />}
             {tab === 'data' && <DataWindow />}
+            {tab === 'dom' && <DomPanel />}
             {tab === 'info' && <SymbolInfo />}
             {tab === 'mt5' && <Mt5Panel />}
             {tab === 'journal' && <PhoneJournal />}

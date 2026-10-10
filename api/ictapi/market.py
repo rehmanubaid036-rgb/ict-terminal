@@ -211,6 +211,8 @@ class BinanceProvider(Provider):
         self._cache: dict[str, pd.DataFrame] = {}
         self._symbols: dict[str, SymbolInfo] = {}
         self._at = 0.0
+        self._trades: dict[str, pd.DataFrame] = {}   # recent trades a symbol, for the footprint
+
 
     def symbols(self):
         with self._lock:
@@ -270,6 +272,38 @@ class BinanceProvider(Provider):
         return df[df.index < end + pd.Timedelta(seconds=STEP[tf])]
 
 
+    def ticks(self, ticker, start, end):
+        info = self.symbols().get(ticker)
+        if info is None:
+            return super().ticks(ticker, start, end)
+        start = max(start, end - pd.Timedelta(hours=MAX_FOOTPRINT_HOURS))
+        # trades already read stay in memory (48 h a symbol): a call then only fetches the newer ones
+        with self._lock:
+            have = self._trades.get(info.source)
+            if have is not None and len(have) and have.index[0] <= start:
+                fresh = self.client.agg_trades(info.source, have.index[-1] + pd.Timedelta(milliseconds=1), end, max_requests=10)
+                have = pd.concat([have, fresh]) if len(fresh) else have
+            else:
+                older = self.client.agg_trades(info.source, start, have.index[0] if have is not None and len(have) else end, max_requests=20)
+                have = pd.concat([older, have]) if have is not None and len(have) else older
+                if have is not None and len(have) and have.index[-1] < end - pd.Timedelta(seconds=5):
+                    fresh = self.client.agg_trades(info.source, have.index[-1] + pd.Timedelta(milliseconds=1), end, max_requests=10)
+                    have = pd.concat([have, fresh]) if len(fresh) else have
+            if have is not None and len(have):
+                have = have[~have.index.duplicated(keep="last")].sort_index()
+                have = have[have.index >= end - pd.Timedelta(hours=MAX_FOOTPRINT_HOURS)]
+                self._trades[info.source] = have
+        if have is None or not len(have):
+            return super().ticks(ticker, start, end)
+        return have[(have.index >= start) & (have.index < end)]
+
+    def book(self, ticker, depth=20):
+        info = self.symbols().get(ticker)
+        if info is None:
+            return super().book(ticker, depth)
+        return self.client.depth(info.source, depth)
+
+
 class MultiProvider(Provider):
     """All feeds behind one provider; a ticker goes to the feed that lists it."""
 
@@ -310,20 +344,6 @@ class MultiProvider(Provider):
     def book(self, ticker, depth=20):
         p = self._owner(ticker)
         return p.book(ticker, depth) if p else super().book(ticker, depth)
-
-    def ticks(self, ticker, start, end):
-        info = self.symbols().get(ticker)
-        if info is None:
-            return super().ticks(ticker, start, end)
-        start = max(start, end - pd.Timedelta(hours=MAX_FOOTPRINT_HOURS))
-        return self.client.agg_trades(info.source, start, end)
-
-    def book(self, ticker, depth=20):
-        info = self.symbols().get(ticker)
-        if info is None:
-            return super().book(ticker, depth)
-        return self.client.depth(info.source, depth)
-
 
 # ---- spread / ratio symbols ---------------------------------------------------------------------
 # ``FEED:A/B`` (ratio), ``FEED:A-B`` (spread), ``FEED:A+B``, ``FEED:A*B``: two symbols of the same feed,

@@ -124,6 +124,8 @@ export interface EaEvent { id: number; mt_login: string; signal_id: number; even
 export interface DonationInfo { enabled: boolean; title: string; text: string; amounts: number[]; currency: string; methods: PaymentMethod[]; crypto?: { network: string; label: string; token: string }[] }
 export interface AskAnswer { text: string; intent: string; data: Record<string, any>; llm: boolean; llm_by?: string }
 export interface AiSettings { enabled: boolean; provider: string; model: string; has_key: boolean; providers: { id: string; name: string }[] }
+export interface FootprintBar { t: number; o: number; h: number; l: number; c: number; levels: [number, number, number][]; poc: number; buy: number; sell: number; delta: number }
+export interface OrderBook { symbol: string; bids: [number, number][]; asks: [number, number][]; depth: number; time: number }
 export interface Quote { symbol: string; price: number | null; change: number | null; change_pct: number | null; time?: number; high?: number; low?: number; volume?: number | null }
 // ---- community ---------------------------------------------------------------------------------
 export interface CommunityStatus { enabled: boolean; rules: string; rooms: { key: string; name: string }[]; nickname: string; rules_accepted: boolean; banned: boolean; ban_reason: string; muted_until: string | null; write_in_seconds: number }
@@ -211,6 +213,8 @@ export const api = {
   search: (query: string, limit = 30) => get<SearchItem[]>('/udf/search', { query, limit }),
   history: (symbol: string, resolution: string, from: number, to: number, countback?: number, signal?: AbortSignal) =>
     get<Bars>('/udf/history', { symbol, resolution, from, to, countback }, signal),
+  footprint: (symbol: string, resolution: string, from: number, to: number) => get<{ symbol: string; tick: number; bars: FootprintBar[]; source: string }>('/api/v1/footprint', { symbol, resolution, from, to }),
+  book: (symbol: string, depth = 20) => get<OrderBook>('/api/v1/book', { symbol, depth }),
   quotes: (symbols: string[]) => get<{ quotes: Quote[] }>('/api/v1/quotes', { symbols: symbols.join(',') }),
 
   overlays: (symbol: string, resolution: string, from: number, to: number, indicators: string[], signal?: AbortSignal) =>

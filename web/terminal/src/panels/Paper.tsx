@@ -63,6 +63,11 @@ export function TradePanel() {
   const [sl, setSl] = useState('')
   const [tp, setTp] = useState('')
   const [tab, setTab] = useState<'positions' | 'orders' | 'history'>('positions')
+  useEffect(() => {
+    const onDom = (e: Event) => { const d = (e as CustomEvent).detail as { price: number; side: 'ask' | 'bid' }; setType('limit'); setPrice(String(d.price)); setSide(d.side === 'ask' ? -1 : 1) }
+    window.addEventListener('ict:dom-price', onDom)
+    return () => window.removeEventListener('ict:dom-price', onDom)
+  }, [])
   const [edit, setEdit] = useState<number | null>(null)
   const firstPrice = useRef(false)
   useEffect(() => { if (last && !firstPrice.current) { setPrice(last.toFixed(d)); firstPrice.current = true } }, [last, d])

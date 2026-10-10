@@ -21,7 +21,7 @@ import { toast } from '../ui/common'
 import { paperModify, paperOrder, usePaper } from '../panels/Paper'
 import { isPine } from '../pine/runtime'
 import { registerScript, type SavedScript } from './script'
-import { CHART_STYLE } from './charttypes'
+import { CHART_STYLE, type FpBar } from './charttypes'
 
 const ICT = 'ict'
 const LINE_DEFAULTS = ['#FF9600', '#935EBD', '#2196F3', '#E11D74', '#01C5C4']   // klinecharts' indicator line colours
@@ -190,9 +190,47 @@ export function ChartPanel(p: ChartPanelProps) {
   }, [conf.ticker, tf.label, conf.chartType, digits, st.precision])
 
   // baseline / columns are drawn by the chart-style layer in the up / down colours
+  const [fp, setFp] = useState<{ map: Record<number, FpBar>; tick: number; note: string }>({ map: {}, tick: 0, note: '' })
   useEffect(() => {
-    chartRef.current?.overrideIndicator({ name: CHART_STYLE, paneId: 'candle_pane', extendData: { type: conf.chartType, up: st.bodyUp, down: st.bodyDown } })
-  }, [conf.chartType, st.bodyUp, st.bodyDown])
+    chartRef.current?.overrideIndicator({ name: CHART_STYLE, paneId: 'candle_pane', extendData: { type: conf.chartType, up: st.bodyUp, down: st.bodyDown, fp: fp.map, fpTick: fp.tick, fpNote: fp.note } })
+  }, [conf.chartType, st.bodyUp, st.bodyDown, fp])
+  // footprint: the order flow of the bars on screen, from the feed's ticks (intraday only)
+  useEffect(() => {
+    const chart = chartRef.current
+    if (!chart || conf.chartType !== 'footprint') { setFp({ map: {}, tick: 0, note: '' }); return }
+    if (tf.seconds > 3600) { setFp({ map: {}, tick: 0, note: 'Footprint: choose a timeframe of 1 hour or less.' }); return }
+    let gone = false, busy = false, timer = 0
+    const have = new Map<number, FpBar>()
+    const tried = new Map<number, number>()             // bar -> when the feed last gave nothing for it
+    let tick = 0
+    const load = async () => {
+      if (busy) return
+      const list = chart.getDataList(), r = chart.getVisibleRange()
+      const from = Math.max(0, r.from, list.length - 300), to = Math.min(list.length - 1, r.to)
+      if (to < from || !list.length) return
+      const now = Date.now(), lastTs = list[list.length - 1]?.timestamp
+      const missing: number[] = []
+      for (let i = from; i <= to; i++) { const ts = list[i].timestamp; if (!have.has(ts) && (now - (tried.get(ts) ?? 0) > 300_000 || ts === lastTs)) missing.push(ts) }
+      if (!missing.length) return
+      busy = true
+      try {
+        const start = Math.min(...missing) / 1000, end = (Math.max(...missing) + tf.seconds * 1000) / 1000
+        const res = await api.footprint(conf.ticker, tf.resolution, Math.floor(start), Math.ceil(end))
+        if (gone) return
+        tick = res.tick
+        for (const b of res.bars) have.set(b.t * 1000, b)
+        for (const ts of missing) if (!have.has(ts)) tried.set(ts, now)
+        setFp({ map: Object.fromEntries(have), tick, note: res.source === 'none' ? 'Footprint: this feed has no tick data.' : '' })
+        if (lastTs !== undefined) have.delete(lastTs)        // the live bar is read again next time
+      } catch (e) { if (!gone) setFp(f => ({ ...f, note: `Footprint: ${errorText(e)}` })) } finally { busy = false }
+    }
+    const onRange = () => { window.clearTimeout(timer); timer = window.setTimeout(load, 350) }
+    timer = window.setTimeout(load, 300)
+    chart.subscribeAction('onVisibleRangeChange', onRange)
+    const every = window.setInterval(load, 15_000)
+    return () => { gone = true; window.clearTimeout(timer); window.clearInterval(every); chart.unsubscribeAction('onVisibleRangeChange', onRange) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conf.chartType, conf.ticker, tf.label])
 
   // ---- chart settings (styles, status line, scale, time zone) -----------------------------------
   const setKey = JSON.stringify(st)

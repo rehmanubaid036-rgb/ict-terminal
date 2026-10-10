@@ -69,6 +69,7 @@ const P: Record<string, ReactNode> = {
   target: <><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="4" /><circle cx="12" cy="12" r="1" /></>,
   spark: <><path d="M12 3l1.8 4.6L18.5 9l-4.7 1.4L12 15l-1.8-4.6L5.5 9l4.7-1.4Z" /><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8Z" /></>,
   tree: <><path d="M5 4v16M5 8h6M5 14h6M5 20h6" /><rect x="11" y="6" width="9" height="4" rx="1" /><rect x="11" y="12" width="9" height="4" rx="1" /></>,
+  book: <><rect x="4" y="3.5" width="16" height="17" rx="2" /><path d="M4 8h16M4 12h16M4 16h16M12 3.5v17" /></>,
   data: <><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M4 9h16M9 9v11" /></>,
   journal: <><path d="M5 4h12a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2Z" /><path d="M9 8h6M9 12h6" /></>,
   user: <><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></>,

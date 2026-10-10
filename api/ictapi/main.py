@@ -460,7 +460,7 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
                        a: dict = Depends(logged_in)):
         """Footprint bars (volume per price, buys vs sells) of the chart's interval, from the feed's ticks.
         ``ticks``: the price step of the ladder (0 = the symbol's own tick x the interval's usual grouping)."""
-        from ictengine.orderflow import footprint
+        from ictengine.orderflow import auto_step, footprint
         i = _info(symbol)
         tf = _tf(resolution)
         sec = int(tf[:-1]) if tf.endswith("s") else {"1m": 60, "3m": 180, "5m": 300, "15m": 900, "30m": 1800, "1h": 3600, "2h": 7200, "4h": 14400, "1d": 86400, "1w": 604800}.get(tf, 60)
@@ -468,11 +468,11 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
         if end <= start:
             raise HTTPException(400, "'to' must be after 'from'")
         start = max(start, end - pd.Timedelta(seconds=sec * 300))        # at most 300 bars per call
-        step = ticks or (1 / (i.pricescale or 100)) * (1 if sec <= 60 else 2 if sec <= 300 else 5 if sec <= 900 else 10 if sec <= 3600 else 25)
         try:
             t = provider.ticks(i.ticker, start, end)
         except Exception as e:
             raise HTTPException(502, f"No tick data: {e}")
+        step = ticks or auto_step(t, sec, 1 / (i.pricescale or 100))
         return {"symbol": i.ticker, "resolution": resolution, "tick": step, "bars": footprint(t, sec, step), "source": "ticks" if len(t) else "none"}
 
     @app.get("/api/v1/book")

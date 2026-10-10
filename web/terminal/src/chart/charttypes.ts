@@ -3,7 +3,8 @@
 import { registerIndicator, type KLineData } from 'klinecharts'
 
 export const CHART_STYLE = 'ICT_CHART_STYLE'
-export const DRAWN_TYPES = new Set(['baseline', 'columns', 'high_low', 'hlc_area', 'step_line', 'line_markers', 'vol_candles', 'pnf', 'kagi'])
+export const DRAWN_TYPES = new Set(['baseline', 'columns', 'high_low', 'hlc_area', 'step_line', 'line_markers', 'vol_candles', 'pnf', 'kagi', 'footprint'])
+export interface FpBar { levels: [number, number, number][]; poc: number; delta: number; buy: number; sell: number }
 
 function atr14(bars: KLineData[]) {
   let atr = 0
@@ -107,6 +108,8 @@ export function rangeBars(bars: KLineData[], size = 0): KLineData[] {
   return out
 }
 
+const short = (v: number) => { const a = Math.abs(v); return a >= 1e6 ? `${(a / 1e6).toFixed(1)}M` : a >= 1e4 ? `${(a / 1e3).toFixed(0)}K` : a >= 1e3 ? `${(a / 1e3).toFixed(1)}K` : a >= 100 ? a.toFixed(0) : Number.isInteger(a) ? String(a) : a.toFixed(1) }
+
 let done = false
 export function registerChartTypes() {
   if (done) return
@@ -116,7 +119,7 @@ export function registerChartTypes() {
     calc: list => list.map(() => ({})),
     createTooltipDataSource: () => ({ name: '', calcParamsText: '', features: [], legends: [] }),
     draw: ({ ctx, chart, indicator, bounding, xAxis, yAxis }) => {
-      const ext = (indicator.extendData ?? {}) as { type?: string; up?: string; down?: string }
+      const ext = (indicator.extendData ?? {}) as { type?: string; up?: string; down?: string; fp?: Record<number, FpBar>; fpTick?: number; fpNote?: string }
       if (!ext.type || !DRAWN_TYPES.has(ext.type)) return true
       const list = chart.getDataList()
       const r = chart.getVisibleRange()
@@ -154,6 +157,50 @@ export function registerChartTypes() {
           const r = Math.max(1.5, Math.min(3.5, space.bar / 4))
           for (let i = from; i < to; i++) { ctx.beginPath(); ctx.arc(X(i), Y(list[i].close), r, 0, 2 * Math.PI); ctx.fill() }
         }
+        ctx.restore(); return true
+      }
+      if (ext.type === 'footprint') {
+        // order flow per bar: each price level shows the selling (left, red) and buying (right, green) volume,
+        // the point of control is boxed, the delta sits under the bar; thin candles stay as a guide
+        const fp = ext.fp ?? {}
+        const tick = ext.fpTick || 0
+        const wide = space.bar >= 56, mid = space.bar >= 22
+        ctx.font = `${wide ? 10 : 9}px ui-monospace, Consolas, monospace`
+        ctx.textBaseline = 'middle'
+        for (let i = from; i < to; i++) {
+          const b = list[i], x = X(i)
+          const c = b.close >= b.open ? up : down
+          ctx.strokeStyle = c; ctx.lineWidth = 1; ctx.globalAlpha = 0.55
+          ctx.beginPath(); ctx.moveTo(x, Y(b.high)); ctx.lineTo(x, Y(b.low)); ctx.stroke()
+          ctx.strokeRect(x - space.bar * 0.45, Y(Math.max(b.open, b.close)), space.bar * 0.9, Math.max(1, Y(Math.min(b.open, b.close)) - Y(Math.max(b.open, b.close))))
+          ctx.globalAlpha = 1
+          const f = fp[b.timestamp]
+          if (!f || !f.levels.length) continue
+          const maxV = Math.max(1, ...f.levels.map(l => Math.max(l[1], l[2])))
+          const rowH = tick ? Math.max(1, Math.abs(Y(f.levels[0][0]) - Y(f.levels[0][0] + tick))) : 6
+          const half = space.bar * 0.47
+          for (const [p, buy, sell] of f.levels) {
+            const y = Y(p), top = y - rowH / 2, h = Math.max(1, rowH - 1)
+            if (top > bounding.height || top + h < 0) continue
+            const ws = (sell / maxV) * half, wb = (buy / maxV) * half
+            ctx.fillStyle = 'rgba(239,83,80,.55)'; ctx.fillRect(x - ws, top, ws, h)
+            ctx.fillStyle = 'rgba(38,166,154,.55)'; ctx.fillRect(x, top, wb, h)
+            if (p === f.poc) { ctx.strokeStyle = '#f5a623'; ctx.lineWidth = 1; ctx.strokeRect(x - half, top, half * 2, h) }
+            if (mid && rowH >= 9) {
+              ctx.fillStyle = '#e8ecf5'
+              ctx.textAlign = 'right'; ctx.fillText(short(sell), x - 2, y)
+              ctx.textAlign = 'left'; ctx.fillText(short(buy), x + 2, y)
+            }
+          }
+          if (mid) {
+            const yb = Y(b.low) + 12
+            ctx.textAlign = 'center'
+            ctx.fillStyle = f.delta >= 0 ? up : down
+            ctx.fillText(`${f.delta >= 0 ? '+' : ''}${short(f.delta)}`, x, yb)
+            if (wide) { ctx.fillStyle = '#9aa4bf'; ctx.fillText(short(f.buy + f.sell), x, yb + 12) }
+          }
+        }
+        if (ext.fpNote) { ctx.fillStyle = '#9aa4bf'; ctx.font = '11px Inter, "Segoe UI", sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText(ext.fpNote, 8, 8) }
         ctx.restore(); return true
       }
       if (ext.type === 'vol_candles') {

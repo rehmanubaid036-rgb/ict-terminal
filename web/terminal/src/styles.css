@@ -1133,3 +1133,18 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 .pine-grid label { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--muted); }
 .pine-grid input, .pine-grid select { width: 100px; }
 .pine-grid input[type="checkbox"], .pine-grid input[type="color"] { width: auto; }
+
+/* depth of market */
+.dom { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+.dom-head { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.dom-head select { margin-left: auto; }
+.dom-cols, .dom-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; padding: 2px 6px; }
+.dom-cols { color: var(--muted); font-size: 10px; text-transform: uppercase; }
+.dom-row { position: relative; cursor: pointer; font-family: var(--mono); border-radius: 3px; }
+.dom-row:hover { background: var(--hover); }
+.dom-row i { position: absolute; top: 1px; bottom: 1px; right: 0; opacity: .18; border-radius: 2px; pointer-events: none; }
+.dom-row.ask i { background: #ef5350; } .dom-row.bid i { background: #26a69a; }
+.dom-row.ask .dom-price { color: #ef5350; } .dom-row.bid .dom-price { color: #26a69a; }
+.dom-row span { position: relative; text-align: right; }
+.dom-row .dom-price { text-align: left; }
+.dom-spread { text-align: center; padding: 4px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); color: var(--muted); }
