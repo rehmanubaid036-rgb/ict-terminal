@@ -25,6 +25,17 @@ It covers what was built, how to build and test it, and what is still open.
    rebuilt from its six pairs (`ictengine/data/dxy.py`); the runner and the API pass it with silver as `Context.extras`.
    Wolf Models button, 1m charts; the chart shows the M15 / M5 swing lines, the failed FVG and the bias.
 
+6. **Model M19 · VSA Engulf Hybrid EA (Gold)** (`engine/ictengine/models/vsa_engulf_ea.py`), the user's own
+   MT5 EA (`engulf hybird ea 18 december 6pm ver.mq5`) as an engine model, XAUUSD only, 5m and 15m (1m is in the
+   config but off: with the spread it loses). Engulf (bar2 opposite, bar1 closes past its high / low, SMA200, volume >=
+   the 16-bar average, EMA50 aligned on M1 / M5 / M15, a 15m swing in the last 40 bars) and Imbalance Shift (bar2 on
+   >= 1.5x average volume, bar1 the other way on < 2x). Stop = bar1 low / high -/+ 240 pips; half at 1R then
+   breakeven, half at 5R (the EA's trailing is in `notes.ea` for the bridge). Backtest Jan 2025 - Aug 2026 on Axi
+   1m data, spread 0.30: +80 R over 1924 trades (win 52 %, PF 1.08) **without** the daily-bias filter; with it the
+   model loses, so leave "Only setups with the daily bias" off. Terminal: new **Custom Models** button (top bar,
+   next to Wolf Models) with a **VSA Models** group (`CUSTOM_MODEL_GROUPS` in constants.ts); Wolf Models unchanged.
+   Tests: `engine/tests/test_vsa_ea.py`.
+
 4. **Model M17 · Wolf Asia Session (NDOG)** (`engine/ictengine/models/wolf_asia.py`), rebuilt on 2026-10-08
    strictly from the PDF "ASIA SESSION MODEL FOR INDICIES NQ/ES" (TheWolfTrades): NAS100, US500, EURUSD,
    GBPUSD. NDOG 17:00 close → 18:00 open, over 20 handles (points / pips) its CE is marked; initial BSL / SSL of

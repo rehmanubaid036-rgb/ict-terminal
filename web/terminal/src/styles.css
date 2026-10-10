@@ -557,6 +557,7 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 .ict-row .switch { flex: none; pointer-events: none; }
 .menu-panel .ict-row { padding: 6px; }
 .tb-btn.wolf-btn svg { color: #f59e0b; }
+.tb-btn.custom-btn svg { color: #2dd4bf; }
 /* signals symbol search */
 .sig-symbol { display: flex; align-items: center; gap: 6px; }
 .sig-search { position: relative; flex: 1; min-width: 0; }

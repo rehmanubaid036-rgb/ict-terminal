@@ -7,7 +7,7 @@ from typing import Callable
 
 from ..context import Context
 from ..signals import Signal
-from . import alpha_gold, array_models, asian_q2, filters, news_model, reversal_models, silver_bullet, wolf_asia
+from . import alpha_gold, array_models, asian_q2, filters, news_model, reversal_models, silver_bullet, vsa_engulf_ea, wolf_asia
 
 
 @dataclass(frozen=True)
@@ -44,6 +44,8 @@ MODELS: dict[str, ModelInfo] = {m.id: m for m in (
     ModelInfo("M16", "SMT Reversal", filters.scan_m16, "WEB"),
     ModelInfo("M17", "Wolf Asia Session (NDOG)", wolf_asia.scan_m17, "WOLF"),
     ModelInfo("M18", "The Alpha Model Gold", alpha_gold.scan_m18, "WOLF"),
+    # Custom Models > VSA Models: the user's volume-spread-analysis EA (XAUUSD, 5m / 15m)
+    ModelInfo("M19", "VSA Engulf Hybrid EA (Gold)", vsa_engulf_ea.scan_m19, "VSA"),
 )}
 
 

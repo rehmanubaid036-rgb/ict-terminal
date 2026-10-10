@@ -15,6 +15,7 @@ const UR: Record<string, string> = {
   'ICT Screener': 'آئی سی ٹی اسکرینر', 'Screener': 'اسکرینر', 'Compare symbols (SMT)': 'سمبلز کا موازنہ (SMT)',
   'ICT: indicators and models, one click on / off': 'آئی سی ٹی: انڈیکیٹرز اور ماڈلز، ایک کلک میں آن / آف',
   'Wolf Models': 'وولف ماڈلز', 'Wolf Models: your custom models': 'وولف ماڈلز: آپ کے اپنے ماڈلز', 'Your custom models': 'آپ کے اپنے ماڈلز',
+  'Custom Models': 'کسٹم ماڈلز', 'Custom Models: your own models (VSA Models)': 'کسٹم ماڈلز: آپ کے اپنے ماڈلز (وی ایس اے ماڈلز)', 'VSA Models': 'وی ایس اے ماڈلز',
   'ICT models': 'آئی سی ٹی ماڈلز', 'Donate': 'عطیہ', 'Dark theme': 'ڈارک تھیم', 'Journal & stats panel': 'جرنل اور اعداد و شمار پینل',
   'Journal & stats': 'جرنل اور اعداد و شمار', 'Keyboard shortcuts': 'کی بورڈ شارٹ کٹس', 'Log out': 'لاگ آؤٹ', 'Chart settings': 'چارٹ سیٹنگز',
   // side panel

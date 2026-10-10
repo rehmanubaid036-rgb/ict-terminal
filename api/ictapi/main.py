@@ -77,6 +77,7 @@ _INTRADAY = ("1m", "3m", "5m", "15m", "30m", "1h", "2h", "4h")
 TIME_LAYER_TFS = {"sessions": _INTRADAY[:6], "quarters": _INTRADAY[:5], "projections": _INTRADAY[:6],
                   "key_levels": _INTRADAY, "opening_gaps": _INTRADAY + ("1d",), "ipda": _INTRADAY + ("1d",)}
 TIME_LAYERS = TIME_LAYERS_ENGINE
+ALPHA_EXTRAS_DAYS = 120     # M18: silver and the dollar index, hourly, like the runner
 MAX_HISTORY_DAYS = {"1m": 20, "3m": 45, "5m": 75, "15m": 200, "30m": 400, "1h": 800, "2h": 1500, "4h": 3000, "1d": 12000, "1w": 40000}
 MAX_TIME_DAYS = {"1m": 3, "3m": 5, "5m": 7, "15m": 12, "30m": 15, "1h": 20, "2h": 20, "4h": 20, "1d": 20, "1w": 20}
 # ICT's main markets first in search and as the default chart (most reliable model results)
@@ -527,17 +528,20 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
         return pdf if len(pdf) else None
 
     def _alpha_extras(i, start: pd.Timestamp, end: pd.Timestamp, ids) -> dict:
-        """Silver and the dollar index on the same feed, for M18 (The Alpha Model Gold)."""
+        """Silver and the dollar index on the same feed, for M18 (The Alpha Model Gold). The model reads them on
+        1h / 1d / 1w only, so they come as hourly bars over the same 120 days the runner uses: the daily and
+        weekly gaps of the bias need months, not the 30 days of 1-minute gold the scan works on."""
         from ictengine.data.dxy import alpha_extras
         from ictengine.models.alpha_gold import SYMBOLS as ALPHA
         if "M18" not in ids or i.symbol not in ALPHA:
             return {}
+        start = min(start, end - pd.Timedelta(days=ALPHA_EXTRAS_DAYS))
 
         def load(sym: str, a: pd.Timestamp, b: pd.Timestamp) -> pd.DataFrame:
             info = provider.symbols().get(f"{i.feed}:{sym}")
             if info is None:
                 raise KeyError(sym)
-            return provider.candles(info.ticker, a, b)
+            return provider.bars(info.ticker, "1h", a, b)
         return alpha_extras(load, start, end)
 
     def _owner(a: dict) -> str:

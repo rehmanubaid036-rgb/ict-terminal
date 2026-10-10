@@ -2,7 +2,7 @@
 import type { ModelSet } from '../state'
 import { useState } from 'react'
 import { useTerminal } from '../Terminal'
-import { ICT_LAYERS, ONE_MINUTE_MODELS, WOLF_MODELS, modelTag, timeframeByLabel } from '../constants'
+import { CUSTOM_MODELS, ICT_LAYERS, ONE_MINUTE_MODELS, WOLF_MODELS, modelTag, timeframeByLabel } from '../constants'
 import { Switch, toast } from '../ui/common'
 
 export function IctPanel({ onDone }: { onDone?: () => void }) {
@@ -35,12 +35,13 @@ export function IctPanel({ onDone }: { onDone?: () => void }) {
   )
 }
 
-/** Model on / off rows for the active chart (the regular ICT models, or the Wolf custom models). */
-export function ModelSection({ title, wolf }: { title: string; wolf: boolean }) {
+/** Model on / off rows for the active chart: the regular ICT models, the Wolf custom models, or
+ *  (with ``ids``) one group of the Custom Models button. */
+export function ModelSection({ title, wolf, ids: only }: { title: string; wolf: boolean; ids?: string[] }) {
   const t = useTerminal()
   const a = t.active
   const f = t.access.features
-  const list = t.models.filter(m => WOLF_MODELS.has(m.id) === wolf)
+  const list = t.models.filter(m => only ? only.includes(m.id) : WOLF_MODELS.has(m.id) === wolf && !CUSTOM_MODELS.has(m.id))
   const ids = list.filter(m => t.allowed(m.id)).map(m => m.id)
   const on = a.models.filter(id => list.some(m => m.id === id))
   const allOn = ids.length > 0 && ids.every(id => a.models.includes(id))

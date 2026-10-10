@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTerminal, POPOUT } from '../Terminal'
 import type { IndicatorConf } from '../state'
 import { api, type SearchItem } from '../api'
-import { baseIndicator, CHART_TYPES, FAVORITE_TFS, INDICATORS, PRICE_ONLY, indicatorDef, LAYOUTS, TIMEFRAMES, parseTimeframe, timeframeByLabel, type LayoutId, WOLF_MODELS } from '../constants'
+import { baseIndicator, CHART_TYPES, CUSTOM_MODEL_GROUPS, CUSTOM_MODELS, FAVORITE_TFS, INDICATORS, PRICE_ONLY, indicatorDef, LAYOUTS, TIMEFRAMES, parseTimeframe, timeframeByLabel, type LayoutId, WOLF_MODELS } from '../constants'
 import { IctPanel, ModelSection } from '../panels/IctPanel'
 import { Screener } from './Screener'
 import { ScriptEditor } from './ScriptEditor'
@@ -17,7 +17,7 @@ import { Modal, Popover, Switch, toast, useIsPhone } from './common'
 import { getEntry, undo, redo } from '../chart/registry'
 import { TIMEZONES, utcOffsetLabel } from '../chart/settings'
 
-type Menu = 'tf' | 'type' | 'ict' | 'wolf' | 'compare' | 'layout' | 'templates' | 'more' | null
+type Menu = 'tf' | 'type' | 'ict' | 'wolf' | 'custom' | 'compare' | 'layout' | 'templates' | 'more' | null
 
 export function TopBar() {
   const t = useTerminal()
@@ -33,10 +33,11 @@ export function TopBar() {
   const donations = useDonations()
   const [donate, setDonate] = useState(false)
   const refs = { tf: useRef<HTMLButtonElement>(null), type: useRef<HTMLButtonElement>(null), ict: useRef<HTMLButtonElement>(null),
-    wolf: useRef<HTMLButtonElement>(null), compare: useRef<HTMLButtonElement>(null), templates: useRef<HTMLButtonElement>(null), layout: useRef<HTMLButtonElement>(null), more: useRef<HTMLButtonElement>(null) }
+    wolf: useRef<HTMLButtonElement>(null), custom: useRef<HTMLButtonElement>(null), compare: useRef<HTMLButtonElement>(null), templates: useRef<HTMLButtonElement>(null), layout: useRef<HTMLButtonElement>(null), more: useRef<HTMLButtonElement>(null) }
   const a = t.active
   const tf = timeframeByLabel(a.tf)
-  const ictModels = a.models.filter(m => !WOLF_MODELS.has(m)), wolfModels = a.models.filter(m => WOLF_MODELS.has(m))
+  const ictModels = a.models.filter(m => !WOLF_MODELS.has(m) && !CUSTOM_MODELS.has(m)), wolfModels = a.models.filter(m => WOLF_MODELS.has(m))
+  const customModels = a.models.filter(m => CUSTOM_MODELS.has(m))
 
   useEffect(() => {
     const s = (e: Event) => setSearch((e as CustomEvent).detail ?? '')
@@ -103,6 +104,7 @@ export function TopBar() {
       <button ref={refs.compare} className={`tb-btn text${a.compare?.length ? ' lit' : ''}`} title="Compare symbols (SMT)" onClick={() => toggle('compare')}><Icon name="plus" /><span>Compare</span>{a.compare?.length ? <em>{a.compare.length}</em> : null}</button>
       <button ref={refs.ict} className={`tb-btn text${a.ict.length + ictModels.length ? ' lit' : ''}${menu === 'ict' ? ' on' : ''}`} title="ICT: indicators and models, one click on / off" onClick={() => toggle('ict')}><Icon name="ict" /><span>ICT</span>{a.ict.length + ictModels.length > 0 && <em>{a.ict.length + ictModels.length}</em>}</button>
       <button ref={refs.wolf} className={`tb-btn text wolf-btn${wolfModels.length ? ' lit' : ''}`} title="Wolf Models: your custom models" onClick={() => toggle('wolf')}><Icon name="target" /><span>Wolf Models</span>{wolfModels.length > 0 && <em>{wolfModels.length}</em>}</button>
+      <button ref={refs.custom} className={`tb-btn text custom-btn${customModels.length ? ' lit' : ''}${menu === 'custom' ? ' on' : ''}`} title="Custom Models: your own models (VSA Models)" onClick={() => toggle('custom')}><Icon name="indicators" /><span>Custom Models</span>{customModels.length > 0 && <em>{customModels.length}</em>}</button>
       <span className="divider" />
       <button className="tb-btn" title="Create alert (Alt+A)" onClick={() => t.setSideTab('alerts')}><Icon name="bell" /></button>
       <button className={`tb-btn${t.replay.on ? ' lit' : ''}`} title="Bar replay" onClick={() => (t.replay.on ? t.stopReplay() : t.startReplay())}><Icon name="replay" /></button>
@@ -150,6 +152,12 @@ export function TopBar() {
       {menu === 'wolf' && (
         <Popover anchor={refs.wolf} onClose={close} className="menu-panel" align="right" title="Wolf Models">
           <ModelSection title="Your custom models" wolf />
+          <div className="menu-foot"><button className="btn ghost sm" onClick={() => { const c = t.active; t.updateActive({ models: c.models, requireBias: c.requireBias }, 'all'); toast('Models applied to every chart.'); close() }}>Apply to all charts</button></div>
+        </Popover>
+      )}
+      {menu === 'custom' && (
+        <Popover anchor={refs.custom} onClose={close} className="menu-panel" align="right" title="Custom Models">
+          {CUSTOM_MODEL_GROUPS.map(g => <ModelSection key={g.title} title={g.title} wolf={false} ids={g.ids} />)}
           <div className="menu-foot"><button className="btn ghost sm" onClick={() => { const c = t.active; t.updateActive({ models: c.models, requireBias: c.requireBias }, 'all'); toast('Models applied to every chart.'); close() }}>Apply to all charts</button></div>
         </Popover>
       )}

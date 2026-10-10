@@ -35,7 +35,7 @@ def synthetic(load: Loader, start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFr
     for pair in WEIGHTS:
         df = _try(load, pair, start, end)
         if df is not None:
-            closes[pair] = df["close"].resample("1min").last()
+            closes[pair] = df["close"].resample("1h").last()      # the model reads 1h / 1d / 1w only
     if "EURUSD" not in closes:
         return None
     frame = pd.DataFrame(closes).ffill().dropna()
@@ -58,9 +58,13 @@ def load_dxy(load: Loader, start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFra
     return synthetic(load, start, end)
 
 
-def alpha_extras(load: Loader, start: pd.Timestamp, end: pd.Timestamp) -> dict[str, pd.DataFrame]:
-    """What M18 reads besides gold: silver and the dollar index."""
+def alpha_extras(load: Loader, start: pd.Timestamp, end: pd.Timestamp, gold: str = "XAUUSD") -> dict[str, pd.DataFrame]:
+    """What M18 reads besides the 1-minute gold: silver, the dollar index and gold's own longer history (hourly
+    is enough: the bias reads 1h / 1d / 1w), so the daily and weekly gaps reach months back."""
     out = {}
+    hist = _try(load, gold, start, end)
+    if hist is not None:
+        out[gold] = hist
     silver = _try(load, "XAGUSD", start, end)
     if silver is not None:
         out["XAGUSD"] = silver

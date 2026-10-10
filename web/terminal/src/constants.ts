@@ -339,7 +339,7 @@ export const PRICESCALE: Record<string, number> = {
 }
 
 // short label of a model on the chart and in lists (models credited to their author carry the name)
-const MODEL_TAGS: Record<string, string> = { M17: 'M17 Wolf', M18: 'M18 Alpha' }
+const MODEL_TAGS: Record<string, string> = { M17: 'M17 Wolf', M18: 'M18 Alpha', M19: 'M19 VSA' }
 export const modelTag = (id: string) => MODEL_TAGS[id] ?? id
 // models that read the 1-minute chart only: their setups are drawn on 1m charts
 /** ICT event alerts: what the engine's overlays report, and which overlay layer carries it. */
@@ -354,3 +354,8 @@ export const ICT_ALERT_TFS = ['1m', '5m', '15m', '1H', '4H']
 export const ONE_MINUTE_MODELS = new Set(['M17', 'M18'])
 // the user's own (custom) models: listed under the Wolf Models button, not under Models
 export const WOLF_MODELS = new Set(['M17', 'M18'])
+// the Custom Models button: the user's other models, in named groups (not under Models, not under Wolf)
+export const CUSTOM_MODEL_GROUPS: { title: string; ids: string[] }[] = [
+  { title: 'VSA Models', ids: ['M19'] },
+]
+export const CUSTOM_MODELS = new Set(CUSTOM_MODEL_GROUPS.flatMap(g => g.ids))

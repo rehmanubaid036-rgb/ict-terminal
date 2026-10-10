@@ -164,8 +164,11 @@ def scan(ctx: Context, cfg: AlphaConfig = AlphaConfig()) -> list[Signal]:
     if ctx.symbol not in cfg.symbols or len(ctx.base) < 100:
         return []
     long_src = ctx.base
-    if ctx.history is not None and len(ctx.history):
-        old = ctx.history[ctx.history.index < ctx.base.index[0]]
+    # older bars for the 1h / 1d / 1w bias: the 1m history when the caller has it, else the hourly copy of the
+    # symbol in extras (what the API's scan gives, see data/dxy.alpha_extras)
+    history = ctx.history if ctx.history is not None and len(ctx.history) else (ctx.extras or {}).get(ctx.symbol)
+    if history is not None and len(history):
+        old = history[history.index < ctx.base.index[0]]
         long_src = pd.concat([old[["open", "high", "low", "close"]], ctx.base[["open", "high", "low", "close"]]])
     gold = Frames(long_src)
     others = {k: Frames(v) for k, v in (ctx.extras or {}).items() if v is not None and len(v)}
