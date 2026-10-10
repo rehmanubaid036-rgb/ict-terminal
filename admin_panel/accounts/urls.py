@@ -50,6 +50,7 @@ urlpatterns = [
     path("oauth/<str:provider>/start", oauth.start),
     path("oauth/<str:provider>/callback", oauth.callback),
     path("oauth/finish", oauth.finish),
+    path("oauth/done", oauth.done),
     path("oauth/poll", oauth.poll),
     path("internal/verify", api.internal_verify),
     path("internal/ai", api.internal_ai),

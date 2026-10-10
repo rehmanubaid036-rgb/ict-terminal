@@ -132,3 +132,9 @@ def test_websocket_is_passed_to_the_api(dirs):
             assert ws.receive_text() == 'api:{"auth":"x"}'
     finally:
         server.should_exit = True
+
+
+def test_built_assets_are_cached_for_a_year(dirs):
+    c = app(dirs)
+    assert "immutable" in c.get("/terminal/assets/app.js").headers["cache-control"]
+    assert c.get("/terminal/").headers["cache-control"] == "no-cache"

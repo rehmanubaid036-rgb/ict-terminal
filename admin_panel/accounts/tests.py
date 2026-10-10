@@ -688,6 +688,21 @@ class SocialLoginTests(TestCase):
                                 content_type="application/json").json()
         return poll
 
+    def test_android_finish_goes_back_to_the_app(self):
+        self.n += 1
+        session = "session-app-" + "x" * 24
+        svc = {"X-Service-Key": SECRET, "X-Client-IP": "1.1.1.1"}
+        self.client.get("/api/v1/oauth/google/start", {"session": session, "device_id": "and-9", "platform": "android"}, headers=svc)
+        state = OAuthLogin.objects.get(session_hash=__import__("hashlib").sha256(session.encode()).hexdigest()).state
+        self.client.get("/api/v1/oauth/google/callback", {"state": state, "code": "abc"})
+        r = self.client.post("/api/v1/oauth/finish", {"key": OAuthLogin.objects.get(state=state).confirm_key})
+        self.assertEqual(r.status_code, 302)
+        self.assertTrue(r["Location"].startswith("intent://login#Intent;scheme=ictterminal;package=trade.iccterminal.ict_terminal;"))
+        self.assertIn("S.browser_fallback_url=", r["Location"])
+        self.assertEqual(self.client.get("/api/v1/oauth/done").status_code, 200)
+        poll = self.client.post("/api/v1/oauth/poll", json.dumps({"session": session}), content_type="application/json").json()
+        self.assertEqual(poll["status"], "done")
+
     def test_google_signup_in_app_gets_trial_once(self):
         r = self.sign_in()
         self.assertEqual(r["status"], "done", r)

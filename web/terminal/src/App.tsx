@@ -44,11 +44,12 @@ function AuthScreen({ onSignedIn }: { onSignedIn: (a: Access) => void }) {
     const q = new URLSearchParams({ session, device_id: deviceId(), device_name: app ? 'Android app' : navigator.userAgent.includes('Mobile') ? 'Phone browser' : 'Web browser', platform: app ? 'android' : 'web' })
     const opened = openExternal(`/api/v1/oauth/${provider}/start?${q}`)
     if (!opened) setInfo('Allow pop-ups for this site, then press the button again.')
-    else if (app) setInfo('Finish the sign-in in your browser, then come back to the app.')
+    else if (app) setInfo('Finish the sign-in in the Google / Facebook page; the app comes back by itself.')
     setWaiting(provider)
     const until = Date.now() + 10 * 60_000
     while (Date.now() < until) {
-      await new Promise(r => setTimeout(r, 2000))
+      // every 2 s, or at once when the app comes back from the sign-in tab
+      await new Promise<void>(r => { const done = () => { clearTimeout(tm); window.removeEventListener('ict:resume', done); r() }; const tm = setTimeout(done, 2000); window.addEventListener('ict:resume', done) })
       try {
         const r = await api.oauthPoll(session)
         if (r.status === 'pending') continue

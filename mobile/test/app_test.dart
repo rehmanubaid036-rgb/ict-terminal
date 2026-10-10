@@ -48,4 +48,11 @@ void main() {
     expect(needsUnlock(enabled: true, pausedAt: now.subtract(const Duration(seconds: 30)), now: now), isFalse);
     expect(needsUnlock(enabled: true, pausedAt: now.subtract(const Duration(minutes: 3)), now: now), isTrue);
   });
+
+  test("only the Google / Facebook start page opens in the sign-in tab", () {
+    expect(isSignIn(Uri.parse("https://ict.iccterminal.trade/api/v1/oauth/google/start?session=x")), isTrue);
+    expect(isSignIn(Uri.parse("https://ict.iccterminal.trade/api/v1/oauth/facebook/start")), isTrue);
+    expect(isSignIn(Uri.parse("https://ict.iccterminal.trade/guide/")), isFalse);
+    expect(isSignIn(Uri.parse("https://wa.me/123")), isFalse);
+  });
 }

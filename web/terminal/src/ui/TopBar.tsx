@@ -103,7 +103,6 @@ export function TopBar() {
       <button ref={refs.compare} className={`tb-btn text${a.compare?.length ? ' lit' : ''}`} title="Compare symbols (SMT)" onClick={() => toggle('compare')}><Icon name="plus" /><span>Compare</span>{a.compare?.length ? <em>{a.compare.length}</em> : null}</button>
       <button ref={refs.ict} className={`tb-btn text${a.ict.length + ictModels.length ? ' lit' : ''}${menu === 'ict' ? ' on' : ''}`} title="ICT: indicators and models, one click on / off" onClick={() => toggle('ict')}><Icon name="ict" /><span>ICT</span>{a.ict.length + ictModels.length > 0 && <em>{a.ict.length + ictModels.length}</em>}</button>
       <button ref={refs.wolf} className={`tb-btn text wolf-btn${wolfModels.length ? ' lit' : ''}`} title="Wolf Models: your custom models" onClick={() => toggle('wolf')}><Icon name="target" /><span>Wolf Models</span>{wolfModels.length > 0 && <em>{wolfModels.length}</em>}</button>
-      <button className="tb-btn text" title="ICT Screener: bias, sweeps, FVGs and setups of every symbol" onClick={() => setScreener(true)}><Icon name="screener" /><span>Screener</span></button>
       <span className="divider" />
       <button className="tb-btn" title="Create alert (Alt+A)" onClick={() => t.setSideTab('alerts')}><Icon name="bell" /></button>
       <button className={`tb-btn${t.replay.on ? ' lit' : ''}`} title="Bar replay" onClick={() => (t.replay.on ? t.stopReplay() : t.startReplay())}><Icon name="replay" /></button>

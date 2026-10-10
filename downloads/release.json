@@ -1,10 +1,10 @@
 {
-  "version": "0.4.0",
+  "version": "0.4.1",
   "files": {
     "android": {
       "file": "ICT_Terminal.apk",
       "size_mb": 44.0,
-      "version": "0.4.0"
+      "version": "0.4.1"
     },
     "windows": {
       "file": "ICT_Terminal_Windows.exe",

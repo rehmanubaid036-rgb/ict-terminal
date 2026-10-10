@@ -24,7 +24,7 @@ class TerminalShell extends StatefulWidget {
   State<TerminalShell> createState() => _TerminalShellState();
 }
 
-class _TerminalShellState extends State<TerminalShell> {
+class _TerminalShellState extends State<TerminalShell> with WidgetsBindingObserver {
   late final WebViewController _web;
   String _error = "";
   int _progress = 0;
@@ -34,7 +34,22 @@ class _TerminalShellState extends State<TerminalShell> {
   void initState() {
     super.initState();
     _web = WebViewController();
+    WidgetsBinding.instance.addObserver(this);
     unawaited(_setUp());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// Back from the sign-in tab (or any other app): the terminal checks a waiting Google / Facebook login now.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_web.runJavaScript("window.dispatchEvent(new Event('ict:resume'))").catchError((_) {}));
+    }
   }
 
   Future<void> _setUp() async {
@@ -101,7 +116,10 @@ class _TerminalShellState extends State<TerminalShell> {
   Future<void> _openOutside(String url) async {
     final u = Uri.tryParse(url);
     if (u == null) return;
-    if (!await launchUrl(u, mode: LaunchMode.externalApplication) && mounted) _snack("Could not open $url");
+    // the Google / Facebook sign-in runs in a Chrome tab on top of the app (Google allows that, not a
+    // WebView); when it is done the server sends ictterminal://login, which closes the tab
+    final mode = isSignIn(u) ? LaunchMode.inAppBrowserView : LaunchMode.externalApplication;
+    if (!await launchUrl(u, mode: mode) && mounted) _snack("Could not open $url");
   }
 
   Future<List<String>> _pickFiles(FileSelectorParams params) async {

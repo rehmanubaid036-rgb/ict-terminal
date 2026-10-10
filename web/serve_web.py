@@ -35,6 +35,18 @@ HOP_HEADERS = {"connection", "keep-alive", "transfer-encoding", "upgrade", "host
 mimetypes.add_type("application/vnd.android.package-archive", ".apk")
 
 
+class ImmutableAssets(StaticFiles):
+    """The terminal's built files have their content hash in the name (index-B7nWz6EY.js), so phones and
+    Cloudflare may keep them for a year: the app then opens without downloading 300 KB again. A new build
+    gets new names through index.html, which is never cached."""
+
+    async def get_response(self, path: str, scope) -> Response:
+        response = await super().get_response(path, scope)
+        if response.status_code == 200:
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return response
+
+
 def inside(root: Path, rel: str) -> Path | None:
     """root/rel when it is an existing file inside root (no "..", no absolute paths), else None."""
     if not rel:
@@ -111,7 +123,7 @@ def create_app(api_url: str, dist: Path = DIST, site: Path = SITE, downloads: Pa
         Route("/api/{path:path}", proxy, methods=methods),
         WebSocketRoute("/ws/stream", ws_proxy),
         Route("/terminal", terminal_root),
-        Mount("/terminal/assets", StaticFiles(directory=dist / "assets"), name="terminal-assets"),
+        Mount("/terminal/assets", ImmutableAssets(directory=dist / "assets"), name="terminal-assets"),
         Route("/terminal/{path:path}", terminal),
         Route("/downloads/{path:path}", download),
         Mount("/", StaticFiles(directory=site, html=True), name="site"),

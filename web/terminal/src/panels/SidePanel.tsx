@@ -61,12 +61,16 @@ export function SidePanel() {
         </div>
       )}
       <div className="rail">
-        {tabs.map(x => (
+        {tabs.map(x => [
           <button key={x.id} className={tab === x.id ? 'on' : ''} title={x.label} onClick={() => t.setSideTab(tab === x.id ? null : x.id)}>
             <Icon name={x.icon} size={20} />{phone && <span>{x.label.split(' ')[0]}</span>}
             {x.id === 'alerts' && t.state.alerts.some(a => a.active) && <i className="badge">{t.state.alerts.filter(a => a.active).length}</i>}
-          </button>
-        ))}
+          </button>, x.id === 'signals' && (
+          // the ICT Screener sits right under Signals (it opens its own window)
+          <button key="screener" title="ICT Screener: bias, sweeps, FVGs and setups of every symbol" onClick={() => window.dispatchEvent(new CustomEvent('ict:open', { detail: 'screener' }))}>
+            <Icon name="screener" size={20} />{phone && <span>Screener</span>}
+          </button>)]
+        )}
         {!phone && <button className={t.bottomOpen ? 'on' : ''} title="Journal & stats" onClick={() => t.setBottomOpen(!t.bottomOpen)}><Icon name="journal" size={20} /></button>}
         <span className="rail-sep" />
         <button title="Community: ideas and chat" onClick={t.openCommunity}><Icon name="community" size={20} />{phone && <span>Community</span>}</button>

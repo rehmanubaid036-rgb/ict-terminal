@@ -3,7 +3,7 @@ import "dart:convert";
 /// The web terminal the app shows (set at build time for test builds):
 ///   flutter build apk --dart-define=ICT_WEB=http://10.0.2.2:5173/terminal/
 const String kWebUrl = String.fromEnvironment("ICT_WEB", defaultValue: "https://ict.iccterminal.trade/terminal/");
-const String kAppVersion = "0.4.0";
+const String kAppVersion = "0.4.1";
 /// Added to the WebView's user agent, so the terminal knows it runs inside the app.
 const String kUaTag = "ICTTerminalApp/$kAppVersion (Android)";
 
@@ -19,6 +19,9 @@ bool staysInApp(String url, {String web = kWebUrl}) {
   final base = home.path.endsWith("/") ? home.path : "${home.path}/";
   return u.path == home.path || u.path == base.substring(0, base.length - 1) || u.path.startsWith(base);
 }
+
+/// The Google / Facebook sign-in start page of the server.
+bool isSignIn(Uri u) => RegExp(r"^/api/v1/oauth/(google|facebook)/start$").hasMatch(u.path);
 
 /// A message the terminal sends through `IctApp.postMessage(...)`.
 sealed class BridgeMessage {

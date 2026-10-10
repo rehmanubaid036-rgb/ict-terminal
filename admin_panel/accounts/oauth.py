@@ -31,6 +31,19 @@ from .models import OAuthLogin, SiteSettings
 log = logging.getLogger("accounts")
 TIMEOUT = 10
 FB_VERSION = "v19.0"
+# The Android app (0.4.1+) opens on ictterminal://login, so the browser hands the customer straight back.
+APP_PACKAGE = "trade.iccterminal.ict_terminal"
+
+
+class AppRedirect(HttpResponseRedirect):
+    allowed_schemes = ["intent", "https", "http"]
+
+
+def app_link():
+    """Chrome's intent link to the app; a phone without the new app gets the "you are logged in" page."""
+    from urllib.parse import quote
+    fallback = quote(f"{settings.PUBLIC_API_URL}/api/v1/oauth/done", safe="")
+    return f"intent://login#Intent;scheme=ictterminal;package={APP_PACKAGE};S.browser_fallback_url={fallback};end"
 
 
 # ── providers ────────────────────────────────────────────────────────────────
@@ -177,10 +190,20 @@ def finish(request):
         return error_page(problem, 403)
     login.status, login.result = "done", json.dumps(result)
     login.save()
+    if login.platform == "android":                      # straight back into the app (the app shows any note)
+        return AppRedirect(app_link())
     note = result.get("trial_message") or result.get("warning") or ""
     return page("✅", "You are logged in", (
         "<p>Go back to the <b>ICT Terminal</b> app or tab — it opens in a moment.</p>"
         + (f"<p>{html.escape(note)}</p>" if note else "") + "<p><small>You can close this page.</small></p>"))
+
+
+def done(request):
+    """Shown when the browser could not open the app by itself."""
+    return page("✅", "You are logged in", (
+        "<p>Go back to the <b>ICT Terminal</b> app — it opens in a moment.</p>"
+        '<a class="btn go" href="intent://login#Intent;scheme=ictterminal;package=' + APP_PACKAGE + ';end">Open ICT Terminal</a>'
+        "<p><small>You can close this page.</small></p>"))
 
 
 @csrf_exempt
