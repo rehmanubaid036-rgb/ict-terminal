@@ -1092,3 +1092,9 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
 @media (max-width: 520px) { .dd-fib-grid { grid-template-columns: 1fr; } }
 .dd-coord .cs-ctrl { gap: 6px; }
 .dd-time { width: 190px !important; padding: 4px 6px !important; }
+
+/* right-click menu: title row with a close button */
+.ctx-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 4px 6px 10px; margin-bottom: 4px;
+  border-bottom: 1px solid var(--line); font-size: 12px; font-weight: 600; color: var(--muted); position: sticky; top: -6px; background: var(--panel); z-index: 1; }
+.ctx-close { width: 26px; height: 26px; border-radius: 6px; display: grid; place-items: center; color: var(--muted); font-size: 13px; }
+.ctx-close:hover { background: var(--hover); color: var(--text); }

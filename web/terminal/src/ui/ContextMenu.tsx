@@ -39,18 +39,30 @@ export function ContextMenu({ x, y, axis, onClose }: { x: number; y: number; axi
   const ref = useRef<HTMLDivElement>(null)
   const a = t.active
   useEffect(() => {
-    const d = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) onClose() }
+    // any press outside closes it, on the chart too: the chart handles pointer events and swallows mousedown,
+    // so listen to pointerdown in the capture phase (before the chart sees it)
+    const d = (e: Event) => { if (!ref.current?.contains(e.target as Node)) onClose() }
     const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    document.addEventListener('mousedown', d)
+    const gone = () => onClose()
+    document.addEventListener('pointerdown', d, true)
+    document.addEventListener('wheel', d, { capture: true, passive: true })
     window.addEventListener('keydown', k, true)
-    return () => { document.removeEventListener('mousedown', d); window.removeEventListener('keydown', k, true) }
+    window.addEventListener('resize', gone)
+    window.addEventListener('blur', gone)
+    return () => {
+      document.removeEventListener('pointerdown', d, true); document.removeEventListener('wheel', d, true)
+      window.removeEventListener('keydown', k, true); window.removeEventListener('resize', gone); window.removeEventListener('blur', gone)
+    }
   }, [onClose])
   const left = Math.min(x, window.innerWidth - 250), top = Math.min(y, window.innerHeight - 380)
   const run = (fn: () => void) => () => { fn(); onClose() }
   const last = getEntry(a.id)?.feed.lastClose()
   const digits = Math.round(Math.log10(a.pricescale))
+  const head = (title: string) => (
+    <div className="ctx-head"><span>{title}</span><button className="ctx-close" title="Close (Esc)" aria-label="Close" onClick={onClose}>✕</button></div>)
   if (axis) return createPortal(
     <div ref={ref} className="ctx-menu" style={{ left: Math.max(8, Math.min(x, window.innerWidth - 300)), top: Math.max(8, top), maxHeight: window.innerHeight - Math.max(8, top) - 8 }}>
+      {head('Price scale')}
       <ScaleChoices run={run} />
       <div className="menu-sep" />
       <button onClick={run(() => { t.updateActive({ scaleLock: null }); const c = getChart(a.id); c?.setBarSpace(8); c?.scrollToRealTime() })}>Reset chart view</button>
@@ -61,6 +73,7 @@ export function ContextMenu({ x, y, axis, onClose }: { x: number; y: number; axi
   )
   return createPortal(
     <div ref={ref} className="ctx-menu" style={{ left: Math.max(8, left), top: Math.max(8, top), maxHeight: window.innerHeight - Math.max(8, top) - 8 }}>
+      {head(a.ticker.split(':').pop() + ' · ' + a.tf)}
       <button onClick={run(() => getChart(a.id)?.scrollToRealTime(200))}>Go to the latest bar</button>
       <button onClick={run(() => { t.updateActive({ scaleLock: null }); const c = getChart(a.id); c?.setBarSpace(8); c?.scrollToRealTime() })}>Reset chart view</button>
       <button onClick={run(() => window.dispatchEvent(new CustomEvent('ict:goto-ask')))}>Go to date… <kbd>Alt+G</kbd></button>
