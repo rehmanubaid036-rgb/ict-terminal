@@ -3,6 +3,9 @@
 
 export type LineStyle = 'solid' | 'dashed' | 'dotted'
 
+/** Period separators: 'auto' picks the period by timeframe like MT5 (day up to 30 min, week on 1-2 h, month on 4-12 h, year on daily). */
+export type BreakPeriod = 'auto' | 'day' | 'week' | 'month' | 'year'
+
 export interface ChartSettings {
   // Symbol
   bodyUp: string; bodyDown: string
@@ -31,7 +34,7 @@ export interface ChartSettings {
   alertLines: boolean; alertColor: string; alertSound: boolean; alertToastSec: number
   // Events
   ideas: boolean; ideasGrade: 'all' | 'A' | 'A+'
-  sessionBreaks: boolean; breakColor: string; breakStyle: LineStyle
+  sessionBreaks: boolean; breakColor: string; breakStyle: LineStyle; breakPeriod: BreakPeriod
   econEvents: boolean; onlyFuture: boolean; eventBreaks: boolean; eventColor: string
   eventImpact: 'High' | 'Medium'
   latestNews: boolean; newsNotify: boolean
@@ -49,7 +52,7 @@ export const DEFAULT_SETTINGS: ChartSettings = {
   sigLines: true, sigLabels: true, tradeButtons: true, tradeLines: true,
   alertLines: true, alertColor: '#f5a623', alertSound: true, alertToastSec: 8,
   ideas: true, ideasGrade: 'all',
-  sessionBreaks: false, breakColor: '#4a5a80', breakStyle: 'dashed',
+  sessionBreaks: false, breakColor: '#4a5a80', breakStyle: 'dashed', breakPeriod: 'auto',
   econEvents: true, onlyFuture: false, eventBreaks: true, eventColor: '#ff9800', eventImpact: 'High',
   latestNews: true, newsNotify: false,
 }
@@ -106,6 +109,7 @@ const ENUMS: Record<string, string[]> = {
   titleMode: ['ticker', 'ticker_tf', 'full'], scale: ['right', 'left'], grid: ['both', 'vert', 'horz', 'none'],
   gridStyle: ['solid', 'dashed', 'dotted'], crossStyle: ['solid', 'dashed', 'dotted'], breakStyle: ['solid', 'dashed', 'dotted'],
   bgType: ['solid', 'gradient'], ideasGrade: ['all', 'A', 'A+'], eventImpact: ['High', 'Medium'],
+  breakPeriod: ['auto', 'day', 'week', 'month', 'year'],
 }
 
 export const dash = (s: LineStyle): number[] => (s === 'dotted' ? [1, 3] : [4, 3])

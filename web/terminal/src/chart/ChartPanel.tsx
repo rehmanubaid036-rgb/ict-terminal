@@ -318,7 +318,7 @@ export function ChartPanel(p: ChartPanelProps) {
   const alertKey = p.alerts.map(a => a.price + a.note).join('|')
   useEffect(() => {
     chartRef.current?.overrideIndicator({ name: EVENTS, paneId: 'candle_pane',
-      extendData: { s: st, intraday: tf.seconds < 86400, events, alerts: p.alerts.map(a => ({ price: a.price, note: a.note })), digits } })
+      extendData: { s: st, intraday: tf.seconds < 86400, tfSeconds: tf.seconds, events, alerts: p.alerts.map(a => ({ price: a.price, note: a.note })), digits } })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setKey, events, alertKey, tf.seconds, digits])
 

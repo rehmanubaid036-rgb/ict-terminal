@@ -122,7 +122,7 @@ export function ChartSettingsDialog({ tab: first, onClose }: { tab: SettingsTab;
     </>,
     events: <>
       {check('ideas', 'Ideas (model setups)', select<string>('ideasGrade', [['all', 'All ideas'], ['A', 'A and A+ only'], ['A+', 'A+ only']], !s.ideas))}
-      {check('sessionBreaks', 'Session breaks', <>{color('breakColor', '#4a5a80', !s.sessionBreaks)}{style('breakStyle', !s.sessionBreaks)}</>)}
+      {check('sessionBreaks', 'Period separators', <>{select<string>('breakPeriod', [['auto', 'Auto (like MT5)'], ['day', 'Day'], ['week', 'Week'], ['month', 'Month'], ['year', 'Year']], !s.sessionBreaks)}{color('breakColor', '#4a5a80', !s.sessionBreaks)}{style('breakStyle', !s.sessionBreaks)}</>)}
       {check('econEvents', 'Economic events', select<string>('eventImpact', [['High', 'High impact'], ['Medium', 'High + medium']], !s.econEvents))}
       {check('onlyFuture', 'Only future events', undefined, true)}
       {check('eventBreaks', 'Events breaks', color('eventColor', '#ff9800', !s.eventBreaks || !s.econEvents), true)}

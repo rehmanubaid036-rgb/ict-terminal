@@ -9,6 +9,7 @@ export const EVENTS = 'ICT_EVENTS'
 export interface EventsData {
   s: ChartSettings
   intraday: boolean
+  tfSeconds: number
   events: CalendarEvent[]
   alerts: { price: number; note: string }[]
   digits: number
@@ -17,6 +18,27 @@ export interface EventsData {
 // the ICT / FX trading day starts at 18:00 New York: +6 h turns that into a date change
 const nyDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' })
 const dayOf = (ts: number) => nyDate.format(ts + 6 * 3600_000)
+const nyWeekday = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'short' })
+const DAY = 86400_000
+/** The key of the period a bar belongs to (the trading day / week / month / year in New York time). */
+export function periodKey(ts: number, period: 'day' | 'week' | 'month' | 'year'): string {
+  if (period === 'day') return dayOf(ts)
+  if (period === 'month') return dayOf(ts).slice(0, 7)
+  if (period === 'year') return dayOf(ts).slice(0, 4)
+  // week: the trading week starts Sunday 18:00 New York; walk back to that Sunday
+  const t = ts + 6 * 3600_000
+  const names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  const back = names.indexOf(nyWeekday.format(t))
+  return nyDate.format(t - Math.max(0, back) * DAY)
+}
+/** MT5's rule: separators one step above the timeframe (day up to 30 min, week on 1-2 h, month on 4-12 h, year on daily). */
+export function autoPeriod(tfSeconds: number): 'day' | 'week' | 'month' | 'year' | null {
+  if (tfSeconds < 3600) return 'day'
+  if (tfSeconds < 4 * 3600) return 'week'
+  if (tfSeconds < 86400) return 'month'
+  if (tfSeconds < 7 * 86400) return 'year'
+  return null
+}
 
 const IMPACT_COLOR: Record<string, string> = { High: '#ef5350', Medium: '#ff9800', Low: '#ffd54f' }
 
@@ -36,10 +58,11 @@ export function registerEvents() {
       const r = chart.getVisibleRange()
       ctx.save()
       // session breaks
-      if (s.sessionBreaks && d.intraday && list.length) {
+      const period = (s.breakPeriod ?? 'auto') === 'auto' ? autoPeriod(d.tfSeconds ?? (d.intraday ? 60 : 86400)) : s.breakPeriod as 'day' | 'week' | 'month' | 'year'
+      if (s.sessionBreaks && period && list.length) {
         line(ctx, s.breakColor, s.breakStyle)
         for (let i = Math.max(1, r.from); i < Math.min(list.length, r.to + 1); i++) {
-          if (dayOf(list[i].timestamp) === dayOf(list[i - 1].timestamp)) continue
+          if (periodKey(list[i].timestamp, period) === periodKey(list[i - 1].timestamp, period)) continue
           const x = Math.round(xAxis.convertToPixel(i)) + 0.5
           ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, bounding.height); ctx.stroke()
         }

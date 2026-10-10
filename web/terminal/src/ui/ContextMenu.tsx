@@ -4,7 +4,14 @@ import { useTerminal } from '../Terminal'
 import { getChart, getEntry, removeAll } from '../chart/registry'
 import { CHART_TYPES } from '../constants'
 import { reopenAll } from '../chart/closed'
-import { inApp } from '../appbridge'
+import { inApp, saveFile } from '../appbridge'
+
+/** The bars on the chart as a CSV file (time in the chart's time zone, OHLC, volume), like TradingView's export. */
+function exportCsv(ticker: string, tf: string, bars: { timestamp: number; open: number; high: number; low: number; close: number; volume?: number }[], zone: string) {
+  const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: zone || 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+  const rows = ['time,open,high,low,close,volume', ...bars.map(b => `${fmt.format(b.timestamp).replace(',', '')},${b.open},${b.high},${b.low},${b.close},${b.volume ?? ''}`)]
+  void saveFile(`${ticker.replace(':', '_')}_${tf}.csv`, new Blob([rows.join('\n')], { type: 'text/csv' }))
+}
 
 /** Price scale choices, shared by the chart menu and the price-scale menu. */
 function ScaleChoices({ run }: { run: (fn: () => void) => () => void }) {
@@ -90,6 +97,7 @@ export function ContextMenu({ x, y, axis, onClose }: { x: number; y: number; axi
       {!inApp() && <button onClick={run(() => window.open(`/terminal/?symbol=${encodeURIComponent(a.ticker)}&tf=${encodeURIComponent(a.tf)}&popout=1`, `ict-chart-${Date.now()}`, 'width=1200,height=760'))}>Open this chart in a new window</button>}
       <button onClick={run(() => t.openSettings())}>Settings…</button>
       <button onClick={run(reopenAll)}>Show closed model trades again</button>
+      <button onClick={run(() => exportCsv(a.ticker, a.tf, getChart(a.id)?.getDataList() ?? [], t.state.chart.timezone))}>Export chart data (CSV)</button>
       <button onClick={run(t.screenshot)}>Save a picture of the chart</button>
       <button onClick={run(() => void t.sharePicture())}>Share a link to a picture of the chart</button>
       <button onClick={run(() => { const at = getEntry(a.id)?.menuTime; const en = getEntry(a.id); t.startReplay(at && en ? at + en.feed.barMs : undefined) })}>Bar replay from this bar</button>
