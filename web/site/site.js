@@ -159,7 +159,8 @@
   function showDownload(kind, info, version) {
     var a = $('dl-' + kind), note = $('dl-' + kind + '-info');
     if (!a || !info || !info.file) return;
-    a.href = '/downloads/' + encodeURIComponent(info.file);
+    // the version in the link: a new release is a new address, so Cloudflare never hands out an old cached file
+    a.href = '/downloads/' + encodeURIComponent(info.file) + '?v=' + encodeURIComponent(info.version || version || '');
     a.textContent = kind === 'android' ? 'Download APK' : 'Download for Windows';
     a.classList.remove('disabled');
     a.removeAttribute('aria-disabled');
