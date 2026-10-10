@@ -82,7 +82,8 @@
       ]},
       {"h": "Échelle de prix"},
       "Clic droit sur l'échelle de prix : **Auto (fit)**, **Lock range** (l'échelle reste fixe pendant le défilement), **Lock price / bar** (le même prix par barre au zoom), **Regular**, **Log**, **Percent**, **Invert** et le côté de l'échelle.",
-      "**Historique :** les graphiques journaliers et hebdomadaires remontent de nombreuses années, et chaque bougie suit l'heure de New York (la journée commence à 18:00). Il y a 18 types de graphique, dont High-Low et Kagi."
+      "**Historique :** les graphiques journaliers et hebdomadaires remontent de nombreuses années, et chaque bougie suit l'heure de New York (la journée commence à 18:00). Il y a 18 types de graphique, dont High-Low et Kagi.",
+      "**Exporter les données du graphique (CSV) :** clic droit sur le graphique → *Export chart data* enregistre les bougies (heure, ouverture, haut, bas, clôture, volume) dans un fichier CSV. Le bouton **Screener** est maintenant dans la barre de droite, juste sous Signals."
     ]},
     {"id": "ict", "t": "Couches ICT", "b": [
       "Ouvrez le menu **ICT** dans la barre du haut et activez les couches voulues. Le moteur les calcule pour le symbole et l'intervalle de chaque graphique.",
@@ -141,7 +142,8 @@
         "Valeurs : `open high low close volume hl2 hlc3 ohlc4` ; `close[1]` est la barre précédente.",
         "Fonctions : `sma ema rma wma rsi atr highest lowest stdev change abs max min` ; jusqu'à 6 lignes `plot()` ; `@pane` en première ligne le dessine dans son propre panneau.",
         "La vérification sous l'éditeur affiche les erreurs avec le numéro de ligne. **Save and add to chart** l'enregistre sur votre compte."
-      ]}
+      ]},
+      "**Supertrend (cTrader) :** le même indicateur que celui de cTrader (Periods 10, Multiplier 3, ATR de Wilder) : des points verts sous le prix en tendance haussière, rouges au-dessus en tendance baissière. Les **séparateurs de période** (Settings → Events) marquent le jour, la semaine, le mois ou l'année comme MT5 (Auto choisit selon l'unité de temps)."
     ]},
     {"id": "alerts", "t": "Alertes et WhatsApp", "b": [
       "Ouvrez **Alerts** à droite. Les alertes fonctionnent tant que le terminal est ouvert sur l'un de vos appareils ; les alertes WhatsApp sont envoyées par le serveur.",
@@ -168,7 +170,8 @@
         "Fermez avec ✕ dans **Positions** ; les trades terminés sont dans **History** avec le P&L et le taux de réussite."
       ]},
       {"info": "Le serveur exécute les ordres sur des barres de 1 minute : limites et stops à leur prix, un gap à l'ouverture, et quand une barre touche à la fois le stop et l'objectif, le stop compte en premier."},
-      "**Trading automatique MT5 :** dans l'onglet **MT5**, choisissez les modèles, symboles, grade, biais journalier, sessions, jours, trades par jour et risque de votre EA, et voyez comment les signaux des 7 derniers jours les franchissent. Appuyez sur **Take a tour** ou lisez le [guide du trading automatique](/auto-trading.html)."
+      "**Trading automatique MT5 :** dans l'onglet **MT5**, choisissez les modèles, symboles, grade, biais journalier, sessions, jours, trades par jour et risque de votre EA, et voyez comment les signaux des 7 derniers jours les franchissent. Appuyez sur **Take a tour** ou lisez le [guide du trading automatique](/auto-trading.html).",
+      "**Calculateur de risque (comme cTrader) :** dans l'onglet Trade (ou clic droit → *Risk calculator*) indiquez le solde, le risque en % ou en argent, l'entrée et le stop (pips ou prix) et le take profit (R, pips ou prix) : vous obtenez les lots, les unités, l'argent risqué, le gain et le R:R. *Draw on the chart* en fait une position Long / Short ; *Buy / Sell (paper)* passe l'ordre papier."
     ]},
     {"id": "tester", "t": "Testeur de stratégies et screener", "b": [
       {"h": "Testeur de stratégies"},
@@ -202,7 +205,8 @@
         "Les tablettes en portrait affichent jusqu'à 8 graphiques sur deux colonnes.",
         "Pincez pour zoomer, glissez pour défiler, appui long pour le réticule ; le dessin fonctionne au doigt."
       ]},
-      "**Application Android 0.4 :** l'application est désormais le terminal web complet, avec un verrou par empreinte (Account → This phone), le bouton retour du téléphone, la connexion Google dans votre navigateur et le partage d'images du graphique. Les panneaux latéraux s'ouvrent en feuille par-dessus le graphique."
+      "**Application Android 0.4 :** l'application est désormais le terminal web complet, avec un verrou par empreinte (Account → This phone), le bouton retour du téléphone, la connexion Google dans votre navigateur et le partage d'images du graphique. Les panneaux latéraux s'ouvrent en feuille par-dessus le graphique.",
+      "**App 0.4.1 :** la connexion Google / Facebook s'ouvre par-dessus l'app et l'app revient seule dès que vous appuyez sur Continue. Les fichiers du terminal restent en cache sur le téléphone, l'app s'ouvre donc plus vite."
     ]},
     {"id": "account", "t": "Forfaits et votre compte", "b": [
       {"ul": [

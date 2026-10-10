@@ -82,7 +82,8 @@
       ]},
       {"h": "Price scale"},
       "Right-click the price scale: **Auto (fit)**, **Lock range** (the scale stays while you scroll), **Lock price / bar** (the same price per bar when you zoom), **Regular**, **Log**, **Percent**, **Invert** and the side of the scale.",
-      "**History:** daily and weekly charts go back many years, and every candle follows New York time (the day starts at 18:00). There are 18 chart types, High-Low and Kagi included."
+      "**History:** daily and weekly charts go back many years, and every candle follows New York time (the day starts at 18:00). There are 18 chart types, High-Low and Kagi included.",
+      "**Export chart data (CSV):** right-click the chart → *Export chart data* saves the bars (time, open, high, low, close, volume) as a CSV file. The **Screener** button now sits in the right rail, right under Signals."
     ]},
     {"id": "ict", "t": "ICT layers", "b": [
       "Open the **ICT** menu in the top bar and switch on the layers you want. They are calculated by the engine for the symbol and interval of each chart.",
@@ -141,7 +142,8 @@
         "Values: `open high low close volume hl2 hlc3 ohlc4`; `close[1]` is the previous bar.",
         "Functions: `sma ema rma wma rsi atr highest lowest stdev change abs max min`; up to 6 `plot()` lines; `@pane` on the first line draws it in its own pane.",
         "The check below the editor shows errors with the line number. **Save and add to chart** keeps it in your account."
-      ]}
+      ]},
+      "**Supertrend (cTrader):** the same indicator as cTrader's (Periods 10, Multiplier 3, Wilder ATR): green dots under the price in an up trend, red dots above it in a down trend. **Period separators** (Settings → Events) mark the day, week, month or year like MT5 (Auto picks it by timeframe)."
     ]},
     {"id": "alerts", "t": "Alerts and WhatsApp", "b": [
       "Open **Alerts** on the right. Alerts work while the terminal is open on any of your devices; WhatsApp alerts are sent by the server.",
@@ -168,7 +170,8 @@
         "Close with ✕ in **Positions**; finished trades are in **History** with the P&L and the win rate."
       ]},
       {"info": "Orders are filled by the server on 1-minute bars: limit and stop orders fill at their price, a gap fills at the open, and when one bar touches both the stop and the target, the stop counts first."},
-      "**MT5 auto-trading:** in the **MT5** tab choose the models, symbols, grade, daily bias, sessions, days, trades a day and risk for your EA, and see how the signals of the last 7 days pass them. Press **Take a tour** there, or read the [auto-trading guide](/auto-trading.html)."
+      "**MT5 auto-trading:** in the **MT5** tab choose the models, symbols, grade, daily bias, sessions, days, trades a day and risk for your EA, and see how the signals of the last 7 days pass them. Press **Take a tour** there, or read the [auto-trading guide](/auto-trading.html).",
+      "**Risk calculator (like cTrader):** in the Trade tab (or right-click → *Risk calculator*) give the balance, the risk in % or money, the entry and the stop (pips or price) and the take profit (R, pips or price): you get the lots, the units, the money at risk, the reward and the R:R. *Draw on the chart* makes a Long / Short position from it; *Buy / Sell (paper)* places the paper order."
     ]},
     {"id": "tester", "t": "Strategy tester and screener", "b": [
       {"h": "Strategy tester"},
@@ -202,7 +205,8 @@
         "Tablets in portrait show up to 8 charts in two columns.",
         "Pinch to zoom, drag to scroll, long-press for the crosshair; drawing works with the finger."
       ]},
-      "**Android app 0.4:** the app is the whole web terminal, with a fingerprint lock (Account → This phone), the phone's back button, Google sign-in in your browser and sharing of chart pictures. Side panels open as a sheet over the chart."
+      "**Android app 0.4:** the app is the whole web terminal, with a fingerprint lock (Account → This phone), the phone's back button, Google sign-in in your browser and sharing of chart pictures. Side panels open as a sheet over the chart.",
+      "**App 0.4.1:** the Google / Facebook sign-in opens on top of the app and the app comes back by itself once you press Continue. The terminal's files stay cached on the phone, so the app opens faster."
     ]},
     {"id": "account", "t": "Plans and your account", "b": [
       {"ul": [

@@ -82,7 +82,8 @@
       ]},
       {"h": "Fiyat ölçeği"},
       "Fiyat ölçeğine sağ tıklayın: **Auto (fit)**, **Lock range** (kaydırırken ölçek sabit kalır), **Lock price / bar** (yakınlaştırırken çubuk başına aynı fiyat), **Regular**, **Log**, **Percent**, **Invert** ve ölçeğin tarafı.",
-      "**Geçmiş:** günlük ve haftalık grafikler yıllar geriye gider ve her mum New York saatine göredir (gün 18:00'de başlar). High-Low ve Kagi dahil 18 grafik türü vardır."
+      "**Geçmiş:** günlük ve haftalık grafikler yıllar geriye gider ve her mum New York saatine göredir (gün 18:00'de başlar). High-Low ve Kagi dahil 18 grafik türü vardır.",
+      "**Grafik verisini dışa aktar (CSV):** grafiğe sağ tıklayın → *Export chart data* mumları (zaman, açılış, yüksek, düşük, kapanış, hacim) CSV dosyası olarak kaydeder. **Screener** düğmesi artık sağ şeritte, Signals'ın hemen altında."
     ]},
     {"id": "ict", "t": "ICT katmanları", "b": [
       "Üst çubuktaki **ICT** menüsünü açın ve istediğiniz katmanları açın. Motor bunları her grafiğin sembolü ve zaman dilimi için hesaplar.",
@@ -141,7 +142,8 @@
         "Değerler: `open high low close volume hl2 hlc3 ohlc4`; `close[1]` önceki çubuktur.",
         "Fonksiyonlar: `sma ema rma wma rsi atr highest lowest stdev change abs max min`; en fazla 6 `plot()` satırı; ilk satırdaki `@pane` onu kendi panelinde çizer.",
         "Düzenleyicinin altındaki kontrol hataları satır numarasıyla gösterir. **Save and add to chart** onu hesabınıza kaydeder."
-      ]}
+      ]},
+      "**Supertrend (cTrader):** cTrader'daki ile aynı gösterge (Periods 10, Multiplier 3, Wilder ATR): yükseliş trendinde fiyatın altında yeşil noktalar, düşüş trendinde üstünde kırmızı noktalar. **Dönem ayırıcıları** (Settings → Events) MT5 gibi gün, hafta, ay veya yılı işaretler (Auto zaman dilimine göre seçer)."
     ]},
     {"id": "alerts", "t": "Alarmlar ve WhatsApp", "b": [
       "Sağda **Alerts**'ı açın. Alarmlar, terminal cihazlarınızdan birinde açık olduğu sürece çalışır; WhatsApp alarmlarını sunucu gönderir.",
@@ -168,7 +170,8 @@
         "**Positions**'ta ✕ ile kapatın; biten işlemler K/Z ve kazanma oranıyla **History**'dedir."
       ]},
       {"info": "Sunucu emirleri 1 dakikalık çubuklarla gerçekleştirir: limit ve stop emirleri kendi fiyatından, boşluk açılıştan; bir çubuk hem stopa hem hedefe değerse önce stop sayılır."},
-      "**MT5 otomatik işlem:** **MT5** sekmesinde EA'nız için modelleri, sembolleri, notu, günlük yönü, seansları, günleri, günlük işlem sayısını ve riski seçin ve son 7 günün sinyallerinin bunlardan nasıl geçtiğini görün. Orada **Take a tour**'a basın ya da [otomatik işlem rehberini](/auto-trading.html) okuyun."
+      "**MT5 otomatik işlem:** **MT5** sekmesinde EA'nız için modelleri, sembolleri, notu, günlük yönü, seansları, günleri, günlük işlem sayısını ve riski seçin ve son 7 günün sinyallerinin bunlardan nasıl geçtiğini görün. Orada **Take a tour**'a basın ya da [otomatik işlem rehberini](/auto-trading.html) okuyun.",
+      "**Risk hesaplayıcı (cTrader gibi):** Trade sekmesinde (veya sağ tık → *Risk calculator*) bakiyeyi, riski % veya para olarak, girişi ve stopu (pip veya fiyat) ve kâr alı (R, pip veya fiyat) girin: lot, birim, riske edilen para, ödül ve R:R çıkar. *Draw on the chart* bundan bir Long / Short pozisyon çizer; *Buy / Sell (paper)* kâğıt emri verir."
     ]},
     {"id": "tester", "t": "Strateji test aracı ve tarayıcı", "b": [
       {"h": "Strateji test aracı"},
@@ -202,7 +205,8 @@
         "Dikey tutulan tabletler 8 grafiğe kadar iki sütunda gösterir.",
         "Yakınlaştırmak için iki parmakla sıkıştırın, kaydırmak için sürükleyin, artı imleci için uzun basın; çizim parmakla da yapılır."
       ]},
-      "**Android uygulaması 0.4:** uygulama artık web terminalinin tamamı; parmak izi kilidi (Account → This phone), telefonun geri tuşu, tarayıcıda Google ile giriş ve grafik resmi paylaşma özellikleriyle. Yan paneller grafiğin üzerinde bir sayfa olarak açılır."
+      "**Android uygulaması 0.4:** uygulama artık web terminalinin tamamı; parmak izi kilidi (Account → This phone), telefonun geri tuşu, tarayıcıda Google ile giriş ve grafik resmi paylaşma özellikleriyle. Yan paneller grafiğin üzerinde bir sayfa olarak açılır.",
+      "**Uygulama 0.4.1:** Google / Facebook girişi uygulamanın üstünde açılır ve Continue'ya basınca uygulama kendiliğinden geri döner. Terminal dosyaları telefonda önbellekte kalır, uygulama daha hızlı açılır."
     ]},
     {"id": "account", "t": "Planlar ve hesabınız", "b": [
       {"ul": [

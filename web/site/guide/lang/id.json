@@ -82,7 +82,8 @@
       ]},
       {"h": "Skala harga"},
       "Klik kanan skala harga: **Auto (fit)**, **Lock range** (skala tetap saat menggulir), **Lock price / bar** (harga per bar sama saat zoom), **Regular**, **Log**, **Percent**, **Invert**, dan sisi skala.",
-      "**Riwayat:** grafik harian dan mingguan mundur bertahun-tahun, dan setiap candle mengikuti waktu New York (hari dimulai pukul 18:00). Ada 18 jenis grafik, termasuk High-Low dan Kagi."
+      "**Riwayat:** grafik harian dan mingguan mundur bertahun-tahun, dan setiap candle mengikuti waktu New York (hari dimulai pukul 18:00). Ada 18 jenis grafik, termasuk High-Low dan Kagi.",
+      "**Ekspor data chart (CSV):** klik kanan chart → *Export chart data* menyimpan bar (waktu, open, high, low, close, volume) ke file CSV. Tombol **Screener** kini ada di rel kanan, tepat di bawah Signals."
     ]},
     {"id": "ict", "t": "Lapisan ICT", "b": [
       "Buka menu **ICT** di bilah atas dan nyalakan lapisan yang Anda mau. Mesin menghitungnya untuk simbol dan interval setiap grafik.",
@@ -141,7 +142,8 @@
         "Nilai: `open high low close volume hl2 hlc3 ohlc4`; `close[1]` adalah bar sebelumnya.",
         "Fungsi: `sma ema rma wma rsi atr highest lowest stdev change abs max min`; hingga 6 baris `plot()`; `@pane` di baris pertama menggambarnya di panel sendiri.",
         "Pemeriksaan di bawah editor menampilkan kesalahan beserta nomor baris. **Save and add to chart** menyimpannya di akun Anda."
-      ]}
+      ]},
+      "**Supertrend (cTrader):** indikator yang sama dengan milik cTrader (Periods 10, Multiplier 3, ATR Wilder): titik hijau di bawah harga saat tren naik, titik merah di atasnya saat tren turun. **Pemisah periode** (Settings → Events) menandai hari, minggu, bulan, atau tahun seperti MT5 (Auto memilih sesuai timeframe)."
     ]},
     {"id": "alerts", "t": "Peringatan dan WhatsApp", "b": [
       "Buka **Alerts** di kanan. Peringatan bekerja selama terminal terbuka di salah satu perangkat Anda; peringatan WhatsApp dikirim oleh server.",
@@ -168,7 +170,8 @@
         "Tutup dengan ✕ di **Positions**; transaksi selesai ada di **History** dengan P&L dan rasio menang."
       ]},
       {"info": "Server mengisi order pada bar 1 menit: order limit dan stop pada harganya, gap pada pembukaan, dan bila satu bar menyentuh stop dan target sekaligus, stop dihitung lebih dulu."},
-      "**Trading otomatis MT5:** di tab **MT5** pilih model, simbol, grade, bias harian, sesi, hari, jumlah trade per hari dan risiko untuk EA Anda, dan lihat bagaimana sinyal 7 hari terakhir melewatinya. Tekan **Take a tour** di sana, atau baca [panduan trading otomatis](/auto-trading.html)."
+      "**Trading otomatis MT5:** di tab **MT5** pilih model, simbol, grade, bias harian, sesi, hari, jumlah trade per hari dan risiko untuk EA Anda, dan lihat bagaimana sinyal 7 hari terakhir melewatinya. Tekan **Take a tour** di sana, atau baca [panduan trading otomatis](/auto-trading.html).",
+      "**Kalkulator risiko (seperti cTrader):** di tab Trade (atau klik kanan → *Risk calculator*) isi saldo, risiko dalam % atau uang, entry dan stop (pip atau harga) serta take profit (R, pip, atau harga): Anda mendapat lot, unit, uang yang dirisikokan, reward, dan R:R. *Draw on the chart* membuat posisi Long / Short darinya; *Buy / Sell (paper)* memasang order paper."
     ]},
     {"id": "tester", "t": "Penguji strategi dan screener", "b": [
       {"h": "Penguji strategi"},
@@ -202,7 +205,8 @@
         "Tablet dalam posisi tegak menampilkan hingga 8 grafik dalam dua kolom.",
         "Cubit untuk zoom, seret untuk menggulir, tekan lama untuk crosshair; menggambar bisa dengan jari."
       ]},
-      "**Aplikasi Android 0.4:** aplikasi kini adalah terminal web lengkap, dengan kunci sidik jari (Account → This phone), tombol kembali ponsel, login Google di browser dan berbagi gambar grafik. Panel samping terbuka sebagai lembar di atas grafik."
+      "**Aplikasi Android 0.4:** aplikasi kini adalah terminal web lengkap, dengan kunci sidik jari (Account → This phone), tombol kembali ponsel, login Google di browser dan berbagi gambar grafik. Panel samping terbuka sebagai lembar di atas grafik.",
+      "**Aplikasi 0.4.1:** login Google / Facebook terbuka di atas aplikasi dan aplikasi kembali sendiri setelah Anda menekan Continue. File terminal tetap ter-cache di ponsel, jadi aplikasi terbuka lebih cepat."
     ]},
     {"id": "account", "t": "Paket dan akun Anda", "b": [
       {"ul": [

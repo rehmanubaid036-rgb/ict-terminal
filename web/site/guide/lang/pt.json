@@ -82,7 +82,8 @@
       ]},
       {"h": "Escala de preço"},
       "Clique com o botão direito na escala de preço: **Auto (fit)**, **Lock range** (a escala fica parada ao rolar), **Lock price / bar** (o mesmo preço por barra ao dar zoom), **Regular**, **Log**, **Percent**, **Invert** e o lado da escala.",
-      "**Histórico:** os gráficos diários e semanais vão muitos anos para trás, e cada vela segue o horário de Nova York (o dia começa às 18:00). Há 18 tipos de gráfico, incluindo High-Low e Kagi."
+      "**Histórico:** os gráficos diários e semanais vão muitos anos para trás, e cada vela segue o horário de Nova York (o dia começa às 18:00). Há 18 tipos de gráfico, incluindo High-Low e Kagi.",
+      "**Exportar dados do gráfico (CSV):** clique direito no gráfico → *Export chart data* guarda as velas (hora, abertura, máxima, mínima, fecho, volume) num ficheiro CSV. O botão **Screener** fica agora na barra direita, logo abaixo de Signals."
     ]},
     {"id": "ict", "t": "Camadas ICT", "b": [
       "Abra o menu **ICT** na barra superior e ligue as camadas que quiser. O motor as calcula para o símbolo e o intervalo de cada gráfico.",
@@ -141,7 +142,8 @@
         "Valores: `open high low close volume hl2 hlc3 ohlc4`; `close[1]` é a barra anterior.",
         "Funções: `sma ema rma wma rsi atr highest lowest stdev change abs max min`; até 6 linhas `plot()`; `@pane` na primeira linha desenha em um painel próprio.",
         "A verificação abaixo do editor mostra os erros com o número da linha. **Save and add to chart** salva na sua conta."
-      ]}
+      ]},
+      "**Supertrend (cTrader):** o mesmo indicador do cTrader (Periods 10, Multiplier 3, ATR de Wilder): pontos verdes abaixo do preço na tendência de alta, vermelhos acima na de baixa. Os **separadores de período** (Settings → Events) marcam o dia, a semana, o mês ou o ano como no MT5 (Auto escolhe pelo tempo gráfico)."
     ]},
     {"id": "alerts", "t": "Alertas e WhatsApp", "b": [
       "Abra **Alerts** à direita. Os alertas funcionam enquanto o terminal estiver aberto em algum dos seus dispositivos; os do WhatsApp são enviados pelo servidor.",
@@ -168,7 +170,8 @@
         "Feche com ✕ em **Positions**; trades encerrados ficam em **History** com o P&L e a taxa de acerto."
       ]},
       {"info": "O servidor executa as ordens em barras de 1 minuto: limit e stop no próprio preço, gap na abertura, e quando uma barra toca stop e alvo ao mesmo tempo, o stop conta primeiro."},
-      "**Negociação automática MT5:** na aba **MT5**, escolha os modelos, símbolos, grau, viés diário, sessões, dias, operações por dia e risco do seu EA, e veja como os sinais dos últimos 7 dias passam por eles. Toque em **Take a tour** ou leia o [guia de negociação automática](/auto-trading.html)."
+      "**Negociação automática MT5:** na aba **MT5**, escolha os modelos, símbolos, grau, viés diário, sessões, dias, operações por dia e risco do seu EA, e veja como os sinais dos últimos 7 dias passam por eles. Toque em **Take a tour** ou leia o [guia de negociação automática](/auto-trading.html).",
+      "**Calculadora de risco (como no cTrader):** na aba Trade (ou clique direito → *Risk calculator*) informe o saldo, o risco em % ou em dinheiro, a entrada e o stop (pips ou preço) e o take profit (R, pips ou preço): recebe os lotes, as unidades, o dinheiro em risco, o ganho e o R:R. *Draw on the chart* cria uma posição Long / Short com isso; *Buy / Sell (paper)* coloca a ordem de papel."
     ]},
     {"id": "tester", "t": "Testador de estratégias e screener", "b": [
       {"h": "Testador de estratégias"},
@@ -202,7 +205,8 @@
         "Tablets em retrato mostram até 8 gráficos em duas colunas.",
         "Pinça para zoom, arraste para rolar, toque longo para a mira; o desenho funciona com o dedo."
       ]},
-      "**App Android 0.4:** o app agora é o terminal web completo, com bloqueio por digital (Account → This phone), o botão voltar do telefone, login com Google no seu navegador e compartilhamento de imagens do gráfico. Os painéis laterais abrem como uma folha sobre o gráfico."
+      "**App Android 0.4:** o app agora é o terminal web completo, com bloqueio por digital (Account → This phone), o botão voltar do telefone, login com Google no seu navegador e compartilhamento de imagens do gráfico. Os painéis laterais abrem como uma folha sobre o gráfico.",
+      "**App 0.4.1:** o login com Google / Facebook abre por cima do app e o app volta sozinho ao tocar em Continue. Os ficheiros do terminal ficam em cache no telemóvel, por isso o app abre mais depressa."
     ]},
     {"id": "account", "t": "Planos e sua conta", "b": [
       {"ul": [

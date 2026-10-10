@@ -82,7 +82,8 @@
       ]},
       {"h": "Escala de precio"},
       "Clic derecho en la escala de precio: **Auto (fit)**, **Lock range** (la escala se queda al desplazarte), **Lock price / bar** (el mismo precio por barra al hacer zoom), **Regular**, **Log**, **Percent**, **Invert** y el lado de la escala.",
-      "**Historial:** los gráficos diarios y semanales llegan muchos años atrás, y cada vela sigue la hora de Nueva York (el día empieza a las 18:00). Hay 18 tipos de gráfico, incluidos High-Low y Kagi."
+      "**Historial:** los gráficos diarios y semanales llegan muchos años atrás, y cada vela sigue la hora de Nueva York (el día empieza a las 18:00). Hay 18 tipos de gráfico, incluidos High-Low y Kagi.",
+      "**Exportar datos del gráfico (CSV):** clic derecho en el gráfico → *Export chart data* guarda las velas (hora, apertura, máximo, mínimo, cierre, volumen) en un archivo CSV. El botón **Screener** está ahora en la barra derecha, justo debajo de Signals."
     ]},
     {"id": "ict", "t": "Capas ICT", "b": [
       "Abre el menú **ICT** en la barra superior y activa las capas que quieras. El motor las calcula para el símbolo e intervalo de cada gráfico.",
@@ -141,7 +142,8 @@
         "Valores: `open high low close volume hl2 hlc3 ohlc4`; `close[1]` es la barra anterior.",
         "Funciones: `sma ema rma wma rsi atr highest lowest stdev change abs max min`; hasta 6 líneas `plot()`; `@pane` en la primera línea lo dibuja en su propio panel.",
         "La comprobación bajo el editor muestra los errores con el número de línea. **Save and add to chart** lo guarda en tu cuenta."
-      ]}
+      ]},
+      "**Supertrend (cTrader):** el mismo indicador que el de cTrader (Periods 10, Multiplier 3, ATR de Wilder): puntos verdes bajo el precio en tendencia alcista, rojos encima en bajista. Los **separadores de periodo** (Settings → Events) marcan el día, la semana, el mes o el año como MT5 (Auto lo elige según el marco temporal)."
     ]},
     {"id": "alerts", "t": "Alertas y WhatsApp", "b": [
       "Abre **Alerts** a la derecha. Las alertas funcionan mientras el terminal esté abierto en alguno de tus dispositivos; las de WhatsApp las envía el servidor.",
@@ -168,7 +170,8 @@
         "Cierra con ✕ en **Positions**; las operaciones terminadas están en **History** con el P&L y el porcentaje de acierto."
       ]},
       {"info": "El servidor ejecuta las órdenes con barras de 1 minuto: las limit y stop a su precio, un gap a la apertura, y cuando una barra toca a la vez el stop y el objetivo, cuenta primero el stop."},
-      "**Trading automático MT5:** en la pestaña **MT5** elige los modelos, símbolos, grado, sesgo diario, sesiones, días, operaciones por día y riesgo de tu EA, y mira cómo pasan por ellos las señales de los últimos 7 días. Pulsa allí **Take a tour** o lee la [guía de trading automático](/auto-trading.html)."
+      "**Trading automático MT5:** en la pestaña **MT5** elige los modelos, símbolos, grado, sesgo diario, sesiones, días, operaciones por día y riesgo de tu EA, y mira cómo pasan por ellos las señales de los últimos 7 días. Pulsa allí **Take a tour** o lee la [guía de trading automático](/auto-trading.html).",
+      "**Calculadora de riesgo (como cTrader):** en la pestaña Trade (o clic derecho → *Risk calculator*) indica el saldo, el riesgo en % o en dinero, la entrada y el stop (pips o precio) y el take profit (R, pips o precio): obtienes los lotes, las unidades, el dinero en riesgo, la recompensa y el R:R. *Draw on the chart* crea una posición Long / Short con ello; *Buy / Sell (paper)* coloca la orden de papel."
     ]},
     {"id": "tester", "t": "Probador de estrategias y screener", "b": [
       {"h": "Probador de estrategias"},
@@ -202,7 +205,8 @@
         "Las tablets en vertical muestran hasta 8 gráficos en dos columnas.",
         "Pellizca para hacer zoom, arrastra para desplazarte, mantén pulsado para la cruz; también se dibuja con el dedo."
       ]},
-      "**App Android 0.4:** la app es ahora el terminal web completo, con bloqueo por huella (Account → This phone), el botón atrás del teléfono, inicio de sesión con Google en tu navegador y para compartir imágenes del gráfico. Los paneles laterales se abren como una hoja sobre el gráfico."
+      "**App Android 0.4:** la app es ahora el terminal web completo, con bloqueo por huella (Account → This phone), el botón atrás del teléfono, inicio de sesión con Google en tu navegador y para compartir imágenes del gráfico. Los paneles laterales se abren como una hoja sobre el gráfico.",
+      "**App 0.4.1:** el inicio de sesión con Google / Facebook se abre sobre la app y la app vuelve sola al pulsar Continue. Los archivos del terminal quedan en caché en el teléfono, así la app abre más rápido."
     ]},
     {"id": "account", "t": "Planes y tu cuenta", "b": [
       {"ul": [

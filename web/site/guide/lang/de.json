@@ -82,7 +82,8 @@
       ]},
       {"h": "Preisskala"},
       "Rechtsklick auf die Preisskala: **Auto (fit)**, **Lock range** (die Skala bleibt beim Scrollen), **Lock price / bar** (gleicher Preis pro Balken beim Zoomen), **Regular**, **Log**, **Percent**, **Invert** und die Seite der Skala.",
-      "**Historie:** Tages- und Wochencharts reichen viele Jahre zurück, und jede Kerze folgt der New Yorker Zeit (der Tag beginnt um 18:00). Es gibt 18 Charttypen, darunter High-Low und Kagi."
+      "**Historie:** Tages- und Wochencharts reichen viele Jahre zurück, und jede Kerze folgt der New Yorker Zeit (der Tag beginnt um 18:00). Es gibt 18 Charttypen, darunter High-Low und Kagi.",
+      "**Chartdaten exportieren (CSV):** Rechtsklick auf den Chart → *Export chart data* speichert die Kerzen (Zeit, Open, High, Low, Close, Volumen) als CSV-Datei. Der **Screener**-Button sitzt jetzt in der rechten Leiste, direkt unter Signals."
     ]},
     {"id": "ict", "t": "ICT-Ebenen", "b": [
       "Öffnen Sie das **ICT**-Menü in der oberen Leiste und schalten Sie die gewünschten Ebenen ein. Die Engine berechnet sie für Symbol und Intervall jedes Charts.",
@@ -141,7 +142,8 @@
         "Werte: `open high low close volume hl2 hlc3 ohlc4`; `close[1]` ist der vorige Balken.",
         "Funktionen: `sma ema rma wma rsi atr highest lowest stdev change abs max min`; bis zu 6 `plot()`-Zeilen; `@pane` in der ersten Zeile zeichnet in einem eigenen Bereich.",
         "Die Prüfung unter dem Editor zeigt Fehler mit Zeilennummer. **Save and add to chart** speichert ihn in Ihrem Konto."
-      ]}
+      ]},
+      "**Supertrend (cTrader):** derselbe Indikator wie in cTrader (Periods 10, Multiplier 3, Wilder-ATR): grüne Punkte unter dem Kurs im Aufwärtstrend, rote darüber im Abwärtstrend. **Periodentrenner** (Settings → Events) markieren Tag, Woche, Monat oder Jahr wie MT5 (Auto wählt nach Zeitrahmen)."
     ]},
     {"id": "alerts", "t": "Alarme und WhatsApp", "b": [
       "Öffnen Sie rechts **Alerts**. Alarme funktionieren, solange das Terminal auf einem Ihrer Geräte offen ist; WhatsApp-Alarme sendet der Server.",
@@ -168,7 +170,8 @@
         "Schließen Sie mit ✕ unter **Positions**; beendete Trades stehen unter **History** mit G&V und Trefferquote."
       ]},
       {"info": "Der Server führt Orders auf 1-Minuten-Balken aus: Limit- und Stop-Orders zu ihrem Preis, eine Lücke zur Eröffnung, und berührt ein Balken Stop und Ziel zugleich, zählt der Stop zuerst."},
-      "**MT5-Autotrading:** im Tab **MT5** für Ihren EA Modelle, Symbole, Grade, Tagesbias, Sessions, Tage, Trades pro Tag und Risiko wählen und sehen, wie die Signale der letzten 7 Tage diese Regeln passieren. Dort **Take a tour** drücken oder den [Autotrading-Leitfaden](/auto-trading.html) lesen."
+      "**MT5-Autotrading:** im Tab **MT5** für Ihren EA Modelle, Symbole, Grade, Tagesbias, Sessions, Tage, Trades pro Tag und Risiko wählen und sehen, wie die Signale der letzten 7 Tage diese Regeln passieren. Dort **Take a tour** drücken oder den [Autotrading-Leitfaden](/auto-trading.html) lesen.",
+      "**Risikorechner (wie cTrader):** im Tab Trade (oder Rechtsklick → *Risk calculator*) Kontostand, Risiko in % oder Geld, Einstieg und Stop (Pips oder Kurs) sowie Take-Profit (R, Pips oder Kurs) eingeben: Sie erhalten Lots, Einheiten, riskiertes Geld, Gewinn und R:R. *Draw on the chart* macht daraus eine Long- / Short-Position; *Buy / Sell (paper)* setzt die Papier-Order."
     ]},
     {"id": "tester", "t": "Strategietester und Screener", "b": [
       {"h": "Strategietester"},
@@ -202,7 +205,8 @@
         "Tablets im Hochformat zeigen bis zu 8 Charts in zwei Spalten.",
         "Zum Zoomen zusammenziehen, zum Scrollen ziehen, lange drücken für das Fadenkreuz; Zeichnen geht mit dem Finger."
       ]},
-      "**Android-App 0.4:** die App ist jetzt das komplette Web-Terminal, mit Fingerabdruck-Sperre (Account → This phone), der Zurück-Taste des Handys, Google-Anmeldung im Browser und Teilen von Chartbildern. Seitenpanels öffnen sich als Blatt über dem Chart."
+      "**Android-App 0.4:** die App ist jetzt das komplette Web-Terminal, mit Fingerabdruck-Sperre (Account → This phone), der Zurück-Taste des Handys, Google-Anmeldung im Browser und Teilen von Chartbildern. Seitenpanels öffnen sich als Blatt über dem Chart.",
+      "**App 0.4.1:** die Google- / Facebook-Anmeldung öffnet sich über der App, und die App kehrt nach Continue von selbst zurück. Die Terminal-Dateien bleiben auf dem Handy im Cache, die App öffnet also schneller."
     ]},
     {"id": "account", "t": "Pläne und Ihr Konto", "b": [
       {"ul": [
