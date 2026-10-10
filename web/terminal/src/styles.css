@@ -1184,3 +1184,4 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
   .topbar .tb-btn { position: relative; }
   .tb-end { box-shadow: none; padding-left: 2px; }
 }
+.ind-tabs { margin: 8px 0 4px; }

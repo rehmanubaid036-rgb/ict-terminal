@@ -136,7 +136,7 @@ export function registerVsaIndicators() {
         ] : [],
       }
     },
-    draw: ({ ctx, chart, indicator, bounding, xAxis, yAxis }) => {
+    draw: ({ ctx, chart, indicator, xAxis, yAxis }) => {
       const r = chart.getVisibleRange(), res = indicator.result as Row[]
       const style = Math.round(Number(indicator.calcParams[2] ?? 1))
       const from = Math.max(0, r.from), to = Math.min(res.length, r.to)
@@ -145,18 +145,18 @@ export function registerVsaIndicators() {
       const y0 = yAxis.convertToPixel(0)
       ctx.save()
       if (style !== 0) {
-        // the six zones: 0 -> l0 -> l1 ... -> l4 -> top of the pane
+        // the six zones as smooth areas: 0 -> l0 -> l1 ... -> l4 -> top of the pane
         const bands = isDark() ? BANDS_DARK : BANDS_LIGHT
-        for (let k = 0; k < bands.length; k++) {
+        const pts: number[] = []
+        for (let i = Math.max(0, from - 1); i < Math.min(res.length, to + 1); i++) if (res[i]?.l0 !== undefined) pts.push(i)
+        const yOf = (i: number, k: number) => (k < 0 ? y0 : k >= TIER_X.length ? 0 : yAxis.convertToPixel(res[i]['l' + k]!))
+        if (pts.length > 1) for (let k = 0; k < bands.length; k++) {
           ctx.fillStyle = bands[k]
-          for (let i = from; i < to; i++) {
-            const row = res[i]
-            if (row?.l0 === undefined) continue
-            const low = k ? row['l' + (k - 1)]! : 0
-            const x = xAxis.convertToPixel(i), w = half / 0.35 / 2 + 0.5
-            const yt = k === bands.length - 1 ? 0 : yAxis.convertToPixel(row['l' + k]!), yb = Math.min(bounding.height, yAxis.convertToPixel(low))
-            if (yb > yt) ctx.fillRect(x - w, yt, w * 2, yb - yt)
-          }
+          ctx.beginPath()
+          pts.forEach((i, j) => { const x = xAxis.convertToPixel(i), y = yOf(i, k); if (j) ctx.lineTo(x, y); else ctx.moveTo(x, y) })
+          for (let j = pts.length - 1; j >= 0; j--) ctx.lineTo(xAxis.convertToPixel(pts[j]), yOf(pts[j], k - 1))
+          ctx.closePath()
+          ctx.fill()
         }
       }
       for (let i = from; i < to; i++) {

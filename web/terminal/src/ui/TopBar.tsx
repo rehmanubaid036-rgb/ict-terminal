@@ -361,6 +361,8 @@ function IntervalBox({ initial, onClose, onPick }: { initial: string; onClose: (
 function IndicatorsDialog({ onClose }: { onClose: () => void }) {
   const t = useTerminal()
   const [q, setQ] = useState('')
+  const [indTab, setIndTab] = useState<'std' | 'vsa'>(() => { try { return localStorage.getItem('ict.indTab') === 'vsa' ? 'vsa' : 'std' } catch { return 'std' } })
+  const pickTab = (v: 'std' | 'vsa') => { setIndTab(v); try { localStorage.setItem('ict.indTab', v) } catch { /* ignore */ } }
   const [edit, setEdit] = useState<string | null>(null)
   const [script, setScript] = useState<SavedScript | 'new' | null>(null)
   const [tpl, setTpl] = useState(false)
@@ -456,8 +458,12 @@ function IndicatorsDialog({ onClose }: { onClose: () => void }) {
           ))}
         </div>
       )}
+      <div className="tabs-row small ind-tabs">
+        <button className={indTab === 'std' ? 'on' : ''} onClick={() => pickTab('std')}>Indicators</button>
+        <button className={indTab === 'vsa' ? 'on' : ''} onClick={() => pickTab('vsa')}>VSA Indicators</button>
+      </div>
       <div className="ind-list">
-        {['Trend', 'Momentum', 'Volatility', 'Volume'].map(g => {
+        {(q ? ['Trend', 'Momentum', 'Volatility', 'Volume', 'VSA'] : indTab === 'vsa' ? ['VSA'] : ['Trend', 'Momentum', 'Volatility', 'Volume']).map(g => {
           const rows = list.filter(i => i.group === g)
           if (!rows.length) return null
           return (
@@ -471,6 +477,8 @@ function IndicatorsDialog({ onClose }: { onClose: () => void }) {
             </div>
           )
         })}
+        {indTab === 'vsa' && !q && <div className="note">VSA (volume spread analysis), kept apart from ICT. VSA = TradeGuider-style relative volume (style 1) or MQL5 VSA Volume colours (style 0); VSASIG = imbalance shift, engulf, no demand / supply, stopping volume and upthrust on the candles.</div>}
+        {(indTab === 'std' || q) && <>
         <div className="ind-group">My scripts <button className="link" onClick={() => setScript('new')}>+ New script</button></div>
         {scripts.filter(s => !q || s.name.toLowerCase().includes(q.toLowerCase())).map(s => {
           const n = scriptIndicatorName(s.id)
@@ -484,6 +492,7 @@ function IndicatorsDialog({ onClose }: { onClose: () => void }) {
           )
         })}
         {!scripts.length && <p className="note">Write your own indicator with a few lines (ema, rsi, atr, highest …). It is saved to your account.</p>}
+        </>}
       </div>
       {script && <ScriptEditor script={script === 'new' ? undefined : script} onClose={() => setScript(null)} />}
       <p className="note">Tip: open the ICT menu for the engine's ICT concept indicators.</p>
