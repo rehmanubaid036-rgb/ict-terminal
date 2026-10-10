@@ -28,3 +28,16 @@ mt5/MetaEditor64.exe
 
 # chart pictures users share by link (API, data/snapshots)
 data/snapshots/
+
+# Android app (mobile/): signing keys and local build files never go to git
+*.jks
+*.keystore
+mobile/keys/
+mobile/android/key.properties
+mobile/android/local.properties
+mobile/build/
+mobile/.dart_tool/
+mobile/android/.gradle/
+mobile/android/app/build/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies

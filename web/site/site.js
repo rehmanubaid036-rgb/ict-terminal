@@ -164,7 +164,7 @@
     a.classList.remove('disabled');
     a.removeAttribute('aria-disabled');
     a.setAttribute('download', info.file);
-    if (note) note.textContent = 'Version ' + (version || '?') + (info.size_mb ? ', ' + info.size_mb + ' MB' : '');
+    if (note) note.textContent = 'Version ' + (info.version || version || '?') + (info.size_mb ? ', ' + info.size_mb + ' MB' : '');
   }
 
   // ---- donations (shown only when the admin turns them on) --------------------------------

@@ -33,7 +33,7 @@ SKIP_FILES = {".env", "key.properties", "vpscheck_ict_report.txt"}
 SKIP_SUFFIX = {".pyc", ".pyo", ".log", ".sqlite3", ".db", ".pkl", ".bi5", ".bak", ".ex5"}
 SKIP_PREFIX = ("test_",)
 # Apps for the website: name inside the zip's downloads/ -> where the build puts them
-APPS = {"android": ("ICT_Terminal.apk", ROOT / "mobile/ict_terminal/build/app/outputs/flutter-apk/app-release.apk"),
+APPS = {"android": ("ICT_Terminal.apk", ROOT / "mobile/build/app/outputs/flutter-apk/app-release.apk"),
         "windows": ("ICT_Terminal_Windows.exe", ROOT / "release" / "ICT Terminal.exe")}
 REQUIRED = ["oneclickict.bat", "ictoneclickclose.bat", "web/site/index.html", "vpscheckict.bat", "deploy/oneclick_ict.py", "deploy/vpscheck_ict.py",
             "deploy/ict_services.py", "deploy/ict_tunnel.py", "deploy/ict_configure.py",
@@ -104,7 +104,7 @@ def main() -> None:
     print(f"{zpath.name}: {len(listing)} files, {zpath.stat().st_size / 1e6:.1f} MB")
     if not with_apps:
         return
-    apk = ROOT / "mobile/ict_terminal/build/app/outputs/flutter-apk/app-release.apk"
+    apk = ROOT / "mobile/build/app/outputs/flutter-apk/app-release.apk"
     if apk.exists():
         dst = OUT / f"ICT_Terminal_v{version}.apk"
         shutil.copy2(apk, dst)
