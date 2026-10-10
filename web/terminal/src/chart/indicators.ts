@@ -66,27 +66,34 @@ export function registerIndicators() {
     },
   })
 
+  // Supertrend exactly as cTrader's built-in indicator (Periods 10, Multiplier 3): Wilder ATR, median price
+  // bands, the trend flips when the close crosses the PREVIOUS bar's band, a band only tightens while its
+  // own trend lasts, and the result is drawn as dots (UpTrend green below price, DownTrend red above).
   registerIndicator<{ up?: number; dn?: number }, number>({
-    name: 'SUPERTREND', shortName: 'SuperTrend', calcParams: [10, 3], series: 'price', precision: 2,
+    name: 'SUPERTREND', shortName: 'Supertrend', calcParams: [10, 3], series: 'price', precision: 2,
     figures: [
-      { key: 'up', title: 'Up: ', type: 'line', styles: () => ({ color: '#26a69a', size: 2 }) },
-      { key: 'dn', title: 'Down: ', type: 'line', styles: () => ({ color: '#ef5350', size: 2 }) },
+      { key: 'up', title: 'UpTrend: ', type: 'circle', styles: () => ({ color: '#00a000', style: 'fill' }) },
+      { key: 'dn', title: 'DownTrend: ', type: 'circle', styles: () => ({ color: '#ff0000', style: 'fill' }) },
     ],
     calc: (list, ind) => {
-      const [n = 10, mult = 3] = ind.calcParams
-      const atr = rma(trueRanges(list), n)
-      let finalUp = 0, finalDn = 0, trend = 1
+      const [periods = 10, mult = 3] = ind.calcParams
+      const atr = rma(trueRanges(list), periods)
+      const upBuf: number[] = [], downBuf: number[] = [], trend: number[] = []
       return list.map((b, i) => {
         const a = atr[i]
-        if (a === undefined) return {}
-        const hl2 = (b.high + b.low) / 2
-        const basicUp = hl2 - mult * a, basicDn = hl2 + mult * a
-        const prevClose = list[i - 1]?.close ?? b.close
-        finalUp = prevClose > finalUp ? Math.max(basicUp, finalUp || basicUp) : basicUp
-        finalDn = prevClose < finalDn ? Math.min(basicDn, finalDn || basicDn) : basicDn
-        if (b.close > finalDn) trend = 1
-        else if (b.close < finalUp) trend = -1
-        return trend > 0 ? { up: finalUp } : { dn: finalDn }
+        const median = (b.high + b.low) / 2
+        if (a === undefined) { upBuf[i] = NaN; downBuf[i] = NaN; trend[i] = 1; return {} }
+        upBuf[i] = median + mult * a
+        downBuf[i] = median - mult * a
+        if (i < 1 || Number.isNaN(upBuf[i - 1])) { trend[i] = 1; return {} }
+        if (b.close > upBuf[i - 1]) trend[i] = 1
+        else if (b.close < downBuf[i - 1]) trend[i] = -1
+        else trend[i] = trend[i - 1]
+        if (trend[i] < 0 && trend[i - 1] > 0) upBuf[i] = median + mult * a
+        else if (trend[i] < 0 && upBuf[i] > upBuf[i - 1]) upBuf[i] = upBuf[i - 1]
+        if (trend[i] > 0 && trend[i - 1] < 0) downBuf[i] = median - mult * a
+        else if (trend[i] > 0 && downBuf[i] < downBuf[i - 1]) downBuf[i] = downBuf[i - 1]
+        return trend[i] === 1 ? { up: downBuf[i] } : { dn: upBuf[i] }
       })
     },
   })
