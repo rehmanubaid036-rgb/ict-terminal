@@ -38,6 +38,41 @@ export function SidePanel() {
   const phone = useIsPhone()
   const tab = t.sideTab
   const tabs = TABS.filter(x => phone || !x.phoneOnly)
+  const [more, setMore] = useState(false)
+  const MAIN: SideTab[] = ['watchlist', 'signals', 'trade', 'mt5']
+  const pick = (id: SideTab) => { setMore(false); t.setSideTab(tab === id ? null : id) }
+  if (phone) return (
+    <aside className={`side${tab ? ' open' : ''}`}>
+      {tab && (
+        <div className="side-body">
+          <div className="side-head">
+            <h4>{TABS.find(x => x.id === tab)?.label}</h4>
+            <button className="icon-btn" onClick={() => t.setSideTab(null)} aria-label="Close panel"><Icon name="close" size={16} /></button>
+          </div>
+          <div className="side-content">{panelOf(tab)}</div>
+        </div>
+      )}
+      {more && <div className="rail-more" onClick={() => setMore(false)}>
+        <div className="rail-more-sheet" onClick={e => e.stopPropagation()}>
+          <div className="rail-more-head"><b>More</b><button className="icon-btn" onClick={() => setMore(false)} aria-label="Close"><Icon name="close" size={16} /></button></div>
+          <div className="rail-more-grid">
+            {tabs.filter(x => !MAIN.includes(x.id)).map(x => (
+              <button key={x.id} className={tab === x.id ? 'on' : ''} onClick={() => pick(x.id)}><Icon name={x.icon} size={22} /><span>{x.label}</span>
+                {x.id === 'alerts' && t.state.alerts.some(a => a.active) && <i className="badge">{t.state.alerts.filter(a => a.active).length}</i>}</button>))}
+            <button onClick={() => { setMore(false); window.dispatchEvent(new CustomEvent('ict:open', { detail: 'screener' })) }}><Icon name="screener" size={22} /><span>ICT Screener</span></button>
+            <button onClick={() => { setMore(false); t.openCommunity() }}><Icon name="community" size={22} /><span>Community</span></button>
+            <button onClick={() => { setMore(false); t.setIccOpen(!t.iccOpen) }}><b className="icc-mark">ICC</b><span>ICC Terminal</span></button>
+          </div>
+        </div>
+      </div>}
+      <div className="rail phone-rail">
+        {MAIN.map(id => { const x = TABS.find(y => y.id === id)!; return (
+          <button key={id} className={tab === id ? 'on' : ''} title={x.label} onClick={() => pick(id)}><Icon name={x.icon} size={20} /><span>{x.label.split(' ')[0]}</span></button>) })}
+        <button className={more ? 'on' : ''} title="More panels" onClick={() => setMore(m => !m)}><Icon name="list" size={20} /><span>More</span>
+          {t.state.alerts.some(a => a.active) && <i className="badge">{t.state.alerts.filter(a => a.active).length}</i>}</button>
+      </div>
+    </aside>
+  )
   return (
     <aside className={`side${tab ? ' open' : ''}`}>
       {tab && (
@@ -47,16 +82,7 @@ export function SidePanel() {
             <button className="icon-btn" onClick={() => t.setSideTab(null)} aria-label="Close panel"><Icon name="close" size={16} /></button>
           </div>
           <div className="side-content">
-            {tab === 'watchlist' && <Watchlist />}
-            {tab === 'trade' && <TradePanel />}
-            {tab === 'calendar' && <CalendarPanel />}
-            {tab === 'news' && <NewsPanel />}
-            {tab === 'signals' && <Signals />}
-            {tab === 'assistant' && <Assistant />}
-            {tab === 'alerts' && <Alerts />}
-            {tab === 'objects' && <ObjectTree />}
-            {tab === 'data' && <DataWindow />}
-            {tab === 'dom' && <DomPanel />}
+            {panelOf(tab)}
             {tab === 'info' && <SymbolInfo />}
             {tab === 'mt5' && <Mt5Panel />}
             {tab === 'journal' && <PhoneJournal />}
@@ -81,6 +107,23 @@ export function SidePanel() {
       </div>
     </aside>
   )
+}
+
+/** The side panel's content for a tab (desktop side panel and the phone sheet). */
+function panelOf(tab: SideTab) {
+  switch (tab) {
+    case 'watchlist': return <Watchlist />
+    case 'trade': return <TradePanel />
+    case 'calendar': return <CalendarPanel />
+    case 'news': return <NewsPanel />
+    case 'signals': return <Signals />
+    case 'assistant': return <Assistant />
+    case 'alerts': return <Alerts />
+    case 'objects': return <ObjectTree />
+    case 'data': return <DataWindow />
+    case 'dom': return <DomPanel />
+  }
+  return null
 }
 
 // ---- watchlist --------------------------------------------------------------------------------

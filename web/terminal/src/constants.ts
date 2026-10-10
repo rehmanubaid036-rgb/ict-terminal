@@ -154,6 +154,9 @@ export const INDICATORS: IndicatorDef[] = [
   { name: 'AUTOSR', title: 'Auto support / resistance levels (swing bars, levels)', overlay: true, group: 'Trend' },
   { name: 'STDDEV', title: 'Standard Deviation', overlay: false, group: 'Volatility' },
   { name: 'PPO', title: 'Price Oscillator (fast, slow, signal) %', overlay: false, group: 'Momentum' },
+  // VSA (volume spread analysis), kept apart from ICT
+  { name: 'VSA', title: 'VSA Volume: colour volume (avg length, spread length, style 1 imbalance bands / 0 MQL5, high x, low x)', overlay: false, group: 'Volume' },
+  { name: 'VSASIG', title: 'VSA Signals: imbalance shift, engulf, no demand / supply, stopping volume, upthrust (avg, high x, ultra x, trend SMA 0 = off, minor 1/0)', overlay: true, group: 'Volume' },
   { name: 'CORREL', title: 'Correlation with the compared symbol (length) — add one with Compare', overlay: false, group: 'Momentum' },
 ]
 /** "EMA#2" -> "EMA": a second (third ...) copy of an indicator on the same chart. */

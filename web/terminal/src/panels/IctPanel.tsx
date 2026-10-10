@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useTerminal } from '../Terminal'
 import { CUSTOM_MODELS, ICT_LAYERS, ONE_MINUTE_MODELS, WOLF_MODELS, modelTag, timeframeByLabel } from '../constants'
 import { Switch, toast } from '../ui/common'
+import { api } from '../api'
 
 export function IctPanel({ onDone }: { onDone?: () => void }) {
   const t = useTerminal()
@@ -69,9 +70,9 @@ export function ModelSection({ title, wolf, ids: only }: { title: string; wolf: 
             )
           })}
           <Switch checked={a.requireBias} onChange={v => t.updateActive({ requireBias: v })} label="Only setups with the daily bias" />
-          <Switch checked={t.state.signals.invert} onChange={v => { t.setSignalsPrefs({ invert: v }); toast(v ? 'Opposite direction ON: every model signal is flipped (a buy becomes a sell) on all charts, the Signals tab and the tester.' : 'Opposite direction OFF.') }}
+          <Switch checked={t.state.signals.invert} onChange={v => void setInvert(t, v)}
             label="Opposite direction (invert all models)" />
-          {t.state.signals.invert && <p className="note">⇅ ON: a buy signal becomes a sell, the stop and targets mirrored around the entry. Applies to ICT, Wolf and Custom models on every chart, the Signals tab and the tester.</p>}
+          {t.state.signals.invert && <p className="note">⇅ ON: a buy signal becomes a sell, the stop and targets mirrored around the entry. Applies to ICT, Wolf and Custom models everywhere: charts, Signals tab, tester, MT5 auto-trading and WhatsApp / Telegram alerts.</p>}
           {wolf && on.some(id => ONE_MINUTE_MODELS.has(id)) && timeframeByLabel(a.tf).label !== '1m' &&
             <p className="note">Wolf setups are drawn on the 1-minute chart. <button className="link" onClick={() => t.setTf('1m')}>Switch to 1m</button></p>}
         </>}
@@ -102,4 +103,14 @@ function ToggleRow({ on, title, desc, disabled, onChange }: { on: boolean; title
       <span className={`switch${on ? ' on' : ''}`}><i /></span>
     </button>
   )
+}
+
+/** One switch for every place a model signal goes: the charts / Signals tab / tester (terminal settings),
+ *  the MT5 EA (auto-trading filters) and the WhatsApp / Telegram signal alerts. */
+export async function setInvert(t: ReturnType<typeof useTerminal>, v: boolean) {
+  t.setSignalsPrefs({ invert: v })
+  const done: string[] = ['charts']
+  try { const c = (await api.copy.get()).copy; if (c?.filters) { await api.copy.save({ filters: { ...c.filters, invert: v } }); done.push('MT5 auto-trading') } } catch { /* no auto-trading plan */ }
+  try { await api.alerts.save({ invert_signals: v }); done.push('alerts') } catch { /* no alert settings */ }
+  toast(v ? `Opposite direction ON (${done.join(', ')}): a buy signal becomes a sell.` : `Opposite direction OFF (${done.join(', ')}).`)
 }

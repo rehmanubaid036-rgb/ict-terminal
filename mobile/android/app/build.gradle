@@ -58,3 +58,8 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // AppCompat theme for the fingerprint prompt (androidx.biometric)
+    implementation "androidx.appcompat:appcompat:1.7.0"
+}

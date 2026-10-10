@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import "package:flutter/services.dart";
 import "package:local_auth/local_auth.dart";
 import "package:shared_preferences/shared_preferences.dart";
 
@@ -22,18 +23,41 @@ class AppLock {
     }
   }
 
+  /// Why the lock cannot be used, or "" when it can.
+  String lastError = "";
+
   /// Switching on asks for the fingerprint once, so nobody locks themselves out by mistake.
   Future<bool> setEnabled(bool on) async {
-    if (on && !(await available() && await unlock("Confirm to switch on the lock"))) return false;
+    if (on) {
+      if (!await available()) {
+        lastError = "This phone has no fingerprint, face or screen lock to use.";
+        return false;
+      }
+      if (!await unlock("Confirm to switch on the lock")) return false;
+    }
     enabled = on;
     await (await SharedPreferences.getInstance()).setBool(_key, on);
     return true;
   }
 
   Future<bool> unlock([String reason = "Unlock ICT Terminal"]) async {
+    lastError = "";
     try {
-      return await _auth.authenticate(localizedReason: reason, options: const AuthenticationOptions(stickyAuth: true));
-    } catch (_) {
+      // fingerprint or face, or the phone's PIN / pattern / password when there is no biometric
+      final ok = await _auth.authenticate(localizedReason: reason, options: const AuthenticationOptions(stickyAuth: true, biometricOnly: false));
+      if (!ok) lastError = "Not confirmed.";
+      return ok;
+    } on PlatformException catch (e) {
+      lastError = switch (e.code) {
+        "NotAvailable" || "no_fragment_activity" => "This phone has no fingerprint, face or screen lock to use.",
+        "NotEnrolled" => "Add a fingerprint or a screen lock in the phone's Settings first.",
+        "LockedOut" || "PermanentlyLockedOut" => "Too many tries: unlock the phone with its PIN, then try again.",
+        "PasscodeNotSet" => "Set a screen lock (PIN, pattern or password) in the phone's Settings first.",
+        _ => e.message ?? e.code,
+      };
+      return false;
+    } catch (e) {
+      lastError = "$e";
       return false;
     }
   }

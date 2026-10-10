@@ -17,7 +17,7 @@ import { Modal, Popover, Switch, toast, useIsPhone } from './common'
 import { getEntry, undo, redo } from '../chart/registry'
 import { TIMEZONES, utcOffsetLabel } from '../chart/settings'
 
-type Menu = 'tf' | 'type' | 'ict' | 'wolf' | 'custom' | 'compare' | 'layout' | 'templates' | 'more' | null
+type Menu = 'tf' | 'type' | 'ict' | 'wolf' | 'custom' | 'compare' | 'layout' | 'templates' | 'more' | 'phone' | null
 
 export function TopBar() {
   const t = useTerminal()
@@ -100,6 +100,9 @@ export function TopBar() {
       <span className="divider" />
       <button ref={refs.type} className="tb-btn" title="Chart type" onClick={() => toggle('type')}><Icon name="candles" /></button>
       <button className="tb-btn text" title="Indicators" onClick={() => setIndicators(true)}><Icon name="indicators" /><span>Indicators</span></button>
+      {phone && <button ref={refs.ict} className={`tb-btn text${a.ict.length + ictModels.length ? ' lit' : ''}${menu === 'ict' ? ' on' : ''}`} title="ICT: indicators and models" onClick={() => toggle('ict')}><Icon name="ict" />{a.ict.length + ictModels.length > 0 && <em>{a.ict.length + ictModels.length}</em>}</button>}
+      {phone && <button className={`tb-btn${menu === 'phone' ? ' on' : ''}`} title="More: templates, models, alerts, replay, layout, settings" onClick={() => toggle('phone')}><Icon name="list" /></button>}
+      {!phone && <>
       <button ref={refs.templates} className={`tb-btn text${menu === 'templates' ? ' on' : ''}`} title="Templates: ready chart setups (indicators, ICT layers, models, layout) in one click" onClick={() => toggle('templates')}><Icon name="template" /><span>Templates</span></button>
       <button ref={refs.compare} className={`tb-btn text${a.compare?.length ? ' lit' : ''}`} title="Compare symbols (SMT)" onClick={() => toggle('compare')}><Icon name="plus" /><span>Compare</span>{a.compare?.length ? <em>{a.compare.length}</em> : null}</button>
       <button ref={refs.ict} className={`tb-btn text${a.ict.length + ictModels.length ? ' lit' : ''}${menu === 'ict' ? ' on' : ''}`} title="ICT: indicators and models, one click on / off" onClick={() => toggle('ict')}><Icon name="ict" /><span>ICT</span>{a.ict.length + ictModels.length > 0 && <em>{a.ict.length + ictModels.length}</em>}</button>
@@ -108,17 +111,18 @@ export function TopBar() {
       <span className="divider" />
       <button className="tb-btn" title="Create alert (Alt+A)" onClick={() => t.setSideTab('alerts')}><Icon name="bell" /></button>
       <button className={`tb-btn${t.replay.on ? ' lit' : ''}`} title="Bar replay" onClick={() => (t.replay.on ? t.stopReplay() : t.startReplay())}><Icon name="replay" /></button>
+      </>}
       {!phone && <>
         <button className="tb-btn" title="Undo (Ctrl+Z)" onClick={() => undo(a.id)}><Icon name="undo" /></button>
         <button className="tb-btn" title="Redo (Ctrl+Y)" onClick={() => redo(a.id)}><Icon name="redo" /></button>
       </>}
       <span className="grow" />
-      <button ref={refs.layout} className="tb-btn" title="Layout and sync" onClick={() => toggle('layout')}><LayoutGlyph id={t.state.layout} /></button>
+      {!phone && <button ref={refs.layout} className="tb-btn" title="Layout and sync" onClick={() => toggle('layout')}><LayoutGlyph id={t.state.layout} /></button>}
       {!phone && <>
         <button ref={shotRef} className="tb-btn" title="Picture of the chart: download or share a link" onClick={() => setShot(v => !v)}><Icon name="camera" /></button>
         <button className="tb-btn" title="Full screen" onClick={() => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.())}><Icon name="full" /></button>
       </>}
-      <button ref={refs.more} className="tb-btn" title="Settings" onClick={() => toggle('more')}><Icon name="gear" /></button>
+      {!phone && <button ref={refs.more} className="tb-btn" title="Settings" onClick={() => toggle('more')}><Icon name="gear" /></button>}
       <div className="tb-end">
         {donations?.enabled && !phone && <button className="tb-btn donate-btn" title={donations.title} onClick={() => setDonate(true)}>❤<span>Donate</span></button>}
         {edge.right && <button className="tb-arrow" aria-label="Scroll the menu right" onClick={() => nudge(1)}>›</button>}
@@ -128,6 +132,19 @@ export function TopBar() {
         </button>
       </div>
 
+      {menu === 'phone' && (
+        <Popover anchor={refs.type} onClose={close} className="menu-list phone-more" title="More">
+          <button onClick={() => setMenu('templates')}><Icon name="template" size={16} /> Templates</button>
+          <button onClick={() => setMenu('compare')}><Icon name="plus" size={16} /> Compare symbols{a.compare?.length ? ` (${a.compare.length})` : ''}</button>
+          <button onClick={() => setMenu('wolf')}><Icon name="target" size={16} /> Wolf Models{wolfModels.length ? ` (${wolfModels.length})` : ''}</button>
+          <button onClick={() => setMenu('custom')}><Icon name="indicators" size={16} /> Custom Models{customModels.length ? ` (${customModels.length})` : ''}</button>
+          <button onClick={() => { close(); t.setSideTab('alerts') }}><Icon name="bell" size={16} /> Create alert</button>
+          <button onClick={() => { close(); if (t.replay.on) t.stopReplay(); else t.startReplay() }}><Icon name="replay" size={16} /> {t.replay.on ? 'Stop bar replay' : 'Bar replay'}</button>
+          <button onClick={() => setMenu('layout')}><LayoutGlyph id={t.state.layout} /> Layout and sync</button>
+          <button onClick={() => { close(); t.screenshot() }}><Icon name="camera" size={16} /> Picture of the chart</button>
+          <button onClick={() => setMenu('more')}><Icon name="gear" size={16} /> Settings</button>
+        </Popover>
+      )}
       {menu === 'tf' && (
         <Popover anchor={refs.tf} onClose={close} className="menu-list" title="Interval">
           {TIMEFRAMES.map(x => <button key={x.label} className={tf.label === x.label ? 'on' : ''} onClick={() => { t.setTf(x.label); close() }}>{TF_NAMES[x.label] ?? x.label}</button>)}

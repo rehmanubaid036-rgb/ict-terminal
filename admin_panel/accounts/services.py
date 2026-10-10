@@ -369,7 +369,7 @@ EA_GRADES = ("all", "A", "A+")
 EA_DIRECTIONS = ("both", "long", "short")
 EA_FILTER_DEFAULTS = {"models": [], "symbols": [], "min_grade": "all", "bias_only": False, "sessions": [],
                       "direction": "both", "weekdays": [], "max_trades_day": 0, "risk_percent": 0, "max_open": 0,
-                      "max_daily_loss": 0}
+                      "max_daily_loss": 0, "invert": False}
 
 
 def clean_ea_filters(data):
@@ -418,6 +418,7 @@ def clean_ea_filters(data):
             raise ValueError("direction must be both, long or short.")
         out["direction"] = data.get("direction", "both")
         out["bias_only"] = bool(data.get("bias_only", False))
+        out["invert"] = bool(data.get("invert", False))       # trade every signal in the opposite direction
         out["max_trades_day"] = number("max_trades_day", 1, 50, int)
         out["risk_percent"] = number("risk_percent", 0.01, 5)
         out["max_open"] = number("max_open", 1, 20, int)

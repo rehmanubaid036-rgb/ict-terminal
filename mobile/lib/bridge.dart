@@ -3,7 +3,7 @@ import "dart:convert";
 /// The web terminal the app shows (set at build time for test builds):
 ///   flutter build apk --dart-define=ICT_WEB=http://10.0.2.2:5173/terminal/
 const String kWebUrl = String.fromEnvironment("ICT_WEB", defaultValue: "https://ict.iccterminal.trade/terminal/");
-const String kAppVersion = "0.4.2";
+const String kAppVersion = "0.4.3";
 /// Added to the WebView's user agent, so the terminal knows it runs inside the app.
 const String kUaTag = "ICTTerminalApp/$kAppVersion (Android)";
 

@@ -114,6 +114,7 @@ export interface CopyStatus {
 export interface EaFilters {
   models: string[]; symbols: string[]; min_grade: 'all' | 'A' | 'A+'; bias_only: boolean; sessions: string[]
   direction: 'both' | 'long' | 'short'; weekdays: number[]; max_trades_day: number; risk_percent: number; max_open: number; max_daily_loss: number
+  invert?: boolean
 }
 export interface Mt5Preview { days: number; steps: { step: string; n: number }[]
   signals: { id: number; time: string; symbol: string; model_id: string; direction: number; grade: string; entry: number; stop: number }[] }
@@ -138,6 +139,7 @@ export interface NewIdea { title: string; body: string; symbol: string; timefram
 
 export interface AlertSettings {
   available: boolean; whatsapp_number: string; auto_notify: boolean; min_grade: 'all' | 'A' | 'A+'; models: string; symbols: string; bias_only: boolean
+  invert_signals?: boolean
   // chart alerts sent by the server (also when the terminal is closed)
   chart_alerts_on?: boolean; chart_alerts?: boolean; whatsapp_chart?: boolean
   telegram_available?: boolean; telegram_connected?: boolean; telegram_signals?: boolean; telegram_disconnect?: boolean

@@ -103,6 +103,7 @@ export function Mt5Settings({ copy, onSaved }: { copy: CopyStatus; onSaved: (c: 
             {g === 'all' ? 'All grades' : g === 'A' ? 'A and A+' : 'A+ only'}</button>)}
         </div>
         <Switch checked={f.bias_only} onChange={v => set({ bias_only: v })} label="Only when the daily bias agrees (higher-timeframe direction)" />
+        <Switch checked={!!f.invert} onChange={v => set({ invert: v })} label="Opposite direction: trade every signal flipped (a buy signal is sold)" />
         <div className="seg">
           {(['both', 'long', 'short'] as const).map(d => <button key={d} className={f.direction === d ? 'on' : ''} onClick={() => set({ direction: d })}>
             {d === 'both' ? 'Buy + sell' : d === 'long' ? 'Buy only' : 'Sell only'}</button>)}

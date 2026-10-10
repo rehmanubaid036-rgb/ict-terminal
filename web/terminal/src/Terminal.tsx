@@ -23,6 +23,7 @@ import { indHit } from './chart/indalert'
 import { toBars } from './chart/feed'
 import { registerVolumeProfiles } from './chart/volprofile'
 import { registerChartTypes } from './chart/charttypes'
+import { registerVsaIndicators } from './chart/vsa'
 import type { ChartSettings } from './chart/settings'
 import { ChartSettingsDialog, type SettingsTab } from './ui/ChartSettingsDialog'
 import { FavBar, type CursorKind } from './ui/FavBar'
@@ -47,6 +48,7 @@ export const POPOUT = new URLSearchParams(window.location.search).get('popout') 
 registerIndicators()
 registerIndicators2()
 registerIndicators3()
+registerVsaIndicators()  // VSA Volume pane + VSA Signals (kept apart from ICT)
 registerEvents()
 registerCompare()
 registerMoreTools()

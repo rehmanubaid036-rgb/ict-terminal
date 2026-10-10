@@ -981,6 +981,8 @@ class AlertPrefs(models.Model):
     telegram_signals = models.BooleanField("Signals on Telegram too", default=True)
     email_alerts = models.BooleanField("Chart alerts by email", default=False)
     webhook_url = models.URLField(max_length=300, blank=True, help_text="https:// address that gets every alert as JSON (POST)")
+    invert_signals = models.BooleanField("Opposite direction", default=False,
+                                         help_text="Send every model signal flipped: a buy becomes a sell (stop and targets mirrored)")
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

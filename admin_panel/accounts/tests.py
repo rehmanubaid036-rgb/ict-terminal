@@ -1942,3 +1942,17 @@ class StatsPageTests(TestCase):
         self.assertContains(r, "Top pages")
         self.client.logout()
         self.assertEqual(self.client.get("/admin/stats/").status_code, 302)          # staff only
+
+
+class InvertSignalsTests(TestCase):
+    """The opposite-direction switch: alerts flip a signal, EA filters keep the flag."""
+
+    def test_inverted_signal_and_filters(self):
+        from . import alerts
+        from .services import clean_ea_filters
+        s = {"symbol": "XAUUSD", "model_id": "M1", "direction": 1, "entry": 100.0, "stop": 98.0, "targets": [[104.0, 1.0]], "key": "k"}
+        inv = alerts.inverted(s)
+        self.assertEqual((inv["direction"], inv["stop"], inv["targets"][0][0], inv["key"]), (-1, 102.0, 96.0, "k|inv"))
+        f, err = clean_ea_filters({"invert": True})
+        self.assertEqual((err, f["invert"]), ("", True))
+        self.assertFalse(clean_ea_filters({})[0]["invert"])

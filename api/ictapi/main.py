@@ -1120,7 +1120,7 @@ img{{max-width:100%;height:auto;border-radius:10px;border:1px solid #232c45}}a{{
         if cap <= 0 or not sigs:
             return sigs
         day0 = now.tz_convert("America/New_York").normalize().tz_convert("UTC")
-        today = [s for s in store.signals_window(day0, now, pairs) if _passes(s, f)]
+        today = [x for x in ((_invert(s) if f.get("invert") else s) for s in store.signals_window(day0, now, pairs)) if _passes(x, f)]
         allowed = {s["id"] for s in today[:cap]}
         return [s for s in sigs if s["id"] in allowed]
 
@@ -1192,7 +1192,8 @@ img{{max-width:100%;height:auto;border-radius:10px;border:1px solid #232c45}}a{{
             return {**base, "reason": copy.get("reason") or r.get("reason", "")}
         f = copy.get("filters") or {}
         models = _user_pairs(copy.get("models") or [], f)
-        sigs = [s for s in store.live_signals(now, models) if _passes(s, f)]
+        flip = (lambda s: _invert(s)) if f.get("invert") else (lambda s: s)    # opposite direction (MT5 tab)
+        sigs = [x for x in map(flip, store.live_signals(now, models)) if _passes(x, f)]
         sigs = _day_cap(sigs, f, now, models)
         keep = ("id", "model_id", "symbol", "direction", "entry", "stop", "targets", "expiry", "time_stop",
                 "exit_by", "created_time", "grade")
@@ -1291,6 +1292,9 @@ img{{max-width:100%;height:auto;border-radius:10px;border:1px solid #232c45}}a{{
             pairs = _user_pairs(approved, f)
             cur = store.signals_window(start, now, pairs)
             steps.append({"step": "Daily bias agrees" if f.get("bias_only") else "Daily bias (off: not checked)", "n": len(cur)})
+            if f.get("invert"):
+                cur = [_invert(s) for s in cur]
+                steps.append({"step": "Opposite direction (every signal flipped)", "n": len(cur)})
             for label, test in _filter_steps(f):
                 cur = [s for s in cur if test(s)]
                 steps.append({"step": label, "n": len(cur)})
@@ -1334,7 +1338,7 @@ img{{max-width:100%;height:auto;border-radius:10px;border:1px solid #232c45}}a{{
         return {"stored": n}
 
     # ---- Google / Facebook sign-in pages (the browser goes through this server to the panel) -------
-    OAUTH_PAGES = re.compile(r"(google|facebook)/(start|callback)|finish")
+    OAUTH_PAGES = re.compile(r"(google|facebook)/(start|callback)|finish|done")
 
     @app.api_route("/api/v1/oauth/{rest:path}", methods=["GET", "POST"])
     async def oauth_pages(rest: str, request: Request):

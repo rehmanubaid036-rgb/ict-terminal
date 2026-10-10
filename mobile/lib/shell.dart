@@ -56,6 +56,7 @@ class _TerminalShellState extends State<TerminalShell> with WidgetsBindingObserv
     final web = _web;
     await web.setJavaScriptMode(JavaScriptMode.unrestricted);
     await web.setBackgroundColor(kBg);
+    await web.enableZoom(false);                 // pinch zooms the chart, never the whole page
     final ua = await web.getUserAgent() ?? "";
     await web.setUserAgent("$ua $kUaTag".trim());
     await web.addJavaScriptChannel("IctApp", onMessageReceived: (m) => _onMessage(m.message));
@@ -106,7 +107,7 @@ class _TerminalShellState extends State<TerminalShell> with WidgetsBindingObserv
         await Share.share(text);
       case SetLock(:final on):
         final ok = await widget.lock.setEnabled(on);
-        if (!ok && mounted) _snack("The fingerprint lock is not available on this phone.");
+        if (!ok && mounted) _snack(widget.lock.lastError.isNotEmpty ? widget.lock.lastError : "The fingerprint lock is not available on this phone.");
         await _tellPage();
       case null:
         break;
@@ -119,15 +120,15 @@ class _TerminalShellState extends State<TerminalShell> with WidgetsBindingObserv
     // the Google / Facebook sign-in runs in a Chrome tab on top of the app (Google allows that, not a
     // WebView); when it is done the server sends ictterminal://login, which closes the tab
     if (isSignIn(u)) {
-      // a Chrome tab on top of the app; the phone's browser when the phone has no Custom Tabs
+      // Google / Facebook refuse sign-in inside an app's own web view: always the phone's browser
+      // (Chrome). The server's last page sends ictterminal://login, which brings this app back.
       var ok = false;
       try {
-        ok = await launchUrl(u, mode: LaunchMode.inAppBrowserView);
+        ok = await launchUrl(u, mode: LaunchMode.externalApplication);
       } catch (_) {
         ok = false;
       }
-      if (!ok) ok = await launchUrl(u, mode: LaunchMode.externalApplication);
-      if (!ok && mounted) _snack("Could not open the sign-in page");
+      if (!ok && mounted) _snack("Could not open the browser for the sign-in");
       return;
     }
     if (!await launchUrl(u, mode: LaunchMode.externalApplication) && mounted) _snack("Could not open $url");

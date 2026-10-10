@@ -126,9 +126,17 @@ def _wants(p: AlertPrefs, feats: dict, s: dict, now) -> bool:
     return not syms or s["symbol"].upper() in syms
 
 
+def inverted(s: dict) -> dict:
+    """The opposite trade of a signal: direction flipped, stop and targets mirrored around the entry."""
+    e = s["entry"]
+    return {**s, "direction": -s["direction"], "stop": 2 * e - s["stop"],
+            "targets": [[2 * e - t[0], t[1]] for t in s["targets"]], "key": s["key"] + "|inv", "inverted": True}
+
+
 def signal_text(s: dict) -> str:
     p = signal_params(s)
-    return f"ICT Terminal signal: {p[0]} {p[1]} {p[2]} (grade {p[3]}). Entry {p[4]}, SL {p[5]}, TP {p[6]}. {p[7]}. Not financial advice."
+    flip = " (opposite direction)" if s.get("inverted") else ""
+    return f"ICT Terminal signal: {p[0]} {p[1]} {p[2]}{flip} (grade {p[3]}). Entry {p[4]}, SL {p[5]}, TP {p[6]}. {p[7]}. Not financial advice."
 
 
 def run_once(now=None, path: Path | None = None, sender=send_template, log=print, tg_sender=None) -> int:
@@ -161,6 +169,8 @@ def run_once(now=None, path: Path | None = None, sender=send_template, log=print
             if not _wants(p, feats, s, now):
                 continue
             seen.add(s["key"])
+            if p.invert_signals:
+                s = inverted(s)
             params = signal_params(s)
             for ch, to in chans:
                 try:
@@ -195,6 +205,7 @@ def prefs_dict(p: AlertPrefs | None) -> dict:
             "telegram_connected": bool(p and p.telegram_chat_id), "telegram_signals": p.telegram_signals if p else True,
             "email_available": bool(site.email_alerts_enabled), "email_alerts": bool(p and p.email_alerts),
             "webhook_url": p.webhook_url if p else "",
+            "invert_signals": bool(p and p.invert_signals),
             "channels": channels(p, site) if p else []}
 
 
@@ -215,7 +226,7 @@ def save_prefs(user, data: dict) -> AlertPrefs:
         p.symbols_csv = ",".join(s for s in re.split(r"[\s,]+", str(data.get("symbols") or "").upper()) if re.fullmatch(r"[A-Z0-9._:]{2,20}", s))[:200]
     if "bias_only" in data:
         p.bias_only = bool(data.get("bias_only"))
-    for f in ("chart_alerts", "whatsapp_chart", "telegram_signals", "email_alerts"):
+    for f in ("chart_alerts", "whatsapp_chart", "telegram_signals", "email_alerts", "invert_signals"):
         if f in data:
             setattr(p, f, bool(data.get(f)))
     if data.get("telegram_disconnect"):
