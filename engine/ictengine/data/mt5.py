@@ -327,9 +327,41 @@ def ticks(broker_key: str, symbol: str, start: pd.Timestamp, end: pd.Timestamp, 
     bid = t["bid"].to_numpy(float)
     price = bid if last is None else pd.Series(last).where(pd.Series(last) > 0, pd.Series(bid)).to_numpy(float)
     vol = t["volume"].to_numpy(float) if "volume" in t else None
-    out = pd.DataFrame({"price": price, "volume": vol if vol is not None and vol.sum() > 0 else 1.0}, index=idx)
+    out = pd.DataFrame({"price": price, "volume": vol if vol is not None and vol.sum() > 0 else 1.0,
+                        "bid": bid, "ask": t["ask"].to_numpy(float) if "ask" in t else bid}, index=idx)
     out = out[out.index.notna() & (out["price"] > 0)]
     return out[(out.index >= start) & (out.index < end)]
+
+
+def market_book(broker_key: str, symbol: str, depth: int = 20, mt5=None) -> dict:
+    """The depth of market of a symbol: {"bids": [[price, volume], ...], "asks": [...], "depth": levels}.
+    Brokers that stream no depth (most forex / CFD ones) give the one level of the last tick."""
+    broker = BROKERS[broker_key]
+    with _lock:
+        mt5 = mt5 or _connect(broker)
+        bsym = resolve_symbol(mt5, broker, symbol)
+        mt5.symbol_select(bsym, True)
+        rows = None
+        if hasattr(mt5, "market_book_add") and mt5.market_book_add(bsym):
+            try:
+                rows = mt5.market_book_get(bsym)
+            finally:
+                mt5.market_book_release(bsym)
+        bids, asks = [], []
+        if rows:
+            for r in rows:
+                typ = getattr(r, "type", None)
+                price, volume = float(getattr(r, "price", 0)), float(getattr(r, "volume_real", 0) or getattr(r, "volume", 0))
+                (asks if typ in (1, 3) else bids).append([price, volume])     # BOOK_TYPE_SELL = 1, SELL_MARKET = 3
+        if bids or asks:
+            asks.sort(key=lambda x: x[0])
+            bids.sort(key=lambda x: -x[0])
+            return {"bids": bids[:depth], "asks": asks[:depth], "depth": max(len(bids), len(asks))}
+        tick = mt5.symbol_info_tick(bsym)
+    if tick is None:
+        return {"bids": [], "asks": [], "depth": 0}
+    vol = float(getattr(tick, "volume_real", 0) or getattr(tick, "volume", 0) or 0)
+    return {"bids": [[float(tick.bid), vol]] if tick.bid > 0 else [], "asks": [[float(tick.ask), vol]] if tick.ask > 0 else [], "depth": 1}
 
 
 def ticks_to_bars(t: pd.DataFrame, seconds: int) -> pd.DataFrame:

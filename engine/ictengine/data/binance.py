@@ -9,6 +9,7 @@ from __future__ import annotations
 import threading
 import time
 
+import numpy as np
 import pandas as pd
 import requests
 
@@ -85,6 +86,38 @@ class Binance:
             if len(rows) < 1000:
                 break
         return frame(out)
+
+
+    def depth(self, symbol: str, limit: int = 20) -> dict:
+        """The order book: {"bids": [[price, qty], ...], "asks": [...], "depth": limit}."""
+        d = self._get("/api/v3/depth", {"symbol": symbol, "limit": max(5, min(100, limit))})
+        return {"bids": [[float(p), float(q)] for p, q in d.get("bids", [])], "asks": [[float(p), float(q)] for p, q in d.get("asks", [])], "depth": limit}
+
+    def agg_trades(self, symbol: str, start: pd.Timestamp, end: pd.Timestamp, max_requests: int = 40) -> pd.DataFrame:
+        """Trades [start, end) as ticks: price, volume, bid / ask set from the taker side (a buyer-taker trade
+        is a buy). Newest trades first when the window needs more than ``max_requests`` pages."""
+        out = []
+        cursor = int(end.timestamp() * 1000) - 1
+        lo = int(start.timestamp() * 1000)
+        for _ in range(max_requests):
+            rows = self._get("/api/v3/aggTrades", {"symbol": symbol, "endTime": cursor, "limit": 1000})
+            if not rows:
+                break
+            out += rows
+            first = int(rows[0]["T"])
+            if first <= lo or len(rows) < 1000:
+                break
+            cursor = first - 1
+        if not out:
+            return pd.DataFrame({"price": pd.Series(dtype=float), "volume": pd.Series(dtype=float)}, index=pd.DatetimeIndex([], tz="UTC"))
+        t = pd.DataFrame(out)
+        price = t["p"].astype(float).to_numpy()
+        buyer_maker = t["m"].astype(bool).to_numpy()           # True: the buyer was the maker, so the taker sold
+        df = pd.DataFrame({"price": price, "volume": t["q"].astype(float).to_numpy(),
+                           "bid": np.where(buyer_maker, price, price - 1e-9), "ask": np.where(buyer_maker, price + 1e-9, price)},
+                          index=pd.DatetimeIndex(pd.to_datetime(t["T"].astype("int64"), unit="ms", utc=True)))
+        df = df.sort_index()
+        return df[(df.index >= start) & (df.index < end)]
 
 
 def frame(rows: list) -> pd.DataFrame:

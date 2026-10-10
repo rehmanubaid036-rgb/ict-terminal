@@ -40,6 +40,7 @@ class SymbolInfo:
 
 
 MAX_SECONDS_HOURS = 6        # one seconds-chart request reads at most this much tick history
+MAX_FOOTPRINT_HOURS = 48     # the footprint reads at most this much tick history in one request
 SESSIONS = {"forex": "1700-1700", "commodity": "1800-1700", "index": "1800-1700", "crypto": "24x7"}
 
 # the fixed list used by tests / replays (FrameProvider)
@@ -78,6 +79,14 @@ class Provider:
         if df.empty or tf == "1m":
             return df
         return resample(df, tf).drop(columns="n_bars")
+
+    def ticks(self, ticker: str, start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
+        """Ticks (price, volume, bid, ask) for the footprint; empty when the feed has none."""
+        return pd.DataFrame({"price": pd.Series(dtype=float), "volume": pd.Series(dtype=float)}, index=pd.DatetimeIndex([], tz="UTC"))
+
+    def book(self, ticker: str, depth: int = 20) -> dict:
+        """The depth of market; {"bids": [], "asks": [], "depth": 0} when the feed has none."""
+        return {"bids": [], "asks": [], "depth": 0}
 
 
 class FrameProvider(Provider):
@@ -175,6 +184,19 @@ class MT5Provider(Provider):
             return _empty()
         start = max(start, end - pd.Timedelta(hours=MAX_SECONDS_HOURS))
         return m5.ticks_to_bars(m5.ticks(self._broker_key[info.feed], info.symbol, start, end), sec)
+
+    def ticks(self, ticker, start, end):
+        info = self.symbols().get(ticker)
+        if info is None:
+            return super().ticks(ticker, start, end)
+        start = max(start, end - pd.Timedelta(hours=MAX_FOOTPRINT_HOURS))
+        return m5.ticks(self._broker_key[info.feed], info.symbol, start, end)
+
+    def book(self, ticker, depth=20):
+        info = self.symbols().get(ticker)
+        if info is None:
+            return super().book(ticker, depth)
+        return m5.market_book(self._broker_key[info.feed], info.symbol, depth)
 
 
 # ---- Binance ----------------------------------------------------------------------------------
@@ -280,6 +302,27 @@ class MultiProvider(Provider):
     def seconds(self, ticker, sec, start, end):
         p = self._owner(ticker)
         return p.seconds(ticker, sec, start, end) if p else _empty()
+
+    def ticks(self, ticker, start, end):
+        p = self._owner(ticker)
+        return p.ticks(ticker, start, end) if p else super().ticks(ticker, start, end)
+
+    def book(self, ticker, depth=20):
+        p = self._owner(ticker)
+        return p.book(ticker, depth) if p else super().book(ticker, depth)
+
+    def ticks(self, ticker, start, end):
+        info = self.symbols().get(ticker)
+        if info is None:
+            return super().ticks(ticker, start, end)
+        start = max(start, end - pd.Timedelta(hours=MAX_FOOTPRINT_HOURS))
+        return self.client.agg_trades(info.source, start, end)
+
+    def book(self, ticker, depth=20):
+        info = self.symbols().get(ticker)
+        if info is None:
+            return super().book(ticker, depth)
+        return self.client.depth(info.source, depth)
 
 
 # ---- spread / ratio symbols ---------------------------------------------------------------------
@@ -389,6 +432,12 @@ class SyntheticProvider(Provider):
             return self.base.bars(ticker, tf, start, end)
         a, op, b = legs
         return _combine(self.base.bars(a, tf, start, end), self.base.bars(b, tf, start, end), op)
+
+    def ticks(self, ticker, start, end):
+        return self.base.ticks(ticker, start, end) if self._legs(ticker) is None else super().ticks(ticker, start, end)
+
+    def book(self, ticker, depth=20):
+        return self.base.book(ticker, depth) if self._legs(ticker) is None else super().book(ticker, depth)
 
     def __getattr__(self, name):          # errors, refresh ... of the wrapped feeds
         return getattr(self.base, name)
