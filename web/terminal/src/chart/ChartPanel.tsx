@@ -707,6 +707,8 @@ export function ChartPanel(p: ChartPanelProps) {
           <input value={ppQty} inputMode="decimal" title="Quantity" onChange={e => { setPpQty(e.target.value); try { localStorage.setItem('ict.paperQty', e.target.value) } catch { /* ignore */ } }} />
           <button className="buy" title="Buy at market (paper)" onClick={() => void paperOrder({ ticker: conf.ticker, side: 1, type: 'market', qty: Number(ppQty) || 1 })}>
             BUY<small>{feed?.lastClose()?.toFixed(digits) ?? ''}</small></button>
+          <button className="pp-x" title="Hide the buy / sell buttons (Settings › Trading turns them back on)" aria-label="Hide"
+            onClick={() => { window.dispatchEvent(new CustomEvent('ict:tradebuttons', { detail: false })); toast('Buy / sell buttons hidden. Settings › Trading, or the right-click menu, shows them again.') }}>✕</button>
         </div>
       )}
       {st.watermark && <div className="chart-watermark">{symName}<small>{tf.label}</small></div>}

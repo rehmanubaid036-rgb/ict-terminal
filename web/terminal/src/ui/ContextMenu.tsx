@@ -86,6 +86,7 @@ export function ContextMenu({ x, y, axis, onClose }: { x: number; y: number; axi
       <button onClick={run(() => { t.updateActive({ scaleLock: null }); const c = getChart(a.id); c?.setBarSpace(8); c?.scrollToRealTime() })}>Reset chart view</button>
       <button onClick={run(() => window.dispatchEvent(new CustomEvent('ict:goto-ask')))}>Go to date… <kbd>Alt+G</kbd></button>
       <button onClick={run(() => window.dispatchEvent(new CustomEvent('ict:riskcalc')))}>Risk calculator (lot size)…</button>
+      <button onClick={run(() => t.setChartSettings({ tradeButtons: !t.state.chart.tradeButtons }))}>{t.state.chart.tradeButtons ? 'Hide' : 'Show'} the buy / sell buttons</button>
       {last && <button onClick={run(() => t.addAlert({ ticker: a.ticker, condition: 'crossing', price: Number(last.toFixed(digits)), note: '' }))}>Add alert at {last.toFixed(digits)}</button>}
       <div className="menu-sep" />
       <div className="ctx-label">Chart type</div>
