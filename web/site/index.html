@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ICT Terminal: ICT concepts on your charts</title>
   <meta name="description" content="ICT Terminal: multi-chart web terminal with ICT indicators (FVG, order blocks, liquidity, market structure), ICT model scanner, Android app, Windows app and an MT5 bridge.">
+  <link rel="canonical" href="https://ict.iccterminal.trade/">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="ICT Terminal: ICT concepts on your charts">
+  <meta name="twitter:description" content="ICT Terminal: multi-chart web terminal with ICT indicators (FVG, order blocks, liquidity, market structure), ICT model scanner, Android app, Windows app and an MT5 bridge.">
+  <meta name="twitter:image" content="https://ict.iccterminal.trade/img/terminal-overview.jpg">
   <meta name="theme-color" content="#070b16">
   <meta property="og:title" content="ICT Terminal: ICT concepts on your charts">
   <meta property="og:description" content="FVGs, order blocks, liquidity, killzones and a rule-based ICT model scanner on fast multi-chart layouts.">
@@ -13,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap">
-  <link rel="stylesheet" href="/style.css?v=8">
+  <link rel="stylesheet" href="/style.css?v=9">
 </head>
 <body>
 <header class="nav" id="nav">
@@ -44,7 +49,7 @@
     <div class="hero-grid" aria-hidden="true"></div>
     <div class="hero-glow" aria-hidden="true"></div>
     <div class="wrap hero-in">
-      <a class="pill" href="#models"><span class="dot"></span>17 ICT models scanned live <span class="pill-arrow">&rarr;</span></a>
+      <a class="pill" href="#models"><span class="dot"></span><span class="js-model-count">18</span> ICT models scanned live <span class="pill-arrow">&rarr;</span></a>
       <h1>The ICT playbook,<br><span class="grad">drawn on every chart.</span></h1>
       <p class="lead">Fair value gaps, order blocks, liquidity, market structure shifts, sessions and killzones, marked for you on fast
         multi-chart layouts. The model scanner flags rule-based setups the moment they form.</p>
@@ -81,7 +86,7 @@
 
   <section class="wrap stats reveal">
     <div class="stat"><b data-count="14">14</b><span>ICT concept indicators</span></div>
-    <div class="stat"><b data-count="17">17</b><span>ICT models in the scanner</span></div>
+    <div class="stat"><b class="js-model-count">18</b><span>ICT models in the scanner</span></div>
     <div class="stat"><b data-count="100" data-suffix="+">100+</b><span>forex, gold, index &amp; crypto charts</span></div>
     <div class="stat"><b data-count="3">3</b><span>platforms: web, Android, Windows</span></div>
   </section>
@@ -132,12 +137,12 @@
       <article class="card reveal">
         <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg></span>
         <h3>ICT model scanner</h3>
-        <p>The engine scans every symbol for the ICT models. Each setup is drawn with its entry, stop and targets.</p>
+        <p>The engine scans every symbol for the ICT models, plus custom models built from traders' own playbooks (Wolf Asia NDOG, The Alpha Model Gold). Each setup is drawn with its entry, stop and targets.</p>
       </article>
       <article class="card reveal">
         <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg></span>
         <h3>Multi-chart terminal</h3>
-        <p>One to eight charts per layout on PC, tablet and phone, 40+ drawing tools, synced symbols, intervals and crosshair, chart templates and pop-out windows.</p>
+        <p>One to eight charts per layout on PC, tablet and phone, 90+ drawing tools with TradingView-style settings (Fib levels table, extend, background, labels, Long / Short position with risk), years of daily and weekly history, synced symbols, intervals and crosshair, chart templates and pop-out windows.</p>
       </article>
       <article class="card reveal">
         <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.8 4.6L18.5 9l-4.7 1.4L12 15l-1.8-4.6L5.5 9l4.7-1.4Z"/><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8Z"/></svg></span>
@@ -315,7 +320,7 @@
     </div>
     <div class="faq-list reveal">
       <details><summary>Do I need to know ICT already?</summary><p>It helps. ICT Terminal draws and names the concepts on the chart, so it is also a good way to learn them, but it does not replace learning how and when to use them.</p></details>
-      <details><summary>Which markets are covered?</summary><p>Today: gold (XAUUSD), silver (XAGUSD), Nasdaq 100, S&amp;P 500, Bitcoin, EURUSD and GBPUSD as CFDs. More symbols and brokers' feeds are being added.</p></details>
+      <details><summary>Which markets are covered?</summary><p>Every symbol of our broker feed (forex pairs, gold, silver, oil, indices such as Nasdaq 100, S&amp;P 500, Dow 30 and DAX, and crypto CFDs) plus the top crypto pairs from Binance: 100+ charts. The model scanner runs live on gold, silver, Nasdaq 100, S&amp;P 500 and Bitcoin; on other symbols a model can be scanned on demand.</p></details>
       <details><summary>Does it trade for me?</summary><p>Only if you install the MT5 bridge on your own MetaTrader 5 account and switch it on. Auto-trading is limited to models the ICT Terminal team has approved after testing, and to the plans that include it. Start on a demo account.</p></details>
       <details><summary>Are the signals guaranteed to win?</summary><p>No. Setups follow fixed rules; many will lose. Past results do not promise future results. Please read the <a href="/risk.html">risk disclaimer</a>.</p></details>
       <details><summary>Can I practise without real money?</summary><p>Yes. Paper trading lets you buy and sell from the chart with a virtual balance, and the strategy tester shows how a model did over the last months. Neither touches a real account.</p></details>
@@ -348,9 +353,10 @@
     </div>
     <div><h4>Product</h4><a href="/terminal/">Web terminal</a><a href="/community.html">Community</a><a href="#features">Features</a><a href="#tools">Tools</a><a href="#models">Models</a><a href="#pricing">Pricing</a><a href="#download">Apps</a><a href="/guide/">User guide</a><a href="/auto-trading.html">MT5 auto-trading guide</a></div>
     <div><h4>Legal</h4><a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a><a href="/risk.html">Risk disclaimer</a></div>
+    <div><h4>Contact</h4><span id="foot-contact"><a href="/donate.html">Donate</a></span></div>
   </div>
   <div class="wrap foot-bottom"><span>&copy; <span id="year">2026</span> ICT Terminal. All rights reserved.</span><span>Not financial advice.</span></div>
 </footer>
-<script src="/site.js?v=8"></script>
+<script src="/site.js?v=9"></script>
 </body>
 </html>

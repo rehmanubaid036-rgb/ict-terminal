@@ -83,6 +83,20 @@
     list.innerHTML = models.map(function (m) {
       return '<li><b>' + esc(m.id) + '</b>' + esc(m.name) + '</li>';
     }).join('');
+    // the model count in the hero and the stats follows the live list
+    Array.prototype.forEach.call(document.querySelectorAll('.js-model-count'), function (el) { el.textContent = String(models.length); });
+  }
+
+  // ---- contact in the footer (Admin > Settings > Support contact) ----------------------------
+  function showContact(cfg) {
+    var box = $('foot-contact'), s = (cfg && cfg.support) || {};
+    if (!box) return;
+    var out = [];
+    var wa = String(s.whatsapp || '').replace(/\D/g, '');
+    if (wa) out.push('<a href="https://wa.me/' + esc(wa) + '" rel="noopener">WhatsApp +' + esc(wa) + '</a>');
+    if (s.email) out.push('<a href="mailto:' + esc(s.email) + '">' + esc(s.email) + '</a>');
+    out.push('<a href="/donate.html">Donate</a>');
+    box.innerHTML = out.join('');
   }
 
   // ---- plans ----------------------------------------------------------------------------
@@ -279,6 +293,7 @@
 
   getJSON('/api/v1/donations/info').then(showDonations).catch(function () { /* donations off or server down */ });
   getJSON('/api/v1/models').then(showModels).catch(function () { showModels([]); });
+  getJSON('/api/v1/app-config').then(showContact).catch(function () { /* keep the plain footer */ });
   getJSON('/api/v1/plans').then(showPlans).catch(function () { showPlans(null); });
   getJSON('/downloads/release.json').then(function (r) {
     var files = r.files || {};

@@ -222,7 +222,8 @@ details p { color: var(--soft); margin: -6px 0 22px; padding-right: 40px; }
 .risk-box { margin-bottom: 64px; padding: 18px 20px; border: 1px solid rgba(239, 83, 80, .25); background: rgba(239, 83, 80, .06); border-radius: 14px; color: #f1c6d2; font-size: 14px; }
 .risk-box a { color: #ff9a97; }
 .footer { border-top: 1px solid var(--line); padding: 56px 0 28px; color: var(--muted); font-size: 14px; background: var(--bg2); }
-.foot-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 32px; }
+.foot-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1.3fr; gap: 32px; }
+#foot-contact { display: flex; flex-direction: column; gap: 10px; word-break: break-all; }
 .foot-grid h4 { margin: 0 0 14px; color: var(--text); font-size: 14px; font-weight: 600; }
 .foot-grid > div:not(.foot-brand) { display: flex; flex-direction: column; gap: 10px; }
 .foot-brand p { max-width: 320px; margin: 14px 0 0; }

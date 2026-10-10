@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /terminal/?
+
+Sitemap: https://ict.iccterminal.trade/sitemap.xml
