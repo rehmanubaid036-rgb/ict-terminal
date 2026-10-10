@@ -61,6 +61,7 @@ export interface SignalsPrefs {
   grade: 'all' | 'A' | 'A+'
   bias: boolean                  // only setups with the daily bias
   notify: boolean                // alert on new A / A+ setups
+  invert: boolean                // every model's signal in the opposite direction (buy -> sell)
 }
 export function cleanLook(x: any): DrawLook {
   const o: DrawLook = {}
@@ -78,7 +79,7 @@ export function cleanLook(x: any): DrawLook {
   }
   return o
 }
-export const DEFAULT_SIGNALS: SignalsPrefs = { models: null, span: 604800, grade: 'all', bias: true, notify: false }
+export const DEFAULT_SIGNALS: SignalsPrefs = { models: null, span: 604800, grade: 'all', bias: true, notify: false, invert: false }
 const SPAN_VALUES = [1800, 3600, 14400, 43200, 86400, 259200, 604800]
 
 function parseSignals(x: any): SignalsPrefs {
@@ -89,6 +90,7 @@ function parseSignals(x: any): SignalsPrefs {
     grade: ['all', 'A', 'A+'].includes(x.grade) ? x.grade : 'all',
     bias: x.bias === undefined ? DEFAULT_SIGNALS.bias : !!x.bias,
     notify: !!x.notify,
+    invert: !!x.invert,
   }
 }
 

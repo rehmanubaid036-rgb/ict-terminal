@@ -269,9 +269,9 @@ function Signals() {
     setBusy(!quiet)
     try {
       const now = Math.floor(Date.now() / 1000)
-      let r = await api.signals(ticker, now - span, now + 60, picked, bias)
+      let r = await api.signals(ticker, now - span, now + 60, picked, bias, undefined, 'store', prefs.invert)
       // symbols the engine runner does not watch have no stored setups: scan them now
-      if (deep && r.covered === false) r = await api.signals(ticker, now - span, now + 60, picked, bias, undefined, 'scan')
+      if (deep && r.covered === false) r = await api.signals(ticker, now - span, now + 60, picked, bias, undefined, 'scan', prefs.invert)
       setUncovered(r.covered === false && !deep)
       const list = r.signals.reverse()
       if (quiet && notify_) {

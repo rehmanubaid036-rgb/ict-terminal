@@ -49,6 +49,7 @@ export interface ChartPanelProps {
   magnet: OverlayMode
   drawSeq: number
   signal: Signal | null
+  invert?: boolean               // every model's signal in the opposite direction
   showClose: boolean
   hidden?: boolean
   onActivate: () => void
@@ -501,7 +502,7 @@ export function ChartPanel(p: ChartPanelProps) {
       try {
         const [ov, sg] = await Promise.all([
           ict.length ? api.overlays(ticker, tf.monthly ? '1W' : tf.resolution, from, to, ict, ac.signal) : Promise.resolve({ objects: [] }),
-          models.length ? api.signals(ticker, from, to, models, requireBias, ac.signal) : Promise.resolve({ signals: [] as Signal[] }),
+          models.length ? api.signals(ticker, from, to, models, requireBias, ac.signal, 'store', !!p.invert) : Promise.resolve({ signals: [] as Signal[] }),
         ])
         if (id !== req.current || !chartRef.current) return
         chart.removeOverlay({ groupId: ICT })
@@ -539,7 +540,7 @@ export function ChartPanel(p: ChartPanelProps) {
     refreshOverlays.current(50)
     return () => chart.unsubscribeAction('onVisibleRangeChange', onRange)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conf.ict.join(), conf.models.join(), conf.requireBias, conf.ticker, tf.label, st.ideas, st.ideasGrade, JSON.stringify(conf.modelSet ?? {})])
+  }, [conf.ict.join(), conf.models.join(), conf.requireBias, conf.ticker, tf.label, st.ideas, st.ideasGrade, JSON.stringify(conf.modelSet ?? {}), p.invert])
 
   useEffect(() => {
     const again = () => { setPop(null); refreshOverlays.current(0) }

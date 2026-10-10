@@ -332,7 +332,7 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
     bt_lock = threading.Lock()
 
     @app.get("/api/v1/backtest")
-    def backtest(symbol: str, model: str, days: int = 60, bias: bool = True, a: dict = Depends(logged_in)):
+    def backtest(symbol: str, model: str, days: int = 60, bias: bool = True, invert: bool = False, a: dict = Depends(logged_in)):
         """Runs ``model`` on the last ``days`` (30 / 60 / 90) of 1m data with the conservative simulator
         (next-bar fills, stop first, spread paid). Needs the plan's backtest feature."""
         from ictengine.backtest.simulator import run as bt_run, stats as bt_stats
@@ -345,7 +345,7 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
             raise HTTPException(400, "Choose one of your plan's models.")
         days = 30 if days <= 30 else 60 if days <= 60 else 90
         i = _info(symbol)
-        key = (i.ticker, model, days, bias, pd.Timestamp.now(tz="UTC").strftime("%Y-%m-%d"))
+        key = (i.ticker, model, days, bias, invert, pd.Timestamp.now(tz="UTC").strftime("%Y-%m-%d"))
         hit = bt_cache.get(key)
         if hit and time.time() - hit[0] < 6 * 3600:
             return hit[1]
@@ -360,6 +360,12 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
             partner = _partner_1m(i, start - pd.Timedelta(days=45), end) if model == "M16" else None
             ctx = Context(i.symbol, df, partner=partner, extras=_alpha_extras(i, start - pd.Timedelta(days=45), end, [model]))
             sigs = [s for s in MODELS[model].scan(ctx, require_bias=bias) if s.created_time >= start]
+            if invert:                                   # the opposite trades: mirrored around the entry
+                for s in sigs:
+                    s.direction = -s.direction
+                    s.stop = 2 * s.entry - s.stop
+                    s.targets = [(2 * s.entry - p, f) for p, f in s.targets]
+                    s.notes = {**(s.notes or {}), "inverted": True}
             spread = SPECS[i.symbol].spread if i.symbol in SPECS else 0.0
             trades = bt_run(sigs, df, spread=spread)
             st = {k: (None if isinstance(v, float) and not np.isfinite(v) else v) for k, v in bt_stats(trades).items()}
@@ -919,9 +925,22 @@ img{{max-width:100%;height:auto;border-radius:10px;border:1px solid #232c45}}a{{
 
     scan_cache: dict[tuple, tuple[float, list]] = {}
 
+    def _invert(d: dict) -> dict:
+        """The opposite trade of a signal: direction flipped, stop and targets mirrored around the entry."""
+        e = d.get("entry")
+        if e is None or d.get("direction") in (None, 0):
+            return d
+        d = dict(d)
+        d["direction"] = -int(d["direction"])
+        if d.get("stop") is not None:
+            d["stop"] = 2 * e - d["stop"]
+        d["targets"] = [([2 * e - t[0], t[1]] if isinstance(t, (list, tuple)) and len(t) == 2 else t) for t in (d.get("targets") or [])]
+        d["inverted"] = True
+        return d
+
     @app.get("/api/v1/signals")
     def signals(symbol: str, frm: int = Query(alias="from"), to: int = Query(...), models: str = "",
-                require_bias: bool = True, source: str = "store", a: dict = Depends(logged_in)):
+                require_bias: bool = True, source: str = "store", invert: bool = False, a: dict = Depends(logged_in)):
         """Signals from the engine runner's store (fast), or ``source=scan`` to compute them now.
         Only the plan's models are returned, and a plan delay hides the newest signals."""
         feature(a, "signals", "Your plan does not include live signals.")
@@ -943,13 +962,14 @@ img{{max-width:100%;height:auto;border-radius:10px;border:1px solid #232c45}}a{{
         # covered: the engine runner watches this symbol, so the store is complete for it
         covered = any(r.get("symbol") == i.symbol for r in store.status())
         if source == "store":
+            sigs = store.signals(i.symbol, start, end, ids, bias_filter=require_bias)
             return {"symbol": i.ticker, "source": "store", "delay_minutes": delay, "covered": covered,
-                    "signals": store.signals(i.symbol, start, end, ids, bias_filter=require_bias)}
+                    "signals": [_invert(s) for s in sigs] if invert else sigs}
         # a scan is heavy: one per symbol / models / period every 5 minutes, shared by every user
         key = (i.ticker, tuple(sorted(ids)), require_bias, int(start.timestamp()) // 300, int(end.timestamp()) // 300)
         hit = scan_cache.get(key)
         if hit and time.time() - hit[0] < 300:
-            return {"symbol": i.ticker, "source": "scan", "delay_minutes": delay, "covered": covered, "signals": hit[1]}
+            return {"symbol": i.ticker, "source": "scan", "delay_minutes": delay, "covered": covered, "signals": [_invert(s) for s in hit[1]] if invert else hit[1]}
         df = provider.candles(i.ticker, start - pd.Timedelta(days=30), end)
         out = []
         if len(df) >= 1000:
@@ -965,7 +985,7 @@ img{{max-width:100%;height:auto;border-radius:10px;border:1px solid #232c45}}a{{
         if len(scan_cache) > 200:
             scan_cache.clear()
         scan_cache[key] = (time.time(), out)
-        return {"symbol": i.ticker, "source": "scan", "delay_minutes": delay, "covered": covered, "signals": out}
+        return {"symbol": i.ticker, "source": "scan", "delay_minutes": delay, "covered": covered, "signals": [_invert(s) for s in out] if invert else out}
 
     def _long_levels(ticker: str, last: pd.Timestamp) -> pd.DataFrame:
         """Daily levels of ~95 days (for the 60-day IPDA), cached 5 minutes: past days never change."""

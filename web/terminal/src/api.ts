@@ -178,6 +178,7 @@ export interface Signal {
   exit_by?: string
   window?: string
   grade: string
+  inverted?: boolean
   score: number
   checklist?: Record<string, boolean>
   notes?: Record<string, unknown>
@@ -221,8 +222,8 @@ export const api = {
   overlays: (symbol: string, resolution: string, from: number, to: number, indicators: string[], signal?: AbortSignal) =>
     get<{ objects: OverlayObject[] }>('/api/v1/ict/overlays', { symbol, resolution, from, to, indicators: indicators.join(',') }, signal),
   models: () => get<ModelInfo[]>('/api/v1/models'),
-  signals: (symbol: string, from: number, to: number, models: string[], require_bias: boolean, signal?: AbortSignal, source: 'store' | 'scan' = 'store') =>
-    get<{ signals: Signal[]; delay_minutes?: number; covered?: boolean }>('/api/v1/signals', { symbol, from, to, models: models.join(','), require_bias, source }, signal),
+  signals: (symbol: string, from: number, to: number, models: string[], require_bias: boolean, signal?: AbortSignal, source: 'store' | 'scan' = 'store', invert = false) =>
+    get<{ signals: Signal[]; delay_minutes?: number; covered?: boolean }>('/api/v1/signals', { symbol, from, to, models: models.join(','), require_bias, source, invert }, signal),
   alerts: {
     get: () => get<{ settings: AlertSettings }>('/api/v1/alerts/settings'),
     save: (s: Partial<AlertSettings>) => post<{ settings: AlertSettings }>('/api/v1/alerts/settings', s),
@@ -251,7 +252,7 @@ export const api = {
     modify: (id: number, patch: { sl?: number | null; tp?: number | null; price?: number }) => post<PaperState>(`/api/v1/paper/${id}/modify`, patch),
     reset: (balance: number) => post<PaperState>('/api/v1/paper/reset', { balance }),
   },
-  backtest: (symbol: string, model: string, days: number, bias: boolean) => get<BacktestResult>('/api/v1/backtest', { symbol, model, days, bias }),
+  backtest: (symbol: string, model: string, days: number, bias: boolean, invert = false) => get<BacktestResult>('/api/v1/backtest', { symbol, model, days, bias, invert }),
   screener: () => get<{ rows: ScreenerRow[] }>('/api/v1/screener'),
   news: () => get<{ items: { title: string; link: string; at: number; source: string }[] }>('/api/v1/news'),
   calendar: (from: number, to: number, impact: string) => get<{ events: CalendarEvent[] }>('/api/v1/calendar', { from, to, impact }),

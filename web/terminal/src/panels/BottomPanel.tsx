@@ -27,7 +27,7 @@ function useJournal(days: number, bias: boolean) {
     try {
       const now = Math.floor(Date.now() / 1000), from = now - days * 86400
       const [sig, bars] = await Promise.all([
-        api.signals(ticker, from, now + 60, models, bias),
+        api.signals(ticker, from, now + 60, models, bias, undefined, 'store', t.state.signals.invert),
         api.history(ticker, '5', from - 3600, now + 300, Math.min(5000, days * 288 + 50)),
       ])
       const list: KLineData[] = toBars(bars)

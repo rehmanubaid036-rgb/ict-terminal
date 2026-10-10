@@ -468,7 +468,7 @@ export function signalLines(s: Signal, groupId: string, digitsCount: number): Ov
   const t = new Date(s.created_time).getTime(), end = new Date(s.exit_by ?? s.expiry).getTime() + 2 * 3600_000
   const at = (v: number, color: string, label: string): OverlayCreate =>
     ({ name: 'ictLine', groupId, lock: true, points: [{ timestamp: t, value: v }, { timestamp: end, value: v }], extendData: { color, label, width: 2, boxed: true } })
-  return [at(s.entry, '#2962ff', `${modelTag(s.model_id)} ${s.direction > 0 ? 'BUY' : 'SELL'} ${s.entry.toFixed(digitsCount)}`), at(s.stop, '#ef5350', `SL ${s.stop.toFixed(digitsCount)}`),
+  return [at(s.entry, '#2962ff', `${s.inverted ? '⇅ ' : ''}${modelTag(s.model_id)} ${s.direction > 0 ? 'BUY' : 'SELL'} ${s.entry.toFixed(digitsCount)}`), at(s.stop, '#ef5350', `SL ${s.stop.toFixed(digitsCount)}`),
     ...s.targets.map(([v, w], i) => at(v, '#26a69a', `${targetLabel(s, i)}  ${v.toFixed(digitsCount)} (${Math.round(w * 100)}%)`)),
     ...(WOLF_MODELS.has(s.model_id) ? wolfLevels(s, groupId, true) : [])]
 }

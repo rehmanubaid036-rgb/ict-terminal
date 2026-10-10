@@ -19,7 +19,7 @@ export function TesterView() {
   if (!t.access.features.backtest) return <Empty>The strategy tester is not part of your plan{t.access.guest ? ' (guest)' : ''}. The admin turns it on in Admin › Plans › “Backtest”.</Empty>
   const go = async () => {
     setBusy(true); setErr('')
-    try { setRes(await api.backtest(t.active.ticker, model, days, bias)) } catch (e) { setErr(errorText(e)) } finally { setBusy(false) }
+    try { setRes(await api.backtest(t.active.ticker, model, days, bias, t.state.signals.invert)) } catch (e) { setErr(errorText(e)) } finally { setBusy(false) }
   }
   const s = res?.stats
   const filled = (res?.trades ?? []).filter(x => x.status !== 'expired')

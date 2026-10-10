@@ -76,6 +76,10 @@ def test_signals_from_store_and_engine_status(client, store):
     r = client.get("/api/v1/signals", params={"symbol": "AXI:XAUUSD", "from": ts("2026-09-03 00:00"),
                                               "to": ts("2026-09-04 00:00"), "models": "M1"}).json()
     assert r["source"] == "store" and len(r["signals"]) == 1 and r["signals"][0]["entry"] == 4470.0
+    # the opposite direction: a sell at the same entry, stop and target mirrored
+    inv = client.get("/api/v1/signals", params={"symbol": "AXI:XAUUSD", "from": ts("2026-09-03 00:00"), "to": ts("2026-09-04 00:00"),
+                                                "models": "M1", "invert": "true"}).json()["signals"][0]
+    assert inv["direction"] == -1 and inv["entry"] == 4470.0 and inv["stop"] == 4479.0 and inv["targets"][0][0] == 4445.0 and inv["inverted"] is True
     st = client.get("/api/v1/engine/status").json()["symbols"]
     assert st[0]["symbol"] == "XAUUSD" and st[0]["signals"] == 1
     assert client.get("/api/v1/signals", params={"symbol": "AXI:XAUUSD", "from": 0, "to": 10,
