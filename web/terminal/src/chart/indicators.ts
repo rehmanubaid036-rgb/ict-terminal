@@ -69,8 +69,8 @@ export function registerIndicators() {
   registerIndicator<{ up?: number; dn?: number }, number>({
     name: 'SUPERTREND', shortName: 'SuperTrend', calcParams: [10, 3], series: 'price', precision: 2,
     figures: [
-      { key: 'up', title: 'Up: ', type: 'line', styles: () => ({ color: '#26a69a' }) },
-      { key: 'dn', title: 'Down: ', type: 'line', styles: () => ({ color: '#ef5350' }) },
+      { key: 'up', title: 'Up: ', type: 'line', styles: () => ({ color: '#26a69a', size: 2 }) },
+      { key: 'dn', title: 'Down: ', type: 'line', styles: () => ({ color: '#ef5350', size: 2 }) },
     ],
     calc: (list, ind) => {
       const [n = 10, mult = 3] = ind.calcParams

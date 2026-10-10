@@ -116,6 +116,7 @@ export function TradePanel() {
         <button className={`btn block ${side > 0 ? 'pp-buy' : 'pp-sell'}`} onClick={() => void place()}>
           {side > 0 ? 'Buy' : 'Sell'} {qty} {sym} {type === 'market' ? `at market${last ? ` (${fmtPrice(last)})` : ''}` : `${type} ${price}`}
         </button>
+        <button className="btn ghost block" onClick={() => window.dispatchEvent(new CustomEvent('ict:riskcalc'))}>Risk calculator (lot size)…</button>
         <div className="note">Paper trading: no real money. Quantity is in units of the price (1 = 1 point / 1 USD per point on indices and gold; EURUSD 100000 = 1 lot).</div>
       </div>
       <div className="seg">

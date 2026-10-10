@@ -99,7 +99,7 @@ export const INDICATORS: IndicatorDef[] = [
   { name: 'SVP', title: 'Session Volume Profile (Asia / London / New York; settings: rows, 0 = per day)', overlay: true, group: 'Volume' },
   { name: 'BOLL', title: 'Bollinger Bands', overlay: true, group: 'Volatility' },
   { name: 'DONCHIAN', title: 'Donchian Channels', overlay: true, group: 'Volatility' },
-  { name: 'SUPERTREND', title: 'SuperTrend', overlay: true, group: 'Trend' },
+  { name: 'SUPERTREND', title: 'SuperTrend (Super Trend, ATR 10 × 3, like cTrader)', overlay: true, group: 'Trend' },
   { name: 'SAR', title: 'Parabolic SAR', overlay: true, group: 'Trend' },
   { name: 'BBI', title: 'Bull and Bear Index', overlay: true, group: 'Trend' },
   { name: 'VOL', title: 'Volume', overlay: false, group: 'Volume' },

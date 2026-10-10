@@ -38,6 +38,7 @@ import { ReplayBar } from './ui/ReplayBar'
 import { AccountDialog } from './ui/AccountDialog'
 import { Toasts, toast, useIsPhone, setAlertToastSeconds } from './ui/common'
 import { useHotkeys } from './hotkeys'
+import { RiskCalc } from './ui/RiskCalc'
 import { saveFile, shareText } from './appbridge'
 
 registerOverlays()
@@ -162,6 +163,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
   const [bottomOpen, setBottomOpen] = useState(false)
   const [account, setAccount] = useState<string | null>(null)
   const [menu, setMenu] = useState<{ x: number; y: number; axis?: boolean } | null>(null)
+  const [riskOpen, setRiskOpen] = useState(false)
   const [replay, setReplayState] = useState<ReplayState>({ on: false, playing: false, speed: 1, sync: true, t: 0, charts: [] })
   const [maximized, setMaximized] = useState(false)
   const [settingsTab, setSettingsTab] = useState<SettingsTab | null>(null)
@@ -173,8 +175,10 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
     const ask = () => setGotoOpen(true)
     const key = (_e: KeyboardEvent) => { /* Alt+G: see hotkeys.ts (the user can change it) */ }
     window.addEventListener('ict:goto-ask', ask)
+    const risk = () => setRiskOpen(true)
+    window.addEventListener('ict:riskcalc', risk)
     window.addEventListener('keydown', key)
-    return () => { window.removeEventListener('ict:goto-ask', ask); window.removeEventListener('keydown', key) }
+    return () => { window.removeEventListener('ict:goto-ask', ask); window.removeEventListener('ict:riskcalc', risk); window.removeEventListener('keydown', key) }
   }, [])
   // phones: all the layout's charts on screen (stacked / 2x2), or one at a time with chips
   const [phoneAll, setPhoneAllState] = useState(() => localStorage.getItem('ict.phoneAll') !== '0')
@@ -804,6 +808,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
         {menu && <ContextMenu x={menu.x} y={menu.y} axis={menu.axis} onClose={() => setMenu(null)} />}
         {account && <AccountDialog tab={account} onClose={() => setAccount(null)} onAccess={onAccess} />}
         {!phone && <FavBar />}
+        {riskOpen && <RiskCalc onClose={() => setRiskOpen(false)} />}
         {gotoOpen && <GoToDate chartId={active.id} onClose={() => setGotoOpen(false)} />}
         {community && <CommunityWindow start={community} onClose={() => setCommunity(null)} />}
         {settingsTab && <ChartSettingsDialog tab={settingsTab} onClose={() => setSettingsTab(null)} />}

@@ -1104,3 +1104,20 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
   border-bottom: 1px solid var(--line); font-size: 12px; font-weight: 600; color: var(--muted); position: sticky; top: -6px; background: var(--panel); z-index: 1; }
 .ctx-close { width: 26px; height: 26px; border-radius: 6px; display: grid; place-items: center; color: var(--muted); font-size: 13px; }
 .ctx-close:hover { background: var(--hover); color: var(--text); }
+
+/* risk calculator (cTrader style) */
+.rc-modal { width: min(460px, calc(100vw - 24px)); }
+.rc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
+.rc-field { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: var(--muted); }
+.rc-input { display: flex; align-items: center; gap: 4px; }
+.rc-input input { flex: 1; min-width: 0; }
+.rc-seg { margin: 0; flex: none; }
+.rc-seg button { padding: 2px 6px; font-size: 10px; }
+.rc-out { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; margin: 8px 0; }
+.rc-big { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+.rc-big b { font-size: 22px; color: var(--accent); }
+.rc-big small, .rc-big span { color: var(--muted); font-size: 11px; }
+.rc-spec { margin: 6px 0; font-size: 11px; }
+.rc-spec summary { cursor: pointer; color: var(--muted); }
+.rc-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
+@media (max-width: 760px) { .rc-grid { grid-template-columns: 1fr; } }

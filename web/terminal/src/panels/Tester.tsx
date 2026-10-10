@@ -16,7 +16,7 @@ export function TesterView() {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const sym = t.active.ticker.split(':')[1]
-  if (!t.access.features.backtest) return <Empty>The strategy tester is not part of your plan.</Empty>
+  if (!t.access.features.backtest) return <Empty>The strategy tester is not part of your plan{t.access.guest ? ' (guest)' : ''}. The admin turns it on in Admin › Plans › “Backtest”.</Empty>
   const go = async () => {
     setBusy(true); setErr('')
     try { setRes(await api.backtest(t.active.ticker, model, days, bias)) } catch (e) { setErr(errorText(e)) } finally { setBusy(false) }
