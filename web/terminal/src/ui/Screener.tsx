@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTerminal } from '../Terminal'
 import { api, errorText, type ScreenerRow } from '../api'
-import { modelTag } from '../constants'
+import { CUSTOM_MODELS, WOLF_MODELS, modelTag } from '../constants'
 import { Empty, Modal, fmtPrice } from './common'
 
 type Sort = 'symbol' | 'bias' | 'chg' | 'setups' | 'fvg'
@@ -83,12 +83,19 @@ export function Screener({ onClose }: { onClose: () => void }) {
 }
 
 /** Every model's setups today on every watched symbol, best grades first (the All-Models Scanner). */
+type Family = 'all' | 'ict' | 'wolf' | 'vsa'
+const familyOf = (id: string): Family => (CUSTOM_MODELS.has(id) ? 'vsa' : WOLF_MODELS.has(id) ? 'wolf' : 'ict')
+const FAMILIES: [Family, string][] = [['all', 'All models'], ['ict', 'ICT'], ['wolf', 'Wolf'], ['vsa', 'VSA']]
+
 function SetupsView({ rows, grade, setGrade, onOpen }: { rows: ScreenerRow[] | null; grade: 'A' | 'A+' | 'all'; setGrade: (g: 'A' | 'A+' | 'all') => void; onOpen: (sym: string, model: string) => void }) {
+  const [family, setFamily] = useState<Family>('all')
   const list = (rows ?? []).flatMap(r => r.setups.map(s => ({ ...s, symbol: r.symbol, bias: r.bias })))
     .filter(s => grade === 'all' || (grade === 'A' ? ['A', 'A+'] : ['A+']).includes(s.grade))
+    .filter(s => family === 'all' || familyOf(s.model_id) === family)
     .sort((a, b) => (b.created_time > a.created_time ? 1 : -1))
   return <>
-    <div className="scr-bar"><div className="seg">{(['A+', 'A', 'all'] as const).map(g => <button key={g} className={grade === g ? 'on' : ''} onClick={() => setGrade(g)}>{g === 'A+' ? 'A+ only' : g === 'A' ? 'A and A+' : 'All grades'}</button>)}</div></div>
+    <div className="scr-bar"><div className="seg">{(['A+', 'A', 'all'] as const).map(g => <button key={g} className={grade === g ? 'on' : ''} onClick={() => setGrade(g)}>{g === 'A+' ? 'A+ only' : g === 'A' ? 'A and A+' : 'All grades'}</button>)}</div>
+      <div className="seg">{FAMILIES.map(([k, label]) => <button key={k} className={family === k ? 'on' : ''} onClick={() => setFamily(k)}>{label}</button>)}</div></div>
     {rows === null ? <Empty>Loading…</Empty> : !list.length ? <Empty>No setup of this grade today.</Empty> : (
       <div className="scr-wrap"><table className="scr">
         <thead><tr><th>Time (NY)</th><th>Symbol</th><th>Model</th><th>Side</th><th>Grade</th><th>Entry</th><th>With bias</th></tr></thead>
@@ -99,7 +106,7 @@ function SetupsView({ rows, grade, setGrade, onOpen }: { rows: ScreenerRow[] | n
             <td className={s.direction > 0 ? 'up' : 'down'}>{s.direction > 0 ? 'LONG' : 'SHORT'}</td>
             <td><span className={`grade g${s.grade.replace('+', 'p')}`}>{s.grade}</span></td>
             <td className="num">{fmtPrice(s.entry)}</td>
-            <td>{s.bias === 0 ? '–' : (s.bias > 0) === (s.direction > 0) ? '✓' : '✕'}</td>
+            <td>{familyOf(s.model_id) === 'vsa' ? <small className="muted">n/a</small> : s.bias === 0 ? '–' : (s.bias > 0) === (s.direction > 0) ? '✓' : '✕'}</td>
           </tr>))}</tbody>
       </table></div>)}
   </>

@@ -187,7 +187,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
     return () => { window.removeEventListener('ict:goto-ask', ask); window.removeEventListener('ict:riskcalc', risk); window.removeEventListener('ict:tradebuttons', tb); window.removeEventListener('ict:open-tab', ot); window.removeEventListener('keydown', key) }
   }, [])
   // phones: all the layout's charts on screen (stacked / 2x2), or one at a time with chips
-  const [phoneAll, setPhoneAllState] = useState(() => localStorage.getItem('ict.phoneAll') !== '0')
+  const [phoneAll, setPhoneAllState] = useState(() => { try { return localStorage.getItem('ict.phoneAll') === '1' } catch { return false } })
   const setPhoneAll = (v: boolean) => { setPhoneAllState(v); try { localStorage.setItem('ict.phoneAll', v ? '1' : '0') } catch { /* ignore */ } }
   const [favBarOn, setFavBarState] = useState(() => localStorage.getItem('ict.favBar') !== '0')
   const setCursor = (c: CursorKind) => { setCursorState(c); try { localStorage.setItem('ict.cursor', c) } catch { /* ignore */ } }
@@ -769,7 +769,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
           <Toolbar />
           <div className="center">
             <div className={layoutClass}>
-              {charts.map((c, i) => (
+              {charts.map((c, i) => (phone && single && visible > 1 && i !== Math.min(state.active, visible - 1)) ? null : (
                 <ChartPanel key={c.id} conf={c} scripts={state.scripts} theme={theme} settings={state.chart} cursor={cursor} invert={state.signals.invert} compact={!single && ((phone && visible > 2) || (window.innerWidth <= 1180 && visible >= 6))}
                   alerts={state.alerts.filter(a => a.active && a.ticker === c.ticker && (!a.kind || a.kind === 'price'))} active={i === Math.min(state.active, visible - 1)}
                   hidden={single && visible > 1 && i !== Math.min(state.active, visible - 1)}

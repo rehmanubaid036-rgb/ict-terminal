@@ -63,7 +63,22 @@ async function call<T>(method: string, path: string, params: Record<string, unkn
   return data as T
 }
 
-const get = <T>(p: string, q?: Record<string, unknown>, signal?: AbortSignal) => call<T>('GET', p, q, undefined, signal)
+// the same GET while one is on its way shares it; symbol facts are kept for 10 minutes
+const inflight = new Map<string, Promise<unknown>>()
+const kept = new Map<string, { at: number; v: unknown }>()
+const KEEP: Record<string, number> = { '/udf/symbols': 600_000, '/api/v1/symbol-info': 600_000, '/udf/config': 600_000, '/api/v1/models': 300_000, '/api/v1/app-config': 300_000 }
+const get = <T>(p: string, q?: Record<string, unknown>, signal?: AbortSignal): Promise<T> => {
+  if (signal) return call<T>('GET', p, q, undefined, signal)
+  const key = p + '?' + JSON.stringify(q ?? {})
+  const ttl = KEEP[p]
+  const hit = ttl ? kept.get(key) : undefined
+  if (hit && Date.now() - hit.at < ttl) return Promise.resolve(hit.v as T)
+  const going = inflight.get(key)
+  if (going) return going as Promise<T>
+  const pr = call<T>('GET', p, q, undefined).then(v => { if (ttl) kept.set(key, { at: Date.now(), v }); return v }).finally(() => inflight.delete(key))
+  inflight.set(key, pr)
+  return pr
+}
 const post = <T>(p: string, b: unknown = {}) => call<T>('POST', p, {}, b)
 const put = <T>(p: string, b: unknown) => call<T>('PUT', p, {}, b)
 const del = <T>(p: string) => call<T>('DELETE', p)
