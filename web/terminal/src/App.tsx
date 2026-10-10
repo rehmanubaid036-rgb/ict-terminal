@@ -36,23 +36,39 @@ function AuthScreen({ onSignedIn }: { onSignedIn: (a: Access) => void }) {
   }, [])
   // Google / Facebook: the sign-in runs in a new browser tab (Google refuses embedded windows); this page waits
   // for it with a secret session id and gets the login token once the user presses Continue there
+  const PENDING = 'ict.oauth'
   const withProvider = async (provider: 'google' | 'facebook') => {
     setError(''); setInfo('')
     const bytes = new Uint8Array(24); crypto.getRandomValues(bytes)
     const session = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('')
     const app = inApp()
     const q = new URLSearchParams({ session, device_id: deviceId(), device_name: app ? 'Android app' : navigator.userAgent.includes('Mobile') ? 'Phone browser' : 'Web browser', platform: app ? 'android' : 'web' })
+    try { localStorage.setItem(PENDING, JSON.stringify({ session, provider, at: Date.now() })) } catch { /* private mode */ }
     const opened = openExternal(`/api/v1/oauth/${provider}/start?${q}`)
     if (!opened) setInfo('Allow pop-ups for this site, then press the button again.')
     else if (app) setInfo('Finish the sign-in in the Google / Facebook page; the app comes back by itself.')
+    await waitFor(session, provider, Date.now() + 10 * 60_000)
+  }
+  // a sign-in started before the page (re)loaded: keep waiting for it
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(PENDING)
+      if (!raw) return
+      const p = JSON.parse(raw) as { session: string; provider: 'google' | 'facebook'; at: number }
+      if (Date.now() - p.at < 10 * 60_000) { setInfo('Finishing your sign-in…'); void waitFor(p.session, p.provider, p.at + 10 * 60_000) } else localStorage.removeItem(PENDING)
+    } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  const waitFor = async (session: string, provider: 'google' | 'facebook', until: number) => {
     setWaiting(provider)
-    const until = Date.now() + 10 * 60_000
+    const forget = () => { try { localStorage.removeItem(PENDING) } catch { /* ignore */ } }
     while (Date.now() < until) {
       // every 2 s, or at once when the app comes back from the sign-in tab
       await new Promise<void>(r => { const done = () => { clearTimeout(tm); window.removeEventListener('ict:resume', done); r() }; const tm = setTimeout(done, 2000); window.addEventListener('ict:resume', done) })
       try {
         const r = await api.oauthPoll(session)
         if (r.status === 'pending') continue
+        forget()
         if (r.status === 'error' || !r.token) { setError(r.detail || 'Login failed.'); break }
         setToken(r.token)
         const access = r.access ?? (await api.me()).access
@@ -60,6 +76,7 @@ function AuthScreen({ onSignedIn }: { onSignedIn: (a: Access) => void }) {
         setError('Could not load your account.'); break
       } catch { /* keep waiting */ }
     }
+    if (Date.now() >= until) forget()
     setWaiting('')
   }
   const asGuest = async () => {

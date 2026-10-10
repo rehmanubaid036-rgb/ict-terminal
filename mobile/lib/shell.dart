@@ -118,8 +118,19 @@ class _TerminalShellState extends State<TerminalShell> with WidgetsBindingObserv
     if (u == null) return;
     // the Google / Facebook sign-in runs in a Chrome tab on top of the app (Google allows that, not a
     // WebView); when it is done the server sends ictterminal://login, which closes the tab
-    final mode = isSignIn(u) ? LaunchMode.inAppBrowserView : LaunchMode.externalApplication;
-    if (!await launchUrl(u, mode: mode) && mounted) _snack("Could not open $url");
+    if (isSignIn(u)) {
+      // a Chrome tab on top of the app; the phone's browser when the phone has no Custom Tabs
+      var ok = false;
+      try {
+        ok = await launchUrl(u, mode: LaunchMode.inAppBrowserView);
+      } catch (_) {
+        ok = false;
+      }
+      if (!ok) ok = await launchUrl(u, mode: LaunchMode.externalApplication);
+      if (!ok && mounted) _snack("Could not open the sign-in page");
+      return;
+    }
+    if (!await launchUrl(u, mode: LaunchMode.externalApplication) && mounted) _snack("Could not open $url");
   }
 
   Future<List<String>> _pickFiles(FileSelectorParams params) async {
