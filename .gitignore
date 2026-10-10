@@ -41,3 +41,6 @@ mobile/android/.gradle/
 mobile/android/app/build/
 mobile/.flutter-plugins
 mobile/.flutter-plugins-dependencies
+
+# the MT5 history cache (backfillict.bat fills it; can be GBs). The few small months the tests use stay tracked.
+data/mt5/
