@@ -1,12 +1,23 @@
 {% extends "admin/base_site.html" %}
 {% block content %}
 <div class="mb-3">
-  {% for d in ranges %}<a class="btn btn-sm {% if d == days %}btn-warning{% else %}btn-outline-secondary{% endif %} mr-1" href="?days={{ d }}">Last {{ d }} days</a>{% endfor %}
+  {% for d in ranges %}<a class="btn btn-sm {% if d == days %}btn-primary{% else %}btn-outline-secondary{% endif %} mr-1" href="?days={{ d }}">Last {{ d }} days</a>{% endfor %}
   {% if not has_usage %}<span class="text-muted ml-3">Website and terminal counts start after this update reaches the server (they are counted from now on).</span>{% endif %}
+</div>
+<div class="ict-today mb-3">
+  <div class="ict-today-head"><b>Today</b> <span class="text-muted">compared with yesterday</span></div>
+  <div class="row">
+    {% for c in today %}
+    <div class="col"><div class="ict-kpi">
+      <span>{{ c.label }}</span><b>{{ c.value }}</b>
+      <small class="{% if c.delta > 0 %}up{% elif c.delta < 0 %}down{% endif %}">{% if c.delta > 0 %}▲{% elif c.delta < 0 %}▼{% else %}•{% endif %} yesterday {{ c.yesterday }}</small>
+    </div></div>
+    {% endfor %}
+  </div>
 </div>
 <div class="row">
   {% for c in cards %}
-  <div class="col-xl-3 col-lg-4 col-sm-6"><div class="small-box bg-light border">
+  <div class="col-xl-3 col-lg-4 col-sm-6"><div class="small-box ict-stat">
     <div class="inner"><h3 style="font-size:1.6rem">{{ c.1 }}</h3><p class="mb-0"><b>{{ c.0 }}</b><br><small class="text-muted">{{ c.2 }}</small></p></div>
   </div></div>
   {% endfor %}
@@ -29,6 +40,16 @@
   <div class="col-lg-3"><div class="card"><div class="card-header"><b>Logins</b></div><div class="card-body p-0"><table class="table table-sm mb-0">
     {% for r in login_methods %}<tr><td>{{ r.method }}</td><td class="text-right">{{ r.n }}</td></tr>{% endfor %}
     {% for r in login_platforms %}<tr class="text-muted"><td>{{ r.platform }}</td><td class="text-right">{{ r.n }}</td></tr>{% empty %}<tr><td class="text-muted">No logins yet</td></tr>{% endfor %}</table></div></div></div>
+</div>
+<div class="card ict-card"><div class="card-header"><b>Day by day</b> (newest first) · users, time on the terminal, accounts</div>
+  <div class="card-body p-0"><div class="table-responsive"><table class="table table-sm table-hover mb-0 ict-daily">
+    <thead><tr><th>Day</th><th class="text-right">Terminal users</th><th class="text-right">Time on terminal</th><th class="text-right">Avg a user</th>
+      <th class="text-right">Terminal opens</th><th class="text-right">Website visitors</th><th class="text-right">Page views</th>
+      <th class="text-right">New accounts</th><th class="text-right">Logins</th></tr></thead>
+    <tbody>{% for r in daily %}<tr><td>{{ r.day }}</td><td class="text-right"><b>{{ r.users }}</b></td><td class="text-right">{{ r.time }}</td><td class="text-right">{{ r.avg }}</td>
+      <td class="text-right">{{ r.opens }}</td><td class="text-right">{{ r.visitors }}</td><td class="text-right">{{ r.views }}</td>
+      <td class="text-right">{{ r.joined }}</td><td class="text-right">{{ r.logins }}</td></tr>{% endfor %}</tbody>
+  </table></div></div>
 </div>
 <div class="card"><div class="card-header"><b>Ads</b> (impressions and clicks since each ad started)</div><div class="card-body p-0"><table class="table table-sm mb-0">
   <thead><tr><th>Ad</th><th class="text-right">Impressions</th><th class="text-right">Clicks</th><th class="text-right">Click rate</th></tr></thead>

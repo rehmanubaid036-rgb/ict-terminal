@@ -13,12 +13,19 @@ register = template.Library()
 @register.simple_tag
 def dashboard_stats():
     now = timezone.now()
+    try:                                  # today / the last 7 days (the ICT API's counters); never break the dashboard
+        from accounts.stats import build as _build
+        _st = _build(7)
+        today, daily = _st["today"], _st["daily"]
+    except Exception:                     # noqa: BLE001
+        today, daily = [], []
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     active = (Subscription.objects.filter(status=Subscription.STATUS_ACTIVE, starts_at__lte=now)
               .filter(Q(expires_at__isnull=True) | Q(expires_at__gt=now)))
     revenue = (Payment.objects.filter(status="paid", paid_at__gte=month_start)
                .values("currency").annotate(total=Sum("amount")).order_by("-total"))
     return {
+        "today": today, "daily": daily,
         "active_subs": active.count(),
         "expiring_7d": active.filter(expires_at__lte=now + timedelta(days=7)).count(),
         "expired": Subscription.objects.filter(expires_at__lte=now).count(),

@@ -174,6 +174,7 @@ JAZZMIN_SETTINGS = {
                               "ai", "ads", "settings", "other"],
     "icons": {},          # filled below from accounts.admin_menu
     "show_ui_builder": False,
+    "custom_css": "accounts/ict-admin.css",        # the ICT colours (slate + teal) over AdminLTE
     "changeform_format": "horizontal_tabs",
     "related_modal_active": True,
 }
@@ -193,8 +194,8 @@ JAZZMIN_UI_TWEAKS = {
     "theme": "default",
     "default_theme_mode": "auto",
     "navbar": "navbar-dark",
-    "sidebar": "sidebar-dark-warning",
-    "accent": "accent-warning",
+    "sidebar": "sidebar-dark-info",
+    "accent": "accent-teal",
     "brand_colour": "navbar-dark",
     "navbar_small_text": False,
     "sidebar_nav_child_indent": True,

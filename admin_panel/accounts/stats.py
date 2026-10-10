@@ -42,6 +42,39 @@ def _usage(since_day: str) -> dict:
     return out
 
 
+def _fmt_minutes(m: int) -> str:
+    """125 -> "2 h 5 min", 40 -> "40 min"."""
+    m = int(m or 0)
+    return f"{m // 60} h {m % 60} min" if m >= 60 else f"{m} min"
+
+
+def daily_rows(labels, uniq, per, joined, logins) -> list[dict]:
+    """One row per day, newest first: visitors, page views, terminal users, opens, time on screen,
+    average time a user, new accounts and logins."""
+    rows = []
+    for d in reversed(labels):
+        users = uniq["terminal_user"].get(d, 0)
+        minutes = per["terminal_minute"].get(d, 0)
+        rows.append({"day": d, "visitors": uniq["site_visitor"].get(d, 0), "views": per["site_view"].get(d, 0),
+                     "users": users, "opens": per["terminal_open"].get(d, 0), "minutes": minutes,
+                     "time": _fmt_minutes(minutes), "avg": _fmt_minutes(round(minutes / users)) if users else "-",
+                     "joined": joined.get(d, 0), "logins": logins.get(d, 0)})
+    return rows
+
+
+def today_summary(rows: list[dict]) -> list[dict]:
+    """Today's numbers with the change against yesterday (rows: newest first)."""
+    t = rows[0] if rows else {}
+    y = rows[1] if len(rows) > 1 else {}
+    out = []
+    for key, label in (("users", "Terminal users today"), ("minutes", "Time on the terminal today"), ("visitors", "Website visitors today"),
+                       ("joined", "New accounts today"), ("logins", "Logins today")):
+        a, b = t.get(key, 0), y.get(key, 0)
+        out.append({"label": label, "value": _fmt_minutes(a) if key == "minutes" else a,
+                    "delta": a - b, "yesterday": _fmt_minutes(b) if key == "minutes" else b})
+    return out
+
+
 def build(days: int) -> dict:
     now = timezone.now()
     start = (now - timedelta(days=days - 1)).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -78,8 +111,9 @@ def build(days: int) -> dict:
     minutes = series(per["terminal_minute"])
     total = lambda d: sum(d.values())                       # noqa: E731
     top = lambda d, n=12: sorted(d.items(), key=lambda kv: -kv[1])[:n]   # noqa: E731
+    daily = daily_rows(labels, uniq, per, joined, logins)
     return {
-        "days": days, "ranges": RANGES, "labels": labels,
+        "days": days, "ranges": RANGES, "labels": labels, "daily": daily, "today": today_summary(daily),
         "cards": [
             ("Website visitors", total(uniq["site_visitor"]), "unique a day, added up"),
             ("Page views", total(per["site_view"]), "website + guide"),

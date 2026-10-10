@@ -1940,6 +1940,15 @@ class StatsPageTests(TestCase):
         cards = {c[0]: c[1] for c in r.context["cards"]}
         self.assertEqual((cards["Website visitors"], cards["Page views"], cards["Terminal hours"], cards["Terminal opens"]), (2, 12, 1.5, 4))
         self.assertContains(r, "Top pages")
+        # day by day: today's row first, 90 min over 1 user; the Today strip and the dashboard show it too
+        row = r.context["daily"][0]
+        self.assertEqual((row["day"], row["users"], row["minutes"], row["time"], row["avg"], row["visitors"]), (today, 1, 90, "1 h 30 min", "1 h 30 min", 2))
+        self.assertEqual(r.context["today"][0]["value"], 1)
+        self.assertContains(r, "Day by day")
+        with mock.patch("accounts.alerts.ict_db", return_value=db):
+            d = self.client.get("/admin/")
+        self.assertContains(d, "Terminal users today")
+        self.assertContains(d, "Last 7 days")
         self.client.logout()
         self.assertEqual(self.client.get("/admin/stats/").status_code, 302)          # staff only
 

@@ -3,6 +3,20 @@
 
 {% block content %}
 {% dashboard_stats as s %}
+{% if s.today %}
+<div class="ict-today mb-3">
+  <div class="ict-today-head"><b>Today</b> <span class="text-muted">New York time · compared with yesterday</span>
+    <a class="ml-auto" href="{% url 'ict_stats' %}?days=30">All statistics →</a></div>
+  <div class="row">
+    {% for c in s.today %}
+    <div class="col"><div class="ict-kpi">
+      <span>{{ c.label }}</span><b>{{ c.value }}</b>
+      <small class="{% if c.delta > 0 %}up{% elif c.delta < 0 %}down{% endif %}">{% if c.delta > 0 %}▲{% elif c.delta < 0 %}▼{% else %}•{% endif %} yesterday {{ c.yesterday }}</small>
+    </div></div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
 <div class="row">
   <div class="col-lg-3 col-6">
     <div class="small-box bg-success">
@@ -74,6 +88,18 @@
     <a class="btn btn-outline-secondary btn-block" href="{% url 'admin:accounts_sitesettings_changelist' %}"><i class="fas fa-user-plus mr-1"></i> Registration settings{% if s.signup_plans %} ({{ s.signup_plans }}){% endif %}</a>
   </div>
 </div>
+
+{% if s.daily %}
+<div class="card card-outline ict-card">
+  <div class="card-header"><h3 class="card-title"><i class="fas fa-calendar-day mr-1"></i> Last 7 days</h3></div>
+  <div class="card-body p-0"><div class="table-responsive"><table class="table table-sm table-hover mb-0 ict-daily">
+    <thead><tr><th>Day</th><th class="text-right">Terminal users</th><th class="text-right">Time on terminal</th><th class="text-right">Avg a user</th>
+      <th class="text-right">Opens</th><th class="text-right">Website visitors</th><th class="text-right">New accounts</th><th class="text-right">Logins</th></tr></thead>
+    <tbody>{% for r in s.daily %}<tr><td>{{ r.day }}</td><td class="text-right"><b>{{ r.users }}</b></td><td class="text-right">{{ r.time }}</td><td class="text-right">{{ r.avg }}</td>
+      <td class="text-right">{{ r.opens }}</td><td class="text-right">{{ r.visitors }}</td><td class="text-right">{{ r.joined }}</td><td class="text-right">{{ r.logins }}</td></tr>{% endfor %}</tbody>
+  </table></div></div>
+</div>
+{% endif %}
 
 {{ block.super }}
 {% endblock %}
