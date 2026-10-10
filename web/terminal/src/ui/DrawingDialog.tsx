@@ -26,15 +26,15 @@ const POSITION_TOOLS = new Set(['longPosition', 'shortPosition'])
 // tools with a background / with labels (letters, levels, values) that TradingView lets you change
 const FILL_TOOLS = new Set(['pitchfork', 'dateRange', 'regression', 'gannBox', 'gannSquare', 'flatChannel', 'disjointChannel', 'path', 'ellipse',
   'rotatedRect', 'trianglePattern', 'forecast', 'projection', 'barsPattern', 'priceNote', 'srZone', 'comment', 'sessionBox', 'silverBullet', 'ghostFeed',
-  'ictFvgBox', 'ictObBox', 'ictKillzone'])
-const LABEL_TOOLS = new Set(['gannFan', 'dateRange', 'gannBox', 'infoLine', 'trendAngle', 'trianglePattern', 'forecast', 'projection', 'srZone',
+  'ictFvgBox', 'ictObBox', 'ictKillzone', 'gannSquareFixed', 'priceOnlyRange', 'textTable'])
+const LABEL_TOOLS = new Set(['priceOnlyRange', 'arrowMarker', 'pin', 'textTable', 'gannFan', 'dateRange', 'gannBox', 'infoLine', 'trendAngle', 'trianglePattern', 'forecast', 'projection', 'srZone',
   'sessionBox', 'silverBullet', 'judasSwing', 'xabcd', 'abcd', 'headShoulders', 'elliottImpulse', 'elliottCorrection', 'threeDrives', 'cypher',
   'elliottTriangle', 'elliottDoubleCombo', 'elliottTripleCombo'])
 const TREND_TOOLS = new Set(['segment', 'rayLine', 'straightLine'])
 const BOX_TOOLS = new Set(['rectangle'])
 const SHAPE_TOOLS = new Set(['circleShape', 'triangle'])
 const TEXT_TOOLS = new Set(['textLabel', 'note', 'arrowUp', 'arrowDown', 'simpleAnnotation', 'ictKillzone', 'ictFvgBox', 'ictObBox', 'ictLiquidity',
-  'signpost', 'priceNote', 'flagMark', 'sticker', 'anchoredText', 'comment', 'srZone', 'sessionBox', 'judasSwing', ...TREND_TOOLS, ...BOX_TOOLS, ...WRAPPED_TOOLS])
+  'signpost', 'priceNote', 'flagMark', 'sticker', 'anchoredText', 'comment', 'srZone', 'sessionBox', 'judasSwing', 'arrowMarker', 'pin', 'textTable', ...TREND_TOOLS, ...BOX_TOOLS, ...WRAPPED_TOOLS])
 // tools whose text tab also has font / colour / alignment (the others keep their own label look)
 const RICH_TEXT = new Set([...TREND_TOOLS, ...BOX_TOOLS, ...WRAPPED_TOOLS])
 const FONT_SIZES = [10, 11, 12, 13, 14, 16, 20, 24, 28, 32, 40]

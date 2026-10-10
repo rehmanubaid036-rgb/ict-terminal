@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, deviceId, errorText, getToken, setToken, setUnauthorizedHandler, type Access } from './api'
 import { Terminal } from './Terminal'
+import { inApp, openExternal } from './appbridge'
 
 export function App() {
   const [access, setAccess] = useState<Access | null>(null)
@@ -39,9 +40,11 @@ function AuthScreen({ onSignedIn }: { onSignedIn: (a: Access) => void }) {
     setError(''); setInfo('')
     const bytes = new Uint8Array(24); crypto.getRandomValues(bytes)
     const session = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('')
-    const q = new URLSearchParams({ session, device_id: deviceId(), device_name: navigator.userAgent.includes('Mobile') ? 'Phone browser' : 'Web browser', platform: 'web' })
-    const tab = window.open(`/api/v1/oauth/${provider}/start?${q}`, '_blank', 'noopener')
-    if (!tab) setInfo('Allow pop-ups for this site, then press the button again.')
+    const app = inApp()
+    const q = new URLSearchParams({ session, device_id: deviceId(), device_name: app ? 'Android app' : navigator.userAgent.includes('Mobile') ? 'Phone browser' : 'Web browser', platform: app ? 'android' : 'web' })
+    const opened = openExternal(`/api/v1/oauth/${provider}/start?${q}`)
+    if (!opened) setInfo('Allow pop-ups for this site, then press the button again.')
+    else if (app) setInfo('Finish the sign-in in your browser, then come back to the app.')
     setWaiting(provider)
     const until = Date.now() + 10 * 60_000
     while (Date.now() < until) {

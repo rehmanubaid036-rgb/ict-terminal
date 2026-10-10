@@ -85,7 +85,7 @@ export function TopBar() {
     <header className="topbar" ref={bar}>
       {edge.left && <button className="tb-arrow left" aria-label="Scroll the menu left" onClick={() => nudge(-1)}>‹</button>}
       {POPOUT && <span className="popout-tag" title="This window shows one chart and does not change your saved layout">Pop-out</span>}
-      <a className="brand" href="/" title="ICT Terminal home"><img src="/terminal/favicon.svg" alt="" /><span><b>ICT</b> Terminal</span></a>
+      {!phone && <a className="brand" href="/" title="ICT Terminal home"><img src="/terminal/favicon.svg" alt="" /><span><b>ICT</b> Terminal</span></a>}
       <button className="symbol-btn" onClick={() => setSearch('')} title="Symbol search (type any letter)">
         <Icon name="search" size={15} /><b>{a.ticker.split(':')[1] ?? a.ticker}</b><small>{a.ticker.split(':')[0]}</small>
       </button>
@@ -119,9 +119,9 @@ export function TopBar() {
       </>}
       <button ref={refs.more} className="tb-btn" title="Settings" onClick={() => toggle('more')}><Icon name="gear" /></button>
       <div className="tb-end">
-        {donations?.enabled && <button className="tb-btn donate-btn" title={donations.title} onClick={() => setDonate(true)}>❤<span>Donate</span></button>}
+        {donations?.enabled && !phone && <button className="tb-btn donate-btn" title={donations.title} onClick={() => setDonate(true)}>❤<span>Donate</span></button>}
         {edge.right && <button className="tb-arrow" aria-label="Scroll the menu right" onClick={() => nudge(1)}>›</button>}
-        <Clock zone={t.state.chart.timezone} short={phone} onClick={() => t.openSettings()} />
+        {!phone && <Clock zone={t.state.chart.timezone} short={phone} onClick={() => t.openSettings()} />}
         <button className="account-pill" onClick={() => t.openAccount('plan')} title={`${t.access.email ?? ''} · expires ${t.access.expiry ?? '-'}`}>
           <Icon name="user" size={15} />{!phone && <span>{t.access.plan ?? 'Account'}</span>}
         </button>

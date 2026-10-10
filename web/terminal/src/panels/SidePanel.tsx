@@ -12,6 +12,7 @@ import { cloneDrawing, DRAWINGS, drawingHooks, getChart, getEntry, notify, onReg
 import { JournalView, StatsView, EngineView } from './BottomPanel'
 import { CalendarPanel, NewsPanel } from './MarketPanels'
 import { TradePanel } from './Paper'
+import { openExternal, saveFile } from '../appbridge'
 
 export type SideTab = 'trade' | 'calendar' | 'news' | 'watchlist' | 'signals' | 'assistant' | 'alerts' | 'objects' | 'data' | 'info' | 'mt5' | 'journal'
 
@@ -140,12 +141,7 @@ function Watchlist() {
     const n = [...list]; [n[i], n[j]] = [n[j], n[i]]; t.setWatchlist(n)
   }
   const exportList = () => {
-    const blob = new Blob([list.join(',')], { type: 'text/plain' })
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = `${t.state.listName.replace(/[^\w-]+/g, '_')}.txt`
-    a.click()
-    URL.revokeObjectURL(a.href)
+    void saveFile(`${t.state.listName.replace(/[^\w-]+/g, '_')}.txt`, new Blob([list.join(',')], { type: 'text/plain' }))
   }
   const importList = async (f: File) => {
     // TradingView format: comma or new-line separated, "###Section" headers, EXCHANGE:SYMBOL
@@ -376,7 +372,7 @@ function AlertDelivery() {
               <Switch checked={!!s.telegram_signals} onChange={v => void save({ telegram_signals: v })} label="Model signals too (Signals tab settings)" />
               <button className="link" onClick={() => void save({ telegram_disconnect: true })}>Disconnect</button>
             </> : <button className="btn ghost sm" disabled={busy} onClick={async () => {
-              try { const r = await api.alerts.telegram(); window.open(r.url, '_blank', 'noopener'); toast('Press Start in Telegram, then come back here.') }
+              try { const r = await api.alerts.telegram(); openExternal(r.url); toast('Press Start in Telegram, then come back here.') }
               catch (e) { toast(errorText(e), 'error') }
             }}>Connect Telegram</button>}
         </div>

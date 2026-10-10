@@ -17,6 +17,7 @@ import { registerMoreTools } from './chart/tools2'
 import { registerTools3, setPictureRedraw } from './chart/tools3'
 import { registerTools4 } from './chart/tools4'
 import { registerFib } from './chart/fib'
+import { registerTools5 } from './chart/tools5'
 import { registerLines, wrapBuiltinLines } from './chart/lines'
 import { indHit } from './chart/indalert'
 import { toBars } from './chart/feed'
@@ -37,6 +38,7 @@ import { ReplayBar } from './ui/ReplayBar'
 import { AccountDialog } from './ui/AccountDialog'
 import { Toasts, toast, useIsPhone, setAlertToastSeconds } from './ui/common'
 import { useHotkeys } from './hotkeys'
+import { saveFile, shareText } from './appbridge'
 
 registerOverlays()
 // a chart opened in its own window (right-click > Open in a new window): one chart, never saved over the main layout
@@ -51,6 +53,7 @@ registerTools3()
 registerTools4()
 registerLines()         // TradingView's trend line / ray / extended line / rectangle settings
 wrapBuiltinLines()      // klinecharts' horizontal / vertical lines and channels with the same settings
+registerTools5()        // Trend-Based Fib Time, Pitchfan, Gann Square Fixed, Price Range, Arrow Marker, Pin, Table
 registerFib()           // after the others: TradingView's Fib tools replace the built-in Fib retracement
 setPictureRedraw(() => allIds().forEach(id => getChart(id)?.resize()))
 registerVolumeProfiles()
@@ -635,10 +638,8 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
   const screenshot = () => {
     const ch = getChart(active.id)
     if (!ch) return
-    const a = document.createElement('a')
-    a.href = ch.getConvertPictureUrl(true, 'png', chartBackground(theme, state.chart))
-    a.download = `${active.ticker.replace(':', '_')}_${active.tf}_${new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '')}.png`
-    a.click()
+    void saveFile(`${active.ticker.replace(':', '_')}_${active.tf}_${new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '')}.png`,
+      ch.getConvertPictureUrl(true, 'png', chartBackground(theme, state.chart)))
   }
   const sharePicture = async () => {
     const ch = getChart(active.id)
@@ -647,6 +648,7 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
     try {
       const r = await api.shareSnapshot(img, `${active.ticker.split(':')[1] ?? active.ticker} ${active.tf} · ${new Date().toLocaleString()}`)
       const link = window.location.origin + r.url
+      if (shareText(link)) return
       try { await navigator.clipboard.writeText(link); toast('Link copied: ' + link) } catch { window.prompt('Copy the link to your chart picture:', link) }
     } catch (e) { toast(errorText(e), 'error') }
   }

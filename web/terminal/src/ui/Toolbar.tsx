@@ -15,6 +15,8 @@ export function Toolbar() {
   const pick = (g: ToolGroup, id: string) => { setLast(l => ({ ...l, [g.id]: id })); t.setTool(id); setOpen(null) }
   const id = t.active.id
   const hasDrawings = () => (getChart(id)?.getOverlays({ groupId: DRAWINGS }).length ?? 0) > 0
+  const indHidden = t.active.indicators.length > 0 && t.active.indicators.every(i => i.hidden)
+  const showIndicators = (show: boolean) => t.updateActive({ indicators: t.active.indicators.map(i => ({ ...i, hidden: !show })) })
 
   return (
     <nav className="toolbar" aria-label="Drawing tools">
@@ -28,10 +30,24 @@ export function Toolbar() {
         onClick={() => t.setMagnet(t.magnet === 'normal' ? 'weak_magnet' : t.magnet === 'weak_magnet' ? 'strong_magnet' : 'normal')}>
         <Icon name="magnet" />{t.magnet === 'strong_magnet' && <i className="dot" />}
       </button>
+      <button className={`tool${t.tool === 'measureTool' ? ' on' : ''}`} title="Measure: click the start, then the end (or Shift + click on the chart)"
+        onClick={() => t.setTool(t.tool === 'measureTool' ? null : 'measureTool')}><Icon name="measure" /></button>
+      <button className={`tool${t.tool === 'zoomIn' ? ' on' : ''}`} title="Zoom in: click two corners of the bars to zoom to (Reset chart view in the right-click menu zooms out)"
+        onClick={() => t.setTool(t.tool === 'zoomIn' ? null : 'zoomIn')}><Icon name="search" /></button>
+      <span className="tool-sep" />
       <button className={`tool${t.stayInDrawing ? ' on' : ''}`} title="Stay in drawing mode" onClick={() => t.setStayInDrawing(!t.stayInDrawing)}><Icon name="pin" /></button>
       <button className={`tool${locked ? ' on' : ''}`} title={locked ? 'Unlock all drawings' : 'Lock all drawings'} onClick={() => { setAll(id, { lock: !locked }); setLocked(!locked) }}><Icon name={locked ? 'lock' : 'unlock'} /></button>
-      <button className={`tool${hidden ? ' on' : ''}`} title={hidden ? 'Show drawings' : 'Hide drawings'} onClick={() => { setAll(id, { visible: hidden }); setHidden(!hidden) }}><Icon name={hidden ? 'eyeOff' : 'eye'} /></button>
-      <button className="tool" title="Remove all drawings" onClick={() => { if (hasDrawings() && window.confirm('Remove all drawings on this chart?')) removeAll(id) }}><Icon name="trash" /></button>
+      <MenuButton icon={hidden || indHidden ? 'eyeOff' : 'eye'} on={hidden || indHidden} title="Hide / show" open={open === 'hide'}
+        onOpen={() => setOpen(o => (o === 'hide' ? null : 'hide'))} onClose={() => setOpen(null)} items={[
+          [hidden ? 'Show drawings' : 'Hide drawings', () => { setAll(id, { visible: hidden }); setHidden(!hidden) }],
+          [indHidden ? 'Show indicators' : 'Hide indicators', () => showIndicators(indHidden)],
+          [hidden && indHidden ? 'Show all' : 'Hide all', () => { const v = hidden && indHidden; setAll(id, { visible: v }); setHidden(!v); showIndicators(v) }],
+        ]} />
+      <MenuButton icon="trash" title="Remove" open={open === 'remove'} onOpen={() => setOpen(o => (o === 'remove' ? null : 'remove'))} onClose={() => setOpen(null)} items={[
+        ['Remove drawings', () => { if (hasDrawings() && window.confirm('Remove all drawings on this chart?')) removeAll(id) }],
+        ['Remove indicators', () => { if (t.active.indicators.length && window.confirm('Remove all indicators on this chart?')) t.updateActive({ indicators: [] }) }],
+        ['Remove drawings and indicators', () => { if (window.confirm('Remove all drawings and indicators on this chart?')) { removeAll(id); t.updateActive({ indicators: [] }) } }],
+      ]} />
       <span className="grow" />
       <button className={`tool${t.favBarOn ? ' on' : ''}`} title={t.favBarOn ? 'Hide the favorites toolbar' : 'Show the favorites toolbar (star tools to add them)'} onClick={() => t.setFavBarOn(!t.favBarOn)}><Icon name="star" /></button>
       <button className={`tool${t.sideTab === 'objects' ? ' on' : ''}`} title="Object tree" onClick={() => t.setSideTab(t.sideTab === 'objects' ? null : 'objects')}><Icon name="tree" /></button>
@@ -83,6 +99,24 @@ function CursorButton({ open, onOpen, onClose }: { open: boolean; onOpen: () => 
               <Icon name={c.icon} /><span>{c.label}</span><FavStar id={`cursor:${c.id}`} />
             </button>
           ))}
+        </Popover>
+      )}
+    </div>
+  )
+}
+
+/** A toolbar button with a small menu (hide / remove), like TradingView's. */
+function MenuButton({ icon, title, on, open, onOpen, onClose, items }: {
+  icon: string; title: string; on?: boolean; open: boolean; onOpen: () => void; onClose: () => void; items: [string, () => void][]
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  return (
+    <div className="tool-wrap" ref={ref}>
+      <button className={`tool${on ? ' on' : ''}`} title={title} onClick={onOpen}><Icon name={icon} /></button>
+      {open && (
+        <Popover anchor={ref} onClose={onClose} className="tool-flyout" title={title}>
+          <div className="flyout-title">{title}</div>
+          {items.map(([label, run]) => <button key={label} onClick={() => { onClose(); run() }}><span>{label}</span></button>)}
         </Popover>
       )}
     </div>

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useTerminal } from '../Terminal'
 import { api, errorText, ApiError, type Access, type CryptoOrder, type Payment, type PaymentMethod, type Plan } from '../api'
-import { Modal, Empty, toast } from './common'
+import { Modal, Empty, Switch, toast } from './common'
+import { openExternal, setAppLock } from '../appbridge'
 
 type Tab = 'plan' | 'plans' | 'payments' | 'security'
 
@@ -58,6 +59,7 @@ function MyPlan({ onUpgrade }: { onUpgrade: () => void }) {
         {row('MT5 auto-trading', f.auto_trade ? `Yes (${f.max_mt_accounts ?? 0} accounts)` : 'No')}
         {row('Backtests', f.backtest ? 'Yes' : 'No')}
       </div>
+      <AppLockCard />
       {me?.subscriptions && me.subscriptions.length > 0 && (
         <div className="card span2">
           <h4>Subscriptions</h4>
@@ -126,7 +128,7 @@ function ManualPay({ plan, onPaid }: { plan: Plan; onPaid: () => void }) {
     try {
       const r = await api.submitPayment(plan.slug, m!, ref, note)
       toast(r.message)
-      if (r.whatsapp_url) window.open(r.whatsapp_url, '_blank', 'noopener')
+      if (r.whatsapp_url) openExternal(r.whatsapp_url)
       onPaid()
     } catch (e) { toast(errorText(e), 'error') } finally { setBusy(false) }
   }
@@ -249,6 +251,26 @@ function Security() {
         try { const r = await api.changePassword(old, pw); toast(r.message || 'Password changed.'); setOld(''); setPw('') } catch (e) { toast(errorText(e), 'error') } finally { setBusy(false) }
       }}>Change password</button>
       <p className="note">Other devices are signed out when you change your password.</p>
+    </div>
+  )
+}
+
+/** Only in the Android app: lock the app with the phone's fingerprint / face / PIN. */
+function AppLockCard() {
+  const [app, setApp] = useState(window.__ictApp)
+  useEffect(() => {
+    const on = () => setApp(window.__ictApp ? { ...window.__ictApp } : undefined)
+    window.addEventListener('ict:app', on)
+    return () => window.removeEventListener('ict:app', on)
+  }, [])
+  if (!app) return null
+  return (
+    <div className="card">
+      <h4>This phone</h4>
+      {app.lockAvailable
+        ? <Switch checked={app.lock} onChange={v => setAppLock(v)} label="Fingerprint lock (asks when the app opens and after 2 minutes away)" />
+        : <p className="note">Set up a fingerprint, face or screen lock on the phone to lock the app.</p>}
+      <div className="kv"><span>App version</span><b>{app.version}</b></div>
     </div>
   )
 }

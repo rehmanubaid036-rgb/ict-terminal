@@ -2,7 +2,7 @@
 import { useEffect, useRef } from 'react'
 import type { TerminalApi } from './Terminal'
 import { ALL_TOOLS } from './constants'
-import { DRAWINGS, getChart, getEntry, setAll } from './chart/registry'
+import { DRAWINGS, getChart, getEntry, setAll, copySelected, pasteDrawing } from './chart/registry'
 
 // ---- the user's own shortcuts ------------------------------------------------------------------
 export interface HotkeyAction { id: string; label: string; group: string; def: string }
@@ -89,6 +89,8 @@ export function useHotkeys(t: TerminalApi, fn: { undo: () => void; redo: () => v
       const combo = comboOf(e)
       const action = combo && !RESERVED.has(combo) ? keymap(t.state.hotkeys).get(combo) : undefined
       if (action) { e.preventDefault(); runAction(t, action); return }
+      if (mod && !e.shiftKey && k.toLowerCase() === 'c' && !window.getSelection()?.toString() && copySelected(t.active.id)) { e.preventDefault(); return }
+      if (mod && !e.shiftKey && k.toLowerCase() === 'v' && pasteDrawing(t.active.id)) { e.preventDefault(); return }
       if (mod && !e.shiftKey && k.toLowerCase() === 'z') { e.preventDefault(); fn.undo(); return }
       if ((mod && k.toLowerCase() === 'y') || (mod && e.shiftKey && k.toLowerCase() === 'z')) { e.preventDefault(); fn.redo(); return }
       if (k === 'Delete' || k === 'Backspace') { fn.del(); e.preventDefault(); return }

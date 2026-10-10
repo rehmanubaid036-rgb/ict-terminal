@@ -41,11 +41,15 @@ const TIME_ZONES: FibLevel[] = [0, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144].map((
 const FAN: FibLevel[] = [L(0, '#787b86'), L(0.25, '#f23645'), L(0.382, '#ff9800'), L(0.5, '#4caf50'), L(0.618, '#089981'), L(0.75, '#00bcd4'), L(1, '#787b86')]
 const CIRCLES: FibLevel[] = [L(0.236, '#f23645'), L(0.382, '#ff9800'), L(0.5, '#4caf50'), L(0.618, '#089981'), L(0.786, '#00bcd4'), L(1, '#787b86'),
   L(1.618, '#2962ff'), L(2.618, '#f23645'), L(3.618, '#9c27b0'), L(4.236, '#e91e63')]
+// Trend-Based Fib Time and Pitchfan (TradingView's defaults)
+const TIME_TREND: FibLevel[] = [L(0, '#787b86'), L(0.382, '#f23645'), L(0.5, '#4caf50'), L(0.618, '#089981'), L(1, '#787b86'), L(1.382, '#00bcd4'),
+  L(1.618, '#2962ff'), L(2, '#9c27b0'), L(2.382, '#e91e63'), L(2.618, '#ff9800'), L(3, '#787b86', false), L(3.618, '#2962ff', false), L(4.236, '#9c27b0', false)]
+const PITCHFAN: FibLevel[] = [L(0, '#787b86'), L(0.236, '#f23645'), L(0.382, '#ff9800'), L(0.5, '#4caf50'), L(0.618, '#089981'), L(0.786, '#00bcd4'), L(1, '#787b86')]
 const WEDGE: FibLevel[] = [L(0.236, '#f23645'), L(0.382, '#ff9800'), L(0.5, '#4caf50'), L(0.618, '#089981'), L(0.786, '#00bcd4'), L(1, '#787b86')]
 
 export const FIB_DEFAULTS: Record<string, FibLevel[]> = {
   fibonacciLine: TV_RETRACEMENT, fibIct: ICT, fibExtension: TV_RETRACEMENT, fibChannel: TV_RETRACEMENT, fibTimeZones: TIME_ZONES,
-  fibFan: FAN, fibCircles: CIRCLES, fibArcs: CIRCLES, fibWedge: WEDGE,
+  fibFan: FAN, fibCircles: CIRCLES, fibArcs: CIRCLES, fibWedge: WEDGE, fibTimeTrend: TIME_TREND, pitchfan: PITCHFAN,
 }
 /** Which settings each Fib tool shows (TradingView shows the same set per tool). */
 export const FIB_FEATURES: Record<string, { extend?: boolean; reverse?: boolean; prices?: boolean; labelsV?: boolean; bg?: boolean }> = {
@@ -58,6 +62,8 @@ export const FIB_FEATURES: Record<string, { extend?: boolean; reverse?: boolean;
   fibCircles: { bg: true },
   fibArcs: { bg: true },
   fibWedge: { bg: true },
+  fibTimeTrend: { bg: true },
+  pitchfan: { bg: true },
 }
 export const FIB_TOOLS = new Set(Object.keys(FIB_DEFAULTS))
 

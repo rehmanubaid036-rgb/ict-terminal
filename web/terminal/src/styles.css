@@ -458,7 +458,9 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
   .rail { width: 100%; flex-direction: row; justify-content: space-around; padding: 2px 4px calc(2px + env(safe-area-inset-bottom)); }
   .rail button { width: auto; flex: 1; height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 10px; }
   .rail .badge { right: 22%; }
-  .side-body { width: 100%; height: min(52dvh, 460px); border-right: 0; border-bottom: 1px solid var(--line); border-radius: 14px 14px 0 0; box-shadow: 0 -10px 30px rgba(0,0,0,.35); }
+  /* the panel opens as a sheet over the chart (like TradingView's phone app): the chart keeps its size */
+  .side-body { position: fixed; left: 0; right: 0; bottom: calc(53px + env(safe-area-inset-bottom)); z-index: 40; width: 100%; height: min(58dvh, 520px);
+    border-right: 0; border-bottom: 1px solid var(--line); border-radius: 14px 14px 0 0; box-shadow: 0 -10px 30px rgba(0,0,0,.45); background: var(--panel); }
   .side-content { padding: 10px 12px; }
   .bias-box { max-width: 210px; font-size: 11px; top: 24px; right: 66px; }
   .draw-bar { top: auto; bottom: 34px; max-width: calc(100% - 16px); overflow-x: auto; }
@@ -897,7 +899,11 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
   .rail-sep { width: 1px; height: 30px; margin: 9px 2px; }
   .topbar { -webkit-mask-image: none; mask-image: none; }
   .tb-arrow { width: 24px; }
-  .pp-quick { top: auto; bottom: 84px; left: 50%; transform: translateX(-50%); }
+  /* buy / sell on a phone: small, at the bottom right of the candle pane (top set from the pane's height) */
+  .pp-quick { top: 6px; bottom: auto; left: auto; right: 64px; transform: none; opacity: .85; }
+  .pp-quick button { padding: 2px 7px; font-size: 10px; }
+  .pp-quick button small { font-size: 9px; }
+  .pp-quick input { width: 34px; font-size: 11px; }
   .rail { -webkit-mask-image: linear-gradient(to right, #000 90%, transparent); mask-image: linear-gradient(to right, #000 90%, transparent); }
 }
 

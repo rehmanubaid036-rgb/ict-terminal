@@ -3,7 +3,7 @@
 import { registerIndicator, type KLineData } from 'klinecharts'
 
 export const CHART_STYLE = 'ICT_CHART_STYLE'
-export const DRAWN_TYPES = new Set(['baseline', 'columns', 'hlc_area', 'step_line', 'line_markers', 'vol_candles', 'pnf', 'kagi'])
+export const DRAWN_TYPES = new Set(['baseline', 'columns', 'high_low', 'hlc_area', 'step_line', 'line_markers', 'vol_candles', 'pnf', 'kagi'])
 
 function atr14(bars: KLineData[]) {
   let atr = 0
@@ -207,6 +207,16 @@ export function registerChartTypes() {
           ctx.beginPath(); ctx.moveTo(x, Y(b.open)); ctx.lineTo(x, Y(b.close))
           if (i + 1 < list.length) ctx.lineTo(X(i + 1), Y(b.close))
           ctx.stroke()
+        }
+        ctx.restore(); return true
+      }
+      if (ext.type === 'high_low') {
+        // TradingView's High-Low: a bar from each bar's low to its high, coloured by its close against its open
+        const w = Math.max(1, chart.getBarSpace().bar * 0.7)
+        for (let i = from; i < to; i++) {
+          const b = list[i], x = xAxis.convertToPixel(i), yh = yAxis.convertToPixel(b.high), yl = yAxis.convertToPixel(b.low)
+          ctx.fillStyle = b.close >= b.open ? up : down
+          ctx.fillRect(x - w / 2, Math.min(yh, yl), w, Math.max(1, Math.abs(yl - yh)))
         }
         ctx.restore(); return true
       }

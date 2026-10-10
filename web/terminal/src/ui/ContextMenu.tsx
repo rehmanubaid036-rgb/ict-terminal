@@ -4,6 +4,7 @@ import { useTerminal } from '../Terminal'
 import { getChart, getEntry, removeAll } from '../chart/registry'
 import { CHART_TYPES } from '../constants'
 import { reopenAll } from '../chart/closed'
+import { inApp } from '../appbridge'
 
 /** Price scale choices, shared by the chart menu and the price-scale menu. */
 function ScaleChoices({ run }: { run: (fn: () => void) => () => void }) {
@@ -85,7 +86,7 @@ export function ContextMenu({ x, y, axis, onClose }: { x: number; y: number; axi
       </div>
       <ScaleChoices run={run} />
       <div className="menu-sep" />
-      <button onClick={run(() => window.open(`/terminal/?symbol=${encodeURIComponent(a.ticker)}&tf=${encodeURIComponent(a.tf)}&popout=1`, `ict-chart-${Date.now()}`, 'width=1200,height=760'))}>Open this chart in a new window</button>
+      {!inApp() && <button onClick={run(() => window.open(`/terminal/?symbol=${encodeURIComponent(a.ticker)}&tf=${encodeURIComponent(a.tf)}&popout=1`, `ict-chart-${Date.now()}`, 'width=1200,height=760'))}>Open this chart in a new window</button>}
       <button onClick={run(() => t.openSettings())}>Settings…</button>
       <button onClick={run(reopenAll)}>Show closed model trades again</button>
       <button onClick={run(t.screenshot)}>Save a picture of the chart</button>

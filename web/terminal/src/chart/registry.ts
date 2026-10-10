@@ -21,6 +21,8 @@ interface Entry {
 }
 
 const entries = new Map<number, Entry>()
+// development only: the charts for testing from the browser console (not in the built terminal)
+if ((import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV) (window as unknown as { __ictCharts: typeof entries }).__ictCharts = entries
 const pending = new Map<number, Drawing[]>()   // drawings for charts that are not mounted yet
 const listeners = new Set<() => void>()
 
@@ -221,6 +223,30 @@ export function cloneDrawing(id: number, overlayId: string): string | null {
     styles: src.styles ?? undefined, ...hooks(id) } as OverlayCreate)
   notify()
   return typeof made === 'string' ? made : null
+}
+
+// Ctrl+C / Ctrl+V: the copied drawing (pasted on the active chart, 5 bars later, as many times as wanted)
+let clipboard: { name: string; points: { timestamp: number; value: number }[]; extendData: unknown; styles: unknown } | null = null
+export function copySelected(id: number): boolean {
+  const e = entries.get(id)
+  const src = e?.selected ? e.chart.getOverlays({ id: e.selected })[0] : undefined
+  if (!src) return false
+  clipboard = { name: src.name, points: src.points.map(p => ({ timestamp: p.timestamp ?? 0, value: p.value ?? 0 })), extendData: src.extendData, styles: src.styles }
+  return true
+}
+export function pasteDrawing(id: number): boolean {
+  const e = entries.get(id)
+  if (!e || !clipboard) return false
+  snapshot(id)
+  const l = e.chart.getDataList(), step = l.length > 1 ? l[l.length - 1].timestamp - l[l.length - 2].timestamp : 60_000
+  const ext = { ...((clipboard.extendData as object) ?? {}) } as Record<string, unknown>
+  delete ext.syncId
+  clipboard = { ...clipboard, points: clipboard.points.map(p => ({ timestamp: p.timestamp + 5 * step, value: p.value })) }
+  const made = e.chart.createOverlay({ name: clipboard.name, groupId: DRAWINGS, points: clipboard.points, extendData: ext as any,
+    styles: (clipboard.styles ?? undefined) as any, ...hooks(id) } as OverlayCreate)
+  if (typeof made === 'string') e.selected = made
+  notify()
+  return typeof made === 'string'
 }
 
 /** The mounted charts (for "copy to"): id and symbol / interval. */

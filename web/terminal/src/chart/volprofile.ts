@@ -1,6 +1,6 @@
 // Volume profiles: Fixed Range (a drawing over chosen bars) and Session (one profile per trading day or
 // per Asia / London / New York session). Volume by price, up / down split, POC and the value area.
-import { registerIndicator, registerOverlay, type KLineData, type OverlayFigure } from 'klinecharts'
+import { registerIndicator, registerOverlay, type Chart, type KLineData, type OverlayFigure } from 'klinecharts'
 import type { DrawStyle } from './overlays'
 
 export interface Profile { lo: number; step: number; up: number[]; dn: number[]; tot: number[]; max: number; poc: number; vaLow: number; vaHigh: number }
@@ -87,6 +87,39 @@ function drawProfile(ctx: CanvasRenderingContext2D, p: Profile, y: (v: number) =
   }
 }
 
+/** The figures of a volume profile over bars [a, b), drawn between x1 and x2 (fixed range and anchored). */
+function vpFigures(chart: Chart, a: number, b: number, x1: number, x2: number, ext: DrawStyle & { rows?: number }): OverlayFigure[] {
+  const list = chart.getDataList()
+  const p = volumeProfile(list, a, b, ext.rows || 24)
+  if (!p) return []
+  const conv = (v: number) => (chart.convertToPixel({ dataIndex: a, value: v }, { paneId: 'candle_pane' }) as { y?: number }).y ?? 0
+  const width = Math.max(30, (x2 - x1) * 0.45)
+  const out: OverlayFigure[] = []
+  const yTop = conv(p.lo + p.tot.length * p.step), yBot = conv(p.lo)
+  // the range frame (clickable, so the drawing can be selected and moved)
+  out.push({ type: 'rect', attrs: { x: x1, y: Math.min(yTop, yBot), width: x2 - x1, height: Math.abs(yBot - yTop) },
+    styles: { style: 'stroke_fill', color: 'rgba(41,98,255,0.04)', borderColor: 'rgba(41,98,255,0.35)', borderSize: 1, borderStyle: 'dashed', borderDashedValue: [4, 3] } })
+  for (let k = 0; k < p.tot.length; k++) {
+    if (!p.tot[k]) continue
+    const ya = conv(p.lo + (k + 1) * p.step), yb = conv(p.lo + k * p.step)
+    const y1 = Math.min(ya, yb), h = Math.max(1, Math.abs(yb - ya) - 1)
+    const inVa = k >= p.vaLow && k <= p.vaHigh
+    const wu = (p.up[k] / p.max) * width, wd = (p.dn[k] / p.max) * width
+    out.push({ type: 'rect', ignoreEvent: true, attrs: { x: x1, y: y1, width: wu, height: h }, styles: { style: 'fill', color: `rgba(38,166,154,${inVa ? 0.45 : 0.2})` } })
+    out.push({ type: 'rect', ignoreEvent: true, attrs: { x: x1 + wu, y: y1, width: wd, height: h }, styles: { style: 'fill', color: `rgba(239,83,80,${inVa ? 0.45 : 0.2})` } })
+  }
+  const d = chart.getSymbol()?.pricePrecision ?? 2
+  const level = (v: number, color: string, label: string, dashed: boolean) => {
+    const y = conv(v)
+    out.push({ type: 'line', ignoreEvent: true, attrs: { coordinates: [{ x: x1, y }, { x: x2, y }] }, styles: { color, size: dashed ? 1 : 1.5, style: dashed ? 'dashed' : 'solid', dashedValue: [4, 3] } })
+    out.push({ type: 'text', ignoreEvent: true, attrs: { x: x2 + 4, y, text: `${label} ${v.toFixed(d)}`, baseline: 'middle', align: 'left' }, styles: { color, size: 10, family: 'Inter, sans-serif', backgroundColor: 'transparent' } })
+  }
+  level(p.lo + (p.poc + 0.5) * p.step, '#f5a623', 'POC', false)
+  level(p.lo + (p.vaHigh + 1) * p.step, '#94a3b8', 'VAH', true)
+  level(p.lo + p.vaLow * p.step, '#94a3b8', 'VAL', true)
+  return out
+}
+
 let done = false
 export function registerVolumeProfiles() {
   if (done) return
@@ -100,39 +133,24 @@ export function registerVolumeProfiles() {
       const list = chart.getDataList()
       const idx = (t?: number) => { const i = list.findIndex(b => b.timestamp >= (t ?? 0)); return i < 0 ? list.length - 1 : i }
       const i1 = idx(overlay.points[0]?.timestamp), i2 = idx(overlay.points[1]?.timestamp)
-      const a = Math.min(i1, i2), b = Math.max(i1, i2) + 1
-      const ext = (overlay.extendData ?? {}) as DrawStyle & { rows?: number }
-      const p = volumeProfile(list, a, b, ext.rows || 24)
-      const x1 = Math.min(c[0].x, c[1].x), x2 = Math.max(c[0].x, c[1].x)
-      if (!p) return []
-      const conv = (v: number) => (chart.convertToPixel({ dataIndex: a, value: v }, { paneId: 'candle_pane' }) as { y?: number }).y ?? 0
-      const width = Math.max(30, (x2 - x1) * 0.45)
-      const out: OverlayFigure[] = []
-      const yTop = conv(p.lo + p.tot.length * p.step), yBot = conv(p.lo)
-      // the range frame (clickable, so the drawing can be selected and moved)
-      out.push({ type: 'rect', attrs: { x: x1, y: Math.min(yTop, yBot), width: x2 - x1, height: Math.abs(yBot - yTop) },
-        styles: { style: 'stroke_fill', color: 'rgba(41,98,255,0.04)', borderColor: 'rgba(41,98,255,0.35)', borderSize: 1, borderStyle: 'dashed', borderDashedValue: [4, 3] } })
-      for (let k = 0; k < p.tot.length; k++) {
-        if (!p.tot[k]) continue
-        const ya = conv(p.lo + (k + 1) * p.step), yb = conv(p.lo + k * p.step)
-        const y1 = Math.min(ya, yb), h = Math.max(1, Math.abs(yb - ya) - 1)
-        const inVa = k >= p.vaLow && k <= p.vaHigh
-        const wu = (p.up[k] / p.max) * width, wd = (p.dn[k] / p.max) * width
-        out.push({ type: 'rect', ignoreEvent: true, attrs: { x: x1, y: y1, width: wu, height: h }, styles: { style: 'fill', color: `rgba(38,166,154,${inVa ? 0.45 : 0.2})` } })
-        out.push({ type: 'rect', ignoreEvent: true, attrs: { x: x1 + wu, y: y1, width: wd, height: h }, styles: { style: 'fill', color: `rgba(239,83,80,${inVa ? 0.45 : 0.2})` } })
-      }
-      const d = chart.getSymbol()?.pricePrecision ?? 2
-      const level = (v: number, color: string, label: string, dashed: boolean) => {
-        const y = conv(v)
-        out.push({ type: 'line', ignoreEvent: true, attrs: { coordinates: [{ x: x1, y }, { x: x2, y }] }, styles: { color, size: dashed ? 1 : 1.5, style: dashed ? 'dashed' : 'solid', dashedValue: [4, 3] } })
-        out.push({ type: 'text', ignoreEvent: true, attrs: { x: x2 + 4, y, text: `${label} ${v.toFixed(d)}`, baseline: 'middle', align: 'left' }, styles: { color, size: 10, family: 'Inter, sans-serif', backgroundColor: 'transparent' } })
-      }
-      level(p.lo + (p.poc + 0.5) * p.step, '#f5a623', 'POC', false)
-      level(p.lo + (p.vaHigh + 1) * p.step, '#94a3b8', 'VAH', true)
-      level(p.lo + p.vaLow * p.step, '#94a3b8', 'VAL', true)
-      return out
+      return vpFigures(chart, Math.min(i1, i2), Math.max(i1, i2) + 1, Math.min(c[0].x, c[1].x), Math.max(c[0].x, c[1].x),
+        (overlay.extendData ?? {}) as DrawStyle & { rows?: number })
     },
   })
+
+  // Anchored Volume Profile: from the clicked bar to the newest one (grows with every new bar)
+  registerOverlay<DrawStyle & { rows?: number }>({
+    name: 'anchoredVp', totalStep: 2, needDefaultPointFigure: true, needDefaultXAxisFigure: true, needDefaultYAxisFigure: false,
+    createPointFigures: ({ overlay, chart, coordinates: c }) => {
+      if (!c.length) return []
+      const list = chart.getDataList()
+      let a = list.findIndex(b => b.timestamp >= (overlay.points[0]?.timestamp ?? 0))
+      if (a < 0) a = list.length - 1
+      const x2 = (chart.convertToPixel({ dataIndex: list.length - 1, value: 0 }, { paneId: 'candle_pane' }) as { x?: number }).x ?? c[0].x
+      return vpFigures(chart, a, list.length, c[0].x, Math.max(c[0].x + 2, x2), (overlay.extendData ?? {}) as DrawStyle & { rows?: number })
+    },
+  })
+
 
   // Session Volume Profile: param 1 = rows, param 2 = 0 one profile per trading day / 1 per session
   registerIndicator<{ s?: number }, number>({

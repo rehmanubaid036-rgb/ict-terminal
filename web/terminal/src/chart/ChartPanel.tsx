@@ -15,7 +15,7 @@ import { EVENTS, loadCalendar, relTime, eventAt } from './events'
 import { COMPARE, COMPARE_COLORS, loadCompare } from './compare'
 import { closeSignal, isClosed } from './closed'
 import type { CalendarEvent } from '../api'
-import { syncDrawing, drawDefault, DRAWINGS, register, unregister, getEntry, snapshot, notify, drawingHooks, removeSelected, onRegistryChange, applyTfVisibility, copyDrawing, chartList } from './registry'
+import { syncDrawing, drawDefault, DRAWINGS, register, unregister, getEntry, snapshot, notify, drawingHooks, removeSelected, onRegistryChange, applyTfVisibility, copyDrawing, chartList, cloneDrawing } from './registry'
 import { DrawingDialog } from '../ui/DrawingDialog'
 import { toast } from '../ui/common'
 import { paperModify, paperOrder, usePaper } from '../panels/Paper'
@@ -203,6 +203,10 @@ export function ChartPanel(p: ChartPanelProps) {
     const title = st.titleMode === 'ticker' ? sym : st.titleMode === 'ticker_tf' ? `${sym} · ${tf.label}` : `${sym} · ${tf.label}${exch ? ' · ' + exch : ''}`
     chart.setStyles({ candle: { tooltip: { title: { template: title } } } } as any)
     chart.setTimezone(st.timezone)
+    if (window.innerWidth <= 760 && !p.compact) {
+      chart.setStyles({ candle: { tooltip: { title: { size: 12 }, legend: { size: 10 } } }, indicator: { tooltip: { title: { size: 10 }, legend: { size: 10 } } },
+        xAxis: { tickText: { size: 10 } }, yAxis: { tickText: { size: 10 } } } as any)
+    }
     if (p.compact) {
       chart.setStyles({ candle: { tooltip: { legend: { template: [] }, title: { size: 11 } } }, indicator: { tooltip: { showRule: 'none' } },
         xAxis: { tickText: { size: 9 } }, yAxis: { tickText: { size: 9 } } } as any)
@@ -299,6 +303,7 @@ export function ChartPanel(p: ChartPanelProps) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paperKey, st.tradeLines, conf.ticker, digits])
+  const [ppTop, setPpTop] = useState<number | null>(null)   // phone: buy / sell at the bottom of the candle pane
   const [ppQty, setPpQty] = useState(() => { try { return localStorage.getItem('ict.paperQty') || '1' } catch { return '1' } })
 
   // ---- events layer: session breaks, economic events, alert lines --------------------------------
@@ -363,11 +368,18 @@ export function ChartPanel(p: ChartPanelProps) {
   const sizePanes = () => {
     const chart = chartRef.current, h = box.current?.clientHeight ?? 0
     if (!chart || !h) return
-    const each = Math.round(Math.max(24, Math.min(100, h * 0.17)))
+    const own = props.current.conf.indicators.filter(ind => chart.getIndicators({ paneId: `pane_${ind.name}` }).length).length
+    const share = window.innerWidth <= 760 ? Math.min(0.17, 0.36 / Math.max(1, own)) : 0.17
+    const each = Math.round(Math.max(24, Math.min(100, h * share)))
     for (const ind of props.current.conf.indicators) {
       // only indicators in their own pane (overlays and scripts on the price chart have none)
       if (chart.getIndicators({ paneId: `pane_${ind.name}` }).length) chart.setPaneOptions({ id: `pane_${ind.name}`, height: each, minHeight: 20 })
     }
+    if (window.innerWidth <= 760) window.setTimeout(() => {
+      const ch = chartRef.current?.getSize('candle_pane')?.height
+      setPpTop(ch ? Math.max(40, ch - 40) : null)
+    }, 0)
+    else setPpTop(null)
   }
   useEffect(() => {
     const el = box.current
@@ -492,7 +504,7 @@ export function ChartPanel(p: ChartPanelProps) {
   // ---- drawing --------------------------------------------------------------------------------
   useEffect(() => {
     const chart = chartRef.current
-    if (!chart || !p.active || !p.tool || p.tool === 'cursor' || p.tool === 'eraser') return
+    if (!chart || !p.active || !p.tool || p.tool === 'cursor' || p.tool === 'eraser' || p.tool === 'measureTool' || p.tool === 'zoomIn') return
     const name = p.tool
     snapshot(conf.id)
     const look = drawDefault(name)
@@ -511,6 +523,12 @@ export function ChartPanel(p: ChartPanelProps) {
       const t = window.prompt(name === 'flagMark' ? 'Flag text (optional):' : name === 'priceNote' ? 'Note (the price is added):' : 'Signpost text:', '')
       if (t === null) { props.current.onToolDone(); return }
       extendData.text = t
+    }
+    if (name === 'pin' || name === 'textTable') {
+      const t = window.prompt(name === 'pin' ? 'Pin text:' : 'Table: rows split by //, cells split by | (the first row is the header). Edit it later in the drawing settings > Text.',
+        name === 'pin' ? '' : 'Symbol | Bias | Setup // XAUUSD | Bullish | M1 A+')
+      if (t === null) { props.current.onToolDone(); return }
+      extendData.text = name === 'textTable' ? t.replace(/\s*\/\/\s*/g, '\n') : t
     }
     if (name === 'sticker') {
       const t = window.prompt('Sticker (an emoji or up to 4 letters):', '🚀')
@@ -604,10 +622,34 @@ export function ChartPanel(p: ChartPanelProps) {
           const pt = chart.convertFromPixel([{ x: ev.clientX - r.left, y: ev.clientY - r.top }], { paneId: 'candle_pane' }) as Array<{ timestamp?: number; value?: number }>
           return pt[0]?.timestamp === undefined || pt[0]?.value === undefined ? null : { timestamp: pt[0].timestamp, value: pt[0].value }
         }
-        // a measure in progress: this click ends it
+        // a measure / zoom box in progress: this click ends it
         if (measuring.current) { measuring.current(); return }
-        // Shift + click: quick measure (price, %, bars, time) that follows the mouse until the next click
-        if (!e.shiftKey || p.tool) return
+        // Zoom in tool: a box from this click to the next; the chart then shows just those bars
+        if (p.tool === 'zoomIn') {
+          const start = at(e)
+          if (!start) return
+          e.preventDefault()
+          const id = chart.createOverlay({ name: 'rectangle', groupId: 'zoombox', points: [start, start], lock: true,
+            extendData: { color: '#2962ff', lineStyle: 'dashed', fillOpacity: 10 } as any })
+          if (typeof id !== 'string') return
+          let end = start
+          const move = (ev: MouseEvent) => { const q = at(ev); if (q) { end = q; chart.overrideOverlay({ id, points: [start, q] }) } }
+          window.addEventListener('mousemove', move)
+          measuring.current = () => {
+            window.removeEventListener('mousemove', move); measuring.current = null
+            chart.removeOverlay({ groupId: 'zoombox' })
+            const list = chart.getDataList()
+            const idx = (t: number) => { const i = list.findIndex(b => b.timestamp >= t); return i < 0 ? list.length - 1 : i }
+            const a = idx(Math.min(start.timestamp, end.timestamp)), b = idx(Math.max(start.timestamp, end.timestamp))
+            const width = chart.getSize('candle_pane')?.width ?? 800
+            if (b - a >= 2) { chart.setBarSpace(Math.max(1, Math.min(50, width / (b - a + 2)))); chart.scrollToDataIndex(b + 1) }
+            props.current.onToolDone()
+          }
+          return
+        }
+        // Shift + click or the Measure tool: price, %, bars, time that follows the mouse until the next click
+        const tool = p.tool === 'measureTool'
+        if (!tool && (!e.shiftKey || p.tool)) return
         const start = at(e)
         if (!start) return
         e.preventDefault()
@@ -616,7 +658,7 @@ export function ChartPanel(p: ChartPanelProps) {
         if (typeof id !== 'string') return
         const move = (ev: MouseEvent) => { const q = at(ev); if (q) chart.overrideOverlay({ id, points: [start, q] }) }
         window.addEventListener('mousemove', move)
-        measuring.current = () => { window.removeEventListener('mousemove', move); measuring.current = null; notify() }
+        measuring.current = () => { window.removeEventListener('mousemove', move); measuring.current = null; notify(); if (tool) props.current.onToolDone() }
       }} onTouchStart={p.onActivate}
       style={{ background: chartCssBackground(p.theme, st) }}
       onMouseMove={e => {
@@ -655,7 +697,7 @@ export function ChartPanel(p: ChartPanelProps) {
           onMouseDown={e => e.stopPropagation()} onClick={pick(() => openIntervalBox(''))} aria-label={`Change interval (${tf.label})`} />}
       </>}
       {st.tradeButtons && p.active && !p.compact && !/[/*+-]/.test(conf.ticker.split(':')[1] ?? '') && (
-        <div className="pp-quick" onMouseDown={e => e.stopPropagation()}>
+        <div className="pp-quick" style={ppTop !== null ? { top: ppTop } : undefined} onMouseDown={e => e.stopPropagation()}>
           <button className="sell" title="Sell at market (paper)" onClick={() => void paperOrder({ ticker: conf.ticker, side: -1, type: 'market', qty: Number(ppQty) || 1 })}>
             SELL<small>{feed?.lastClose()?.toFixed(digits) ?? ''}</small></button>
           <input value={ppQty} inputMode="decimal" title="Quantity" onChange={e => { setPpQty(e.target.value); try { localStorage.setItem('ict.paperQty', e.target.value) } catch { /* ignore */ } }} />
@@ -698,6 +740,7 @@ export function ChartPanel(p: ChartPanelProps) {
         }}>⏰</button>}
         {isHorizontal && <button title="Add an alert at this price" onClick={() => { const v = selected?.points[0]?.value; if (v !== undefined) p.onAlert(v) }}>⏰</button>}
         {chartList().length > 1 && <button title="Copy to other charts" className={copyOpen ? 'on' : ''} onClick={() => setCopyOpen(o => !o)}>⧉</button>}
+        <button title="Clone (Ctrl+C, Ctrl+V)" onClick={() => { if (selected) cloneDrawing(conf.id, selected.id) }}>⎘</button>
         <button title="Settings (double-click the drawing)" onClick={() => { if (selected) setProps(selected.id) }}>⚙</button>
         <button title={selected?.lock ? 'Unlock' : 'Lock'} onClick={() => { if (selected) { chartRef.current?.overrideOverlay({ id: selected.id, lock: !selected.lock }); notify() } }}>{selected?.lock ? '🔒' : '🔓'}</button>
         <button title="Delete (Del)" className="danger" onClick={() => removeSelected(conf.id)}>🗑</button>
