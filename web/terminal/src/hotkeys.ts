@@ -12,6 +12,7 @@ export const HOTKEY_ACTIONS: HotkeyAction[] = [
   { id: 'share', label: 'Copy a share link to the chart picture', group: 'Chart', def: '' },
   { id: 'alert', label: 'Alert at the last price', group: 'Chart', def: 'Alt+A' },
   { id: 'goto', label: 'Go to date', group: 'Chart', def: 'Alt+G' },
+  { id: 'maximize', label: 'Full size chart / back to all charts', group: 'Chart', def: 'Alt+Enter' },
   { id: 'replay', label: 'Bar replay on / off', group: 'Chart', def: '' },
   { id: 'hideDrawings', label: 'Hide / show all drawings', group: 'Chart', def: '' },
   { id: 'indicators', label: 'Indicators window', group: 'Windows', def: 'Alt+I' },
@@ -54,6 +55,7 @@ function runAction(t: TerminalApi, id: string) {
   if (id.startsWith('side:')) { const tab = id.slice(5) as any; t.setSideTab(t.sideTab === tab ? null : tab); return }
   switch (id) {
     case 'screenshot': t.screenshot(); return
+    case 'maximize': if (t.state.layout !== '1') t.setMaximized(!t.maximized); return
     case 'share': void t.sharePicture(); return
     case 'alert': {
       const last = getEntry(t.active.id)?.feed.lastClose()

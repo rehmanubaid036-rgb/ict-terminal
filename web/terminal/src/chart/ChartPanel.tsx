@@ -51,6 +51,9 @@ export interface ChartPanelProps {
   signal: Signal | null
   invert?: boolean               // every model's signal in the opposite direction
   showClose: boolean
+  showMax?: boolean               // the layout has more than one chart: this chart can fill the screen
+  maximized?: boolean
+  onMax?: () => void
   hidden?: boolean
   onActivate: () => void
   onToolDone: () => void
@@ -765,6 +768,8 @@ export function ChartPanel(p: ChartPanelProps) {
         {next && <span className={`news-tag ${next.impact.toLowerCase()}`} title={new Date(next.time * 1000).toLocaleString()}>📅 {next.currency} {next.title} {relTime(next.time, now)}</span>}
       </div>
       {p.showClose && <button className="chart-close" title="Close this chart" onMouseDown={e => e.stopPropagation()} onClick={p.onClose}>✕</button>}
+      {p.showMax && <button className={`chart-max${p.maximized ? ' on' : ''}`} title={p.maximized ? 'Back to all charts (Alt+Enter, or double-click the chart title)' : 'Full size: only this chart (Alt+Enter, or double-click the chart title)'}
+        onMouseDown={e => e.stopPropagation()} onClick={p.onMax}>{p.maximized ? '🗗' : '⛶'}</button>}
       {st.title && <>
         <button className="title-hit" title="Change symbol" style={{ left: 8, top: 4, width: symW + 6, height: titleSize + 6 }}
           onMouseDown={e => e.stopPropagation()} onClick={pick(() => openSymbolSearch(''))} aria-label={`Change symbol (${symName})`} />
@@ -783,7 +788,7 @@ export function ChartPanel(p: ChartPanelProps) {
         </div>
       )}
       {st.watermark && <div className="chart-watermark">{symName}<small>{tf.label}</small></div>}
-      <div ref={box} className="chart-canvas" />
+      <div ref={box} className="chart-canvas" onDoubleClick={e => { if (p.showMax && p.onMax && (e.clientY - (e.currentTarget.getBoundingClientRect().top)) < 34) p.onMax() }} />
       {pop && <SignalPop {...pop} onClose={() => setPop(null)} onShow={() => { p.onSignal(pop.s); setPop(null) }}
         onRemove={() => { if (p.signal?.id === pop.s.id) p.onSignal(null); closeSignal(pop.s.id) }} />}
       {cd && <div className={`bar-countdown${st.scale === 'left' ? ' left' : ''}`} style={{ top: cd.y + 11 }}>{cd.text}</div>}

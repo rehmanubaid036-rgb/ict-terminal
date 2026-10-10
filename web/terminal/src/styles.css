@@ -1185,3 +1185,8 @@ kbd { font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; border: 
   .tb-end { box-shadow: none; padding-left: 2px; }
 }
 .ind-tabs { margin: 8px 0 4px; }
+
+/* full size one chart of a multi-chart layout */
+.chart-max { position: absolute; z-index: 7; bottom: 34px; right: 96px; width: 22px; height: 22px; border-radius: 5px; color: var(--muted); background: color-mix(in srgb, var(--chart) 85%, transparent); font-size: 12px; line-height: 1; }
+.chart-max:hover, .chart-max.on { color: #fff; background: var(--accent); }
+.chart-max.on { right: 70px; }

@@ -773,7 +773,9 @@ export function Terminal({ access, onLogout, onAccess }: { access: Access; onLog
                 <ChartPanel key={c.id} conf={c} scripts={state.scripts} theme={theme} settings={state.chart} cursor={cursor} invert={state.signals.invert} compact={!single && ((phone && visible > 2) || (window.innerWidth <= 1180 && visible >= 6))}
                   alerts={state.alerts.filter(a => a.active && a.ticker === c.ticker && (!a.kind || a.kind === 'price'))} active={i === Math.min(state.active, visible - 1)}
                   hidden={single && visible > 1 && i !== Math.min(state.active, visible - 1)}
-                  tool={tool} magnet={magnet} signal={signals[c.id] ?? null} showClose={visible > 1 && !phone}
+                  tool={tool} magnet={magnet} signal={signals[c.id] ?? null} showClose={visible > 1 && !phone && !maximized}
+                  showMax={visible > 1 && !phone} maximized={maximized}
+                  onMax={() => { t.setActive(i); setMaximized(m => !m) }}
                   onActivate={() => t.setActive(i)}
                   onToolDone={() => (stayInDrawing ? setDrawSeq(n => n + 1) : setTool(null))} drawSeq={drawSeq}
                   onError={m => toast(m, 'error')}
