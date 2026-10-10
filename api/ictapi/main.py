@@ -321,7 +321,14 @@ def create_app(provider: Provider | None = None, store: Store | None = None, aut
             sigs = []
             if f.get("signals"):
                 ids = [m for m in MODELS if allowed == "all" or m in allowed]
-                sigs = store.signals(r["symbol"], now - pd.Timedelta(hours=24), end, ids, bias_filter=True) if ids else []
+                # ICT models: the setups made with the daily bias; VSA models (VSISA course, the user's EA) do not use
+                # the daily bias, so theirs are the setups made without it
+                vsa = [m for m in ids if MODELS[m].source == "VSA"]
+                ict = [m for m in ids if m not in vsa]
+                frm = now - pd.Timedelta(hours=24)
+                sigs = ((store.signals(r["symbol"], frm, end, ict, bias_filter=True) if ict else [])
+                        + (store.signals(r["symbol"], frm, end, vsa, bias_filter=False) if vsa else []))
+                sigs.sort(key=lambda x: str(x.get("created_time")))
             r["setups"] = [{"model_id": s.get("model_id"), "direction": s.get("direction"), "grade": s.get("grade"),
                             "created_time": str(s.get("created_time")), "entry": s.get("entry")} for s in sigs[-5:]][::-1]
             r["a_setups"] = sum(1 for s in sigs if str(s.get("grade", "")).startswith("A"))

@@ -208,6 +208,19 @@ def test_screener_rows_come_from_the_store(client, store):
     assert "setups" in r and "a_setups" in r
 
 
+def test_screener_lists_vsa_setups_made_without_the_daily_bias(client, store):
+    """VSA Models (M19-M25) do not use the daily bias: the screener shows their setups stored without it."""
+    from ictengine.signals import Signal
+    now = pd.Timestamp.now(tz="UTC").floor("min")
+    sig = Signal(model="M20_imbalance_shift", symbol="XAUUSD", direction=1, created_time=now - pd.Timedelta(hours=1),
+                 entry=4000.0, stop=3990.0, targets=[(4020.0, 0.5), (4050.0, 0.5)], expiry=now, window="5m", grade="A")
+    store.set_screener("XAUUSD", {"symbol": "XAUUSD", "price": 4000.0, "bias": 1})
+    store.upsert_signals("XAUUSD", "M20", [sig], False)
+    r = next(x for x in client.get("/api/v1/screener").json()["rows"] if x["symbol"] == "XAUUSD")
+    assert [(s["model_id"], s["direction"], s["grade"]) for s in r["setups"]] == [("M20", 1, "A")]
+    assert r["a_setups"] == 1
+
+
 def test_paper_trading_flow(client):
     client.post("/api/v1/paper/reset", json={"balance": 5000})
     st = client.get("/api/v1/paper").json()

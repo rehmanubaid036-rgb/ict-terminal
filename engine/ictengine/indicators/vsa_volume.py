@@ -35,6 +35,7 @@ class VolParams:
     ultra: float = 2.5          # rel >= ultra             -> ULTRA (top band)
     small_spread: float = 0.7   # range < small_spread x the mean range of the last n bars -> small spread
     pin_wick: float = 0.5       # wick >= pin_wick x range -> pin bar (screenshots: "wick half of the body")
+    combine: str = "min"        # rel from rel_n and rel_tod: 'min' (big in both senses) | 'mean' | 'n' | 'tod'
 
 
 def features(frame: pd.DataFrame, p: VolParams = VolParams()) -> pd.DataFrame:
@@ -53,7 +54,8 @@ def features(frame: pd.DataFrame, p: VolParams = VolParams()) -> pd.DataFrame:
     with np.errstate(invalid="ignore", divide="ignore"):
         rel_n = v / avg_n
         rel_tod = v / avg_tod
-    rel = np.where(np.isfinite(rel_tod), np.fmin(rel_n, rel_tod), rel_n)
+    both = {"min": np.fmin(rel_n, rel_tod), "mean": (rel_n + rel_tod) / 2, "n": rel_n, "tod": rel_tod}[p.combine]
+    rel = rel_n if p.combine == "n" else np.where(np.isfinite(rel_tod), both, rel_n)
     vclass = np.select([rel >= p.ultra, rel >= p.very_high, rel >= p.high, rel >= p.low], [ULTRA, VERY_HIGH, HIGH, AVERAGE],
                        LOW)
     vclass = np.where(np.isfinite(rel), vclass, -1)                 # -1: not enough history yet

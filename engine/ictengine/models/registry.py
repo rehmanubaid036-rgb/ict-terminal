@@ -7,7 +7,7 @@ from typing import Callable
 
 from ..context import Context
 from ..signals import Signal
-from . import alpha_gold, array_models, asian_q2, filters, news_model, reversal_models, silver_bullet, vsa_engulf_ea, wolf_asia
+from . import alpha_gold, array_models, asian_q2, filters, news_model, reversal_models, silver_bullet, vsa_engulf_ea, vsisa, wolf_asia
 
 
 @dataclass(frozen=True)
@@ -46,6 +46,13 @@ MODELS: dict[str, ModelInfo] = {m.id: m for m in (
     ModelInfo("M18", "The Alpha Model Gold", alpha_gold.scan_m18, "WOLF"),
     # Custom Models > VSA Models: the user's volume-spread-analysis EA (XAUUSD, 5m / 15m)
     ModelInfo("M19", "VSA Engulf Hybrid EA (Gold)", vsa_engulf_ea.scan_m19, "VSA"),
+    # Custom Models > VSA Models: the VSISA course (Sajid Ahmed), docs/research/vsisa/VSISA_LOGIC.md
+    ModelInfo("M20", "VSA Imbalance Shift", vsisa.scan_m20, "VSA"),
+    ModelInfo("M21", "VSA Low-Volume Engulf", vsisa.scan_m21, "VSA"),
+    ModelInfo("M22", "VSA End of Rising / Falling Market", vsisa.scan_m22, "VSA"),
+    ModelInfo("M23", "VSA False Break", vsisa.scan_m23, "VSA"),
+    ModelInfo("M24", "VSA No-Supply / No-Demand Test", vsisa.scan_m24, "VSA"),
+    ModelInfo("M25", "VSA AR / AS Line Break", vsisa.scan_m25, "VSA"),
 )}
 
 
